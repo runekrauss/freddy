@@ -1,0 +1,11 @@
+*
+
+!*/
+
+!include/eddy/**/*.hpp
+!test/*.cpp
+!.clang-format
+!.clang-tidy
+!.gitignore
+!CMakeLists.txt
+!README.md
