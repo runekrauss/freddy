@@ -147,9 +147,8 @@ $ cd build/Release
 $ ctest
 ```
 
-For debugging purposes, type `Debug` instead of `Release`. Note that this may have a negative effect on EDDY's
-performance. Additionally, you can add `-j k` to build on $k$ cores, or `-v` to show in detail the commands used
-to build.
+For debugging purposes, type `Debug` instead of `Release`. Note that this may have a negative effect on the performance
+of EDDY. Additionally, you can add `-j k` to build on `k` cores, or `-v` to show in detail the commands used to build.
 
 ## :+1: Contribute
 
