@@ -1,0 +1,54 @@
+name: Check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/check.yml'
+      - '**/*.hpp'
+      - '**/*.cpp'
+      - '.clang-format'
+      - '.clang-tidy'
+      - 'CMakeLists.txt'
+  pull_request:
+    branches: [main]
+    paths:
+      - '.github/workflows/check.yml'
+      - '**/*.hpp'
+      - '**/*.cpp'
+      - '.clang-format'
+      - '.clang-tidy'
+      - 'CMakeLists.txt'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+
+      - name: Configure CMake
+        run: >
+          cmake -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'
+          -DCLANGTIDY=ON
+          -DEDDY_TEST=ON
+          -B build
+
+      - name: Lint code
+        run: cmake --build build
+
+      - name: Format code
+        run: find . -iname '*.hpp' -o -iname '*.cpp' | xargs clang-format -i
+
+      - name: Push changes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git commit -a -m 'Make QA' || exit 0
+          git push
