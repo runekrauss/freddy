@@ -21,7 +21,7 @@
 
 ## :rocket: Getting Started
 
-First, the steps to install EDDY are described. Second, it is explained how a DD type can be used to solve a problem.
+First, the installation of EDDY is described. Second, it is explained how a DD type can be used to solve a problem.
 
 ### :wrench: Installation
 
