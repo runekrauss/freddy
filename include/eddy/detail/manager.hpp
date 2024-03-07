@@ -121,8 +121,8 @@ class manager
     [[nodiscard]] auto edge_count() const noexcept
     {
         return (std::accumulate(vl.begin(), vl.end(), 0,
-                                [](auto const sum, auto const& var) { return (sum + var.et.size()); }) +
-                consts.size());
+                                [](auto const sum, auto const& var) { return (sum + static_cast<std::int32_t>(var.et.size())); }) +
+                static_cast<std::int32_t>(consts.size()));
     }
 
     [[nodiscard]] auto var_count() const noexcept
