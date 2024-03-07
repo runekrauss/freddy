@@ -1,5 +1,9 @@
 # EDDY
 
+[![Check](https://github.com/runekrauss/eddy/actions/workflows/check.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/check.yml)
+[![Build](https://github.com/runekrauss/eddy/actions/workflows/build.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/build.yml)
+[![Test](https://github.com/runekrauss/eddy/actions/workflows/test.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/test.yml)
+
 **EDDY** is a framework to **Engineer Decision Diagrams Yourself** for efficient solving of problems in VLSI CAD.
 
 ## :dart: Features
