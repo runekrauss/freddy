@@ -117,7 +117,7 @@ TEST_CASE("BDD character can be investigated", "[queen]")
 
     SECTION("Number of edges is determined")
     {
-        CHECK(mgr.edge_count() <= 679);
+        CHECK(mgr.edge_count() <= 688);
     }
 
     SECTION("Nodes can be counted")

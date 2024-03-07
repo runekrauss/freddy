@@ -1,11 +1,13 @@
 *
 
 !*/
+build
 
+!.github/workflows/*.yml
 !include/eddy/**/*.hpp
 !test/*.cpp
-!.clang-format
-!.clang-tidy
-!.gitignore
-!CMakeLists.txt
-!README.md
+!/.clang-format
+!/.clang-tidy
+!/.gitignore
+!/CMakeLists.txt
+!/README.md

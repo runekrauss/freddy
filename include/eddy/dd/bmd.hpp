@@ -245,7 +245,7 @@ class bmd_manager : public detail::manager
         auto r = tmls[0];
         for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
         {  // LSB ... MSB
-            r = add(r, mul(foa(std::make_shared<detail::edge>(std::pow(2, i))), fs[i].f));
+            r = add(r, mul(foa(std::make_shared<detail::edge>(static_cast<std::int32_t>(std::pow(2, i)))), fs[i].f));
         }
         return bmd{r, this};
     }

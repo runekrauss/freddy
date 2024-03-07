@@ -113,15 +113,17 @@ class manager
 
     [[nodiscard]] auto node_count() const noexcept
     {
-        return std::accumulate(vl.begin(), vl.end(), 0,
-                               [](auto const sum, auto const& var) { return (sum + var.nt.size()); });
+        return std::accumulate(vl.begin(), vl.end(), 0, [](auto const sum, auto const& var) {
+            return (sum + static_cast<std::int32_t>(var.nt.size()));
+        });
     }
 
     [[nodiscard]] auto edge_count() const noexcept
     {
-        return (std::accumulate(vl.begin(), vl.end(), 0,
-                                [](auto const sum, auto const& var) { return (sum + var.et.size()); }) +
-                consts.size());
+        return (std::accumulate(
+                    vl.begin(), vl.end(), 0,
+                    [](auto const sum, auto const& var) { return (sum + static_cast<std::int32_t>(var.et.size())); }) +
+                static_cast<std::int32_t>(consts.size()));
     }
 
     [[nodiscard]] auto var_count() const noexcept
@@ -406,7 +408,7 @@ class manager
     }
 
     template <typename T>
-        requires std::same_as<T, bool>
+    requires std::same_as<T, bool>
     auto subfunc(std::shared_ptr<edge> const& f, T const a)
     {
         assert(f);
@@ -415,7 +417,7 @@ class manager
     }
 
     template <typename T, typename... Ts>
-        requires std::same_as<T, bool>
+    requires std::same_as<T, bool>
     auto subfunc(std::shared_ptr<edge> const& f, T const a, Ts... args)
     {
         assert(f);
@@ -424,7 +426,7 @@ class manager
     }
 
     template <typename T>
-        requires std::same_as<T, bool>
+    requires std::same_as<T, bool>
     auto eval(std::shared_ptr<edge> const& f, T const a)
     {
         assert(f);
@@ -433,7 +435,7 @@ class manager
     }
 
     template <typename T, typename... Ts>
-        requires std::same_as<T, bool>
+    requires std::same_as<T, bool>
     auto eval(std::shared_ptr<edge> const& f, T const a, Ts... args)
     {
         assert(f);

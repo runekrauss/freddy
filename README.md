@@ -1,4 +1,8 @@
-# EDDY
+![EDDY](https://github.com/runekrauss/eddy/assets/5829946/f8e6a72b-9104-40c3-b7cb-ce05466c97f1)
+
+[![Check](https://github.com/runekrauss/eddy/actions/workflows/check.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/check.yml)
+[![Build](https://github.com/runekrauss/eddy/actions/workflows/build.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/build.yml)
+[![Test](https://github.com/runekrauss/eddy/actions/workflows/test.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/test.yml)
 
 **EDDY** is a framework to **Engineer Decision Diagrams Yourself** for efficient solving of problems in VLSI CAD.
 
@@ -17,7 +21,7 @@
 
 ## :rocket: Getting Started
 
-First, the steps to install EDDY are described. Second, it is explained how a DD type can be used to solve a problem.
+First, the installation of EDDY is described. Second, it is explained how a DD type can be used to solve a problem.
 
 ### :wrench: Installation
 
@@ -34,7 +38,7 @@ Depending on the location of EDDY, the path must be adjusted accordingly.
 
 ### :computer: Usage
 
-In order to use a DD type for solving a problem like
+In order to use a DD type for solving a problem such as
 [equivalence checking of multipliers](https://dl.acm.org/doi/10.1145/370155.370315), the respective
 [header](include/eddy/dd/bmd.hpp) of an appropriate type like a
 [binary moment diagram](https://en.wikipedia.org/wiki/Binary_moment_diagram) must be **included** and the corresponding
@@ -49,9 +53,9 @@ int main()
 }
 ```
 
-In general, a correspondence is proved by interpreting binary signals $x_1, \ldots, x_n$ of a logical network $f$ using
-a word-level encoding function $e$ and comparing it with a word-level specification $g$:
-$e(f(x_1, \ldots, x_n)) = g(e(x_1), \ldots, e(x_n))$.
+In general, a correspondence is proved by interpreting binary signals $x_1,\ldots,x_n$ of a logical network $f$ using
+an encoding function $e$ and comparing it with a word-level specification $g$:
+$e(f(x_1,\ldots,x_n)) = g(e(x_1),\ldots,e(x_n))$.
 
 In this example, a **bit-level implementation** $f$ for a 2-bit multiplier is developed via
 [symbolic simulation](https://dl.acm.org/doi/abs/10.1145/123186.128296):
@@ -114,8 +118,14 @@ int main()
 }
 ```
 
-In addition, depending on the problem, it is possible to adjust various parameters such as the initial size `ct_size` of
-the operation cache:
+Incidentally, every DD type supports drawing nodes and edges with
+[DOT](https://en.wikipedia.org/wiki/DOT_(graph_description_language)). The graph can be rendered with the corresponding
+layout engine and looks similar to the following BMD in this example:
+
+![BMD](https://github.com/runekrauss/eddy/assets/5829946/3cff810a-00f2-4229-a279-00c7f2ba0d3a)
+
+In addition, depending on the problem, it is possible to adjust various **parameters** such as the initial size
+`ct_size` of the operation cache:
 
 ```cpp
 /* includes */
@@ -141,15 +151,14 @@ Other parameters can be found in the [configuration](include/eddy/config.hpp).
 Tests can be built with CMake using the flag `-DEDDY_TEST=ON` on the command line and run by `ctest`:
 
 ```console
-$ cmake -DCMAKE_BUILD_TYPE=Release -DEDDY_TEST=ON -S . -B build/Release
-$ cmake --build build/Release
+$ cmake -DCMAKE_BUILD_TYPE=Release -DEDDY_TEST=ON -B build/Release
+$ cmake --build build/Release --config Release
 $ cd build/Release
 $ ctest
 ```
 
-For debugging purposes, type `Debug` instead of `Release`. Note that this may have a negative effect on EDDY's
-performance. Additionally, you can add `-j k` to build on $k$ cores, or `-v` to show in detail the commands used
-to build.
+For debugging purposes, type `Debug` instead of `Release`. Note that this may have a negative effect on the performance
+of EDDY. Additionally, you can add `-j k` to build on `k` cores, or `-v` to show in detail the commands used to build.
 
 ## :+1: Contribute
 
@@ -176,12 +185,12 @@ and [bmd.hpp](include/eddy/dd/bmd.hpp).
 
 To check the functionality, I use [Catch2](https://github.com/catchorg/Catch2). Already existing tests are located in
 the [test](test) directory and should be used as orientation for own DD types, where an executable is created
-automatically from an existing test file when [building the tests](#:white_check_mark:-tests). To collect test coverage,
+automatically from an existing test file when [building the tests](#white_check_mark-tests). To collect test coverage,
 execute `ctest -T Test -T Coverage` in a terminal window.
 
 While [leaks](https://unix.com/man-page/osx/1/leaks) or [Valgrind](https://github.com/tklengyel/valgrind) are
-recommended for dynamic code analysis, please use [clang-tidy](https://clang.llvm.org/extra/clang-tidy) respecting
-my [coding style](.clang-tidy) for static code analysis. By specifying the `-DCLANGTIDY=ON` option, such an analysis is
+recommended for dynamic code analysis, please use [clang-tidy](https://clang.llvm.org/extra/clang-tidy) respecting my
+[coding style](.clang-tidy) for static code analysis. By specifying the `-DCLANGTIDY=ON` option, such an analysis is
 performed. To format the code according to my [style guide](.clang-format), use
 [clang-format](https://clang.llvm.org/docs/ClangFormat.html) as follows:
 
@@ -189,8 +198,18 @@ performed. To format the code according to my [style guide](.clang-format), use
 $ find . -iname '*.hpp' -o -iname '*.cpp' | xargs clang-format -i
 ```
 
-Following these standards, a **pull request** with or without an **issue** can be submitted according to the
-[Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962) and
-[Conventional Commits](https://conventionalcommits.org).
+Following these standards, a [pull request](https://github.com/runekrauss/eddy/pulls) with or without an **issue** can
+be submitted according to the [Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962).
+If you address an issue from the [tracking system](https://github.com/runekrauss/eddy/issues), it is helpful to also
+specify the corresponding ID in the title. Compliance with the policies mentioned above is enforced through a
+[CI/CD pipeline](https://github.com/runekrauss/eddy/actions) that has the following **workflows**:
+
+| Workflow | Description                                 |
+| -------- | ------------------------------------------- |
+| Check    | Analyzing the codebase without any warnings |
+| Build    | Building EDDY on Linux, macOS, and Windows  |
+| Test     | Achieving a code coverage of at least 80%   |
+
+Changes are only integrated into my main branch when each stage has been passed.
 
 Thank you so much for your interest in growing the reach of EDDY! :blush:
