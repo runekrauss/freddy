@@ -198,9 +198,9 @@ performed. To format the code according to my [style guide](.clang-format), use
 $ find . -iname '*.hpp' -o -iname '*.cpp' | xargs clang-format -i
 ```
 
-Following these standards, a [pull request](https://github.com/runekrauss/alf/pulls) with or without an **issue** can be
-submitted according to the [Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962). If
-you address an issue from the [tracking system](https://github.com/runekrauss/eddy/issues), it is helpful to also
+Following these standards, a [pull request](https://github.com/runekrauss/eddy/pulls) with or without an **issue** can
+be submitted according to the [Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962).
+If you address an issue from the [tracking system](https://github.com/runekrauss/eddy/issues), it is helpful to also
 specify the corresponding ID in the title. Compliance with the policies mentioned above is enforced through a
 [CI/CD pipeline](https://github.com/runekrauss/eddy/actions) that has the following **workflows**:
 
