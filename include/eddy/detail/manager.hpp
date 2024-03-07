@@ -113,8 +113,9 @@ class manager
 
     [[nodiscard]] auto node_count() const noexcept
     {
-        return std::accumulate(
-            vl.begin(), vl.end(), 0, [](auto const sum, auto const& var) { return (sum + static_cast<std::int32_t>(var.nt.size())); });
+        return std::accumulate(vl.begin(), vl.end(), 0, [](auto const sum, auto const& var) {
+            return (sum + static_cast<std::int32_t>(var.nt.size()));
+        });
     }
 
     [[nodiscard]] auto edge_count() const noexcept
