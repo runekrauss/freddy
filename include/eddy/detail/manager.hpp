@@ -406,7 +406,7 @@ class manager
     }
 
     template <typename T>
-        requires std::same_as<T, bool>
+    requires std::same_as<T, bool>
     auto subfunc(std::shared_ptr<edge> const& f, T const a)
     {
         assert(f);
@@ -415,7 +415,7 @@ class manager
     }
 
     template <typename T, typename... Ts>
-        requires std::same_as<T, bool>
+    requires std::same_as<T, bool>
     auto subfunc(std::shared_ptr<edge> const& f, T const a, Ts... args)
     {
         assert(f);
@@ -424,7 +424,7 @@ class manager
     }
 
     template <typename T>
-        requires std::same_as<T, bool>
+    requires std::same_as<T, bool>
     auto eval(std::shared_ptr<edge> const& f, T const a)
     {
         assert(f);
@@ -433,7 +433,7 @@ class manager
     }
 
     template <typename T, typename... Ts>
-        requires std::same_as<T, bool>
+    requires std::same_as<T, bool>
     auto eval(std::shared_ptr<edge> const& f, T const a, Ts... args)
     {
         assert(f);
