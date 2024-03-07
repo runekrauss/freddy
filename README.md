@@ -120,7 +120,7 @@ int main()
 
 Incidentally, every DD type supports drawing nodes and edges with
 [DOT](https://en.wikipedia.org/wiki/DOT_(graph_description_language)). The graph can be rendered with the corresponding
-layout engine and is similar to the following BMD in this example:
+layout engine and looks similar to the following BMD in this example:
 
 ![BMD](https://github.com/runekrauss/eddy/assets/5829946/3cff810a-00f2-4229-a279-00c7f2ba0d3a)
 
