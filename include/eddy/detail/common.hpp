@@ -52,7 +52,7 @@ struct hash
 // =====================================================================================================================
 
 template <typename T, typename Callable>
-requires std::integral<T>
+    requires std::integral<T>
 auto inline parallel_for(T const a, T const b, Callable func)
 {
     assert(b >= a);
