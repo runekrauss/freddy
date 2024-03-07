@@ -1,4 +1,4 @@
-# EDDY
+![EDDY](https://github.com/runekrauss/eddy/assets/5829946/f8e6a72b-9104-40c3-b7cb-ce05466c97f1)
 
 [![Check](https://github.com/runekrauss/eddy/actions/workflows/check.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/check.yml)
 [![Build](https://github.com/runekrauss/eddy/actions/workflows/build.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/build.yml)
