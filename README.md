@@ -118,6 +118,12 @@ int main()
 }
 ```
 
+Incidentally, every DD type supports drawing nodes and edges with
+[DOT](https://en.wikipedia.org/wiki/DOT_(graph_description_language)). The graph can be rendered with the corresponding
+layout engine and is similar to the following BMD in this example:
+
+![BMD](https://github.com/runekrauss/eddy/assets/5829946/f812b68f-f35a-4bca-9289-762c9070e6da)
+
 In addition, depending on the problem, it is possible to adjust various **parameters** such as the initial size
 `ct_size` of the operation cache:
 
