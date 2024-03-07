@@ -54,7 +54,7 @@ int main()
 ```
 
 In general, a correspondence is proved by interpreting binary signals $x_1,\ldots,x_n$ of a logical network $f$ using
-a word-level encoding function $e$ and comparing it with a word-level specification $g$:
+an encoding function $e$ and comparing it with a word-level specification $g$:
 $e(f(x_1,\ldots,x_n)) = g(e(x_1),\ldots,e(x_n))$.
 
 In this example, a **bit-level implementation** $f$ for a 2-bit multiplier is developed via
