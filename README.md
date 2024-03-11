@@ -1,4 +1,4 @@
-![EDDY](https://github.com/runekrauss/eddy/assets/5829946/f8e6a72b-9104-40c3-b7cb-ce05466c97f1)
+![EDDY](https://github.com/runekrauss/eddy/assets/5829946/44eecccb-e102-4cb9-9390-3feaf0dbe019)
 
 [![Check](https://github.com/runekrauss/eddy/actions/workflows/check.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/check.yml)
 [![Build](https://github.com/runekrauss/eddy/actions/workflows/build.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/build.yml)
@@ -122,7 +122,7 @@ Incidentally, every DD type supports drawing nodes and edges with
 [DOT](https://en.wikipedia.org/wiki/DOT_(graph_description_language)). The graph can be rendered with the corresponding
 layout engine and looks similar to the following BMD in this example:
 
-![BMD](https://github.com/runekrauss/eddy/assets/5829946/3cff810a-00f2-4229-a279-00c7f2ba0d3a)
+![BMD](https://github.com/runekrauss/eddy/assets/5829946/4cf0d118-23f6-4157-999f-eb886d97197a)
 
 In addition, depending on the problem, it is possible to adjust various **parameters** such as the initial size
 `ct_size` of the operation cache:
