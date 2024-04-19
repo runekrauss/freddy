@@ -154,7 +154,7 @@ Tests can be built with CMake using the flag `-DEDDY_TEST=ON` on the command lin
 $ cmake -DCMAKE_BUILD_TYPE=Release -DEDDY_TEST=ON -B build/Release
 $ cmake --build build/Release --config Release
 $ cd build/Release
-$ ctest
+$ ctest -C Release
 ```
 
 For debugging purposes, type `Debug` instead of `Release`. Note that this may have a negative effect on the performance
