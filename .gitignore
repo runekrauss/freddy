@@ -11,3 +11,6 @@ build
 !/.gitignore
 !/CMakeLists.txt
 !/README.md
+
+!BHybridD/CMakeLists.txt
+!BHybridD/hybridTest.cpp
