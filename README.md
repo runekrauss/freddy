@@ -1,10 +1,11 @@
-![FrEDDY](https://github.com/runekrauss/freddy/assets/5829946/44eecccb-e102-4cb9-9390-3feaf0dbe019)
+![FrEDDY](https://github.com/runekrauss/freddy/assets/5829946/560e4a18-3b76-4fba-875e-c29afc5ce6c4)
 
 [![Check](https://github.com/runekrauss/freddy/actions/workflows/check.yml/badge.svg)](https://github.com/runekrauss/freddy/actions/workflows/check.yml)
 [![Build](https://github.com/runekrauss/freddy/actions/workflows/build.yml/badge.svg)](https://github.com/runekrauss/freddy/actions/workflows/build.yml)
 [![Test](https://github.com/runekrauss/freddy/actions/workflows/test.yml/badge.svg)](https://github.com/runekrauss/freddy/actions/workflows/test.yml)
 
-**FrEDDY** is a framework to **Engineer Decision Diagrams Yourself** for efficient solving of problems in VLSI CAD.
+**FrEDDY** is the **Framework** to **Engineer Decision Diagrams Yourself** for efficient solving of problems in
+VLSI CAD.
 
 ## :dart: Features
 
