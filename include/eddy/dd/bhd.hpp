@@ -92,7 +92,7 @@ class bhd
     {
         assert(f);
 
-        return (f->w != 0);
+        return (f->w != 0 || f->w != -1);
     }
 
     [[nodiscard]] auto equals(bhd const& g) const noexcept
@@ -174,6 +174,13 @@ class bhd
 class bhd_manager : public detail::manager
 {
   public:
+
+    bhd_manager()
+    {
+        tmls[2] = foa(std::make_shared<eddy::detail::edge>(-1));
+        tmls[3] = foa(std::make_shared<eddy::detail::edge>(-2));
+    }
+
     auto var(std::string_view l = {})
     {
         return bhd{make_var(detail::decomposition::S, l), this};
@@ -212,27 +219,9 @@ class bhd_manager : public detail::manager
         to_dot(transform(fs), std::move(outputs), s);
     }
 
-    void test(std::shared_ptr<detail::edge> const& f, std::vector<std::pair<std::int32_t, bool>> path){
-
-        if (f == tmls[1] || f == tmls[0]){
-            std::vector<int> v;
-            return;
-        }
-
-        if (f->v->isExpansion){
-            newExtensionNodeFromTest(path);
-        } else{
-            path.push_back(std::pair<std::int32_t,bool> (f->v->x, true));
-            test(f->v->hi, path);
-
-            path.pop_back();
-            path.push_back(std::pair<std::int32_t,bool> (f->v->x, false));
-            test(f->v->lo, path);
-        }
-
-    }
 
   private:
+
     [[nodiscard]] static auto transform(std::vector<bhd> const& fs) -> std::vector<std::shared_ptr<detail::edge>>
     {
         std::vector<std::shared_ptr<detail::edge>> gs;
@@ -493,6 +482,11 @@ class bhd_manager : public detail::manager
 
         assert(f);
 
+        if (f == tmls[2] || f == tmls[3]){ //tmls[2] = -1 -> w=0 | tmls[3] = -2 -> w=1
+            return foa(std::make_shared<detail::edge>(((f->w == -2 && w == 0) || (f->w == -1 && w == 1)) ? 1 : 0, f->v));
+        }
+
+
         return foa(std::make_shared<detail::edge>(((f->w == 1 && w == 0) || (f->w == 0 && w == 1)) ? 1 : 0, f->v));
     }
 
@@ -500,6 +494,13 @@ class bhd_manager : public detail::manager
     {
 
         assert(f);
+
+        if (tmls[2]){
+            return foa(std::make_shared<detail::edge>(1, f->v));
+        }
+        if (tmls[3]){
+            return foa(std::make_shared<detail::edge>(0, f->v));
+        }
 
         return ((f->w == 0) ? foa(std::make_shared<detail::edge>(1, f->v))
                             : foa(std::make_shared<detail::edge>(0, f->v)));
@@ -514,27 +515,6 @@ class bhd_manager : public detail::manager
         assert(f);
         assert(g);
 
-
-        if (f->v){
-            if (f->v->isExpansion){
-                std::cout << "f ist expansion" << std::endl;
-            } else {
-                std::cout << "f kein expansion" << std::endl;
-            }
-        } else {
-            std::cout << "f hat kein knoten" << std::endl;
-        }
-
-        if (g->v){
-            if (g->v->isExpansion){
-                std::cout << "g ist expansion" << std::endl;
-            } else {
-                std::cout << "g kein expansion" << std::endl;
-            }
-        } else {
-            std::cout << "g hat kein knoten" << std::endl;
-        }
-
         if (f == tmls[1])
         {  // 1g = g
             return g;
@@ -547,6 +527,23 @@ class bhd_manager : public detail::manager
         {  // check for complement
             return ((f->w == g->w) ? f : tmls[0]);
         }
+
+
+
+        if ((f == tmls[2] || f == tmls[3]) && (g == tmls[2] || g == tmls[3])){
+            return tmls[2];
+        }
+
+        if (f == tmls[2] || f == tmls[3]){
+            std::cout << "f ist expansion" << std::endl;
+
+            return g;
+        }
+        if (g == tmls[2] || g == tmls[3]){
+            std::cout << "g ist expansion" << std::endl;
+            return f;
+        }
+
 
         auto const cr = ct.find({operation::AND, f, g});
         if (cr != ct.end())
@@ -570,7 +567,7 @@ class bhd_manager : public detail::manager
 
 
         //normal
-        if (firstTime >= 4 || randomNumber <= 50) {
+        if (randomNumber <= 60) {
             std::cout << "1\n";
 
             r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
@@ -578,10 +575,10 @@ class bhd_manager : public detail::manager
         }
 
         //lo becomes extension
-        else if (randomNumber <= 75){
+        else if (randomNumber <= 80){
             std::cout << "2\n";
             firstTime += 1;
-            r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), create_expansion(cof(f, x, false), cof(g, x, false), tmls[0]));
+            r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), tmls[2]);
 
 
         // hi becomes extension
@@ -589,7 +586,7 @@ class bhd_manager : public detail::manager
             std::cout << "3\n";
 
             firstTime += 1;
-            r = make_branch(x, create_expansion(cof(f, x, true), cof(g, x, true), tmls[0]), conj(cof(f, x, false), cof(g, x, false)));
+            r = make_branch(x, tmls[2], conj(cof(f, x, false), cof(g, x, false)));
         }
 
 
@@ -599,53 +596,10 @@ class bhd_manager : public detail::manager
         return r;
     }
 
-    int firstTime = -100;
+    int firstTime = -5000;
 
-    auto create_expansion(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::shared_ptr<detail::edge> h) -> std::shared_ptr<detail::edge>
-    {
-        assert(f);
-        assert(g);
-        assert(h);
 
-        auto const ret = simplify(f, g, h);
 
-        // terminal cases
-        if (f == tmls[1])
-        {
-            return g;
-        }
-        if (f == tmls[0])
-        {
-            return h;
-        }
-        if (g == h)
-        {
-            return g;
-        }
-        if (g == tmls[1] && h == tmls[0])
-        {
-            return f;
-        }
-        if (g == tmls[0] && h == tmls[1])
-        {
-            return complement(f);
-        }
-
-        if (ret != 0)
-        {
-            std_triple(ret, f, g, h);
-        }
-
-        auto const cr = ct.find({operation::ITE, f, g, h});
-        if (cr != ct.end())
-        {
-            return cr->second.first.lock();
-        }
-
-        auto const x = (f->v->x == top_var(f, g)) ? top_var(f, h) : top_var(g, h);
-
-        return std::make_shared<detail::edge>(0, std::make_shared<detail::node>(x));
-    }
 
     auto disj(std::shared_ptr<detail::edge> const& f, std::shared_ptr<detail::edge> const& g)
         -> std::shared_ptr<detail::edge> override
@@ -662,7 +616,7 @@ class bhd_manager : public detail::manager
         assert(hi);
         assert(lo);
 
-        return (lo->w != 0);
+        return (lo->w != 0 || lo->w != -1);
     }
 
     auto make_branch(std::int32_t const x, std::shared_ptr<detail::edge> hi, std::shared_ptr<detail::edge> lo)
@@ -865,13 +819,4 @@ auto inline bhd::print() const
 
     mgr->print({*this});
 }
-
-auto inline bhd::test() const{
-    assert(mgr);
-
-    std::vector<std::pair<std::int32_t, bool>> v;
-
-    mgr->test(f, v);
-}
-
 }  // namespace eddy::dd

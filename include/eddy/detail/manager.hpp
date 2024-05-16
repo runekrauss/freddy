@@ -47,6 +47,7 @@ class manager
         tmls[1] = foa(std::make_shared<edge>(1));
         tmls[2] = foa(std::make_shared<edge>(2));
         tmls[3] = foa(std::make_shared<edge>(-1));
+
         var2lvl.reserve(config::vl_size);
         vars.reserve(config::vl_size);
 
@@ -367,6 +368,9 @@ class manager
             {
                 s << 'v' << tmls[0]->v << " [shape=box,label=\"" << regw() << "\"];\n";  // terminal is implied
                 s << "{ rank=same; c; v" << tmls[0]->v << "; }\n";
+
+                s << "EXP [shape=box,label=EXP];\n";  // expansionNode is implied
+                s << "{ rank=same; c; EXP; }\n";
             }
 
             s << 'f' << f[i] << " [label=\"" << (outputs.empty() ? 'f' + std::to_string(i) : outputs[i]) << "\"]\n";
@@ -540,76 +544,8 @@ class manager
 
         if (!f->v || f->v->x != x)
         {
-            /*
-            if (vl[x].t == decomposition::PD && a){
-                return tmls[0];
-            } else {
-                if (f->v){
-                    if (f->v->isExpansion){
-                        std::cout << "wir geben F ALS EXP" << std::endl;
-                    }
-                }
-                return f;
-            }
-             */
-
-
             return ((vl[x].t == decomposition::PD && a) ? tmls[0] : f);
         }
-
-
-        /*
-        if (a){
-
-            if (ret->v){
-                if (ret->v->isExpansion){
-                    if (f->v){
-                        if (f->v->isExpansion){
-                            std::cout << "war schon EXP " << std::endl;
-                        }
-                        else {
-                            std::cout << "war kein EXP " << std::endl;
-                        }
-                    } else {
-                        std::cout << "f hatte keine node" << std::endl;
-                    }
-                    std::cout << "wir geben EXP " << std::endl;
-                }
-                else {
-                    std::cout << "wir geben was anderes " << std::endl;
-                }
-            }
-
-            return ret;
-
-        } else {
-            std::shared_ptr<detail::edge> ret = apply(f->w, f->v->lo);
-            if (ret->v){
-                if (ret->v->isExpansion){
-                    if (f->v){
-                        if (f->v->isExpansion){
-                            std::cout << "war schon EXP " << std::endl;
-                        }
-                        else {
-
-                            std::cout << "war kein EXP " << std::endl;
-                            if (f->v->lo->v->isExpansion){
-                                std::cout << "drin ist EXP " << std::endl;
-                            }
-                        }
-                    } else {
-                        std::cout << "f hatte keine node" << std::endl;
-                    }
-                    std::cout << "wir geben EXP " << std::endl;
-                }
-                else {
-                    std::cout << "wir geben was anderes " << std::endl;
-                }
-            }
-            return ret;
-        }
-         */
-
 
         return (a ? apply(f->w, f->v->hi) : apply(f->w, f->v->lo));
     }
@@ -978,18 +914,19 @@ class manager
 
             if (child->v)
             {
-                if (child->v->isExpansion){
-                    s << 'v' << child->v << " [shape=box,label=\"" << "E::" << vl[child->v->x].l << "\"];\n";
-                    s << "{ rank=same; x" << child->v->x << "; v" << child->v << "; }\n";
-                }
-                else{
+                if (child != tmls[2] || child != tmls[3]){
                     s << 'v' << child->v << " [shape=circle,label=\"" << vl[child->v->x].l << "\"];\n";
                     s << "{ rank=same; x" << child->v->x << "; v" << child->v << "; }\n";
                 }
             }
 
-            s << 'v' << f->v << " -> v" << child->v << " [dir=none,style=" << style;
-            if (child->w == 0)
+
+            if (child == tmls[2] || child == tmls[3]){
+                s << 'v' << f->v << " -> EXPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA [dir=none,style=" << style;
+            } else{
+                s << 'v' << f->v << " -> v" << child->v << " [dir=none,style=" << style;
+            }
+            if (child->w == 0 || child->w == -1)
             {
                 s << "];\n";
             }
@@ -999,7 +936,7 @@ class manager
             }
         };
 
-        if (!f->v->isExpansion){
+        if (f != tmls[2] && f != tmls[3]){
             dump(f->v->hi, "solid");
             dump(f->v->lo, "dashed");
 
