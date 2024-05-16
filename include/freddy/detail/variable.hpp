@@ -4,8 +4,8 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "common.hpp"       // comp
-#include "eddy/config.hpp"  // config::ut_size
+#include "common.hpp"         // comp
+#include "freddy/config.hpp"  // config::ut_size
 
 #include <cassert>        // assert
 #include <cstdint>        // std::int32_t
@@ -21,7 +21,7 @@
 // Namespaces
 // *********************************************************************************************************************
 
-namespace eddy::detail
+namespace freddy::detail
 {
 
 // =====================================================================================================================
@@ -176,4 +176,4 @@ struct variable
 };
 // NOLINTEND
 
-}  // namespace eddy::detail
+}  // namespace freddy::detail

@@ -4,7 +4,7 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "eddy/detail/manager.hpp"  // detail::manager
+#include "freddy/detail/manager.hpp"  // detail::manager
 
 #include <algorithm>    // std::transform
 #include <cassert>      // assert
@@ -23,7 +23,7 @@
 // Namespaces
 // *********************************************************************************************************************
 
-namespace eddy::dd
+namespace freddy::dd
 {
 
 // =====================================================================================================================
@@ -708,4 +708,4 @@ auto inline bdd::print() const
     mgr->print({*this});
 }
 
-}  // namespace eddy::dd
+}  // namespace freddy::dd

@@ -4,7 +4,7 @@
 build
 
 !.github/workflows/*.yml
-!include/eddy/**/*.hpp
+!include/freddy/**/*.hpp
 !test/*.cpp
 !/.clang-format
 !/.clang-tidy

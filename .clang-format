@@ -65,7 +65,7 @@ IncludeCategories:
     Priority: 1
   - Regex: '"[a-zA-Z0-9_\.]+.+"$'
     Priority: 2
-  - Regex: '<(:?eddy)\/[a-zA-Z0-9_]+.+>$'
+  - Regex: '<(:?freddy)\/[a-zA-Z0-9_]+.+>$'
     Priority: 3
   - Regex: '<[a-zA-Z0-9_]+>$'
     Priority: 4

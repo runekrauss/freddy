@@ -37,9 +37,9 @@ jobs:
           cmake --no-warn-unused-cli
           -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-          -DEDDY_TEST=ON
+          -DFREDDY_TEST=ON
           -B build/${{ matrix.build_type }}
 
-      - name: Build EDDY
+      - name: Build FrEDDY
         # Windows has a multi-config generator
         run: cmake --build build/${{ matrix.build_type }} --config ${{ matrix.build_type }}
