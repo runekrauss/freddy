@@ -87,6 +87,13 @@ struct node
         assert(this->lo);
     }
 
+    node(std::int32_t const x) :
+            x{x},
+            isExpansion{true}
+    {
+        assert(x >= 0);
+    }
+
     auto operator()() const noexcept
     {
         return (std::hash<std::int32_t>()(x) ^ std::hash<std::shared_ptr<edge>>()(hi) ^
@@ -109,6 +116,8 @@ struct node
     std::shared_ptr<edge> hi;
 
     std::shared_ptr<edge> lo;
+
+    bool isExpansion;
 
     bool m{};  // marker indicating if the node was visited
 };

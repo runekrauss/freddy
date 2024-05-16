@@ -27,6 +27,9 @@
 #include <utility>        // std::pair
 #include <vector>         // std::vector
 
+
+#include <iostream>
+
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
@@ -537,8 +540,76 @@ class manager
 
         if (!f->v || f->v->x != x)
         {
+            /*
+            if (vl[x].t == decomposition::PD && a){
+                return tmls[0];
+            } else {
+                if (f->v){
+                    if (f->v->isExpansion){
+                        std::cout << "wir geben F ALS EXP" << std::endl;
+                    }
+                }
+                return f;
+            }
+             */
+
+
             return ((vl[x].t == decomposition::PD && a) ? tmls[0] : f);
         }
+
+
+        /*
+        if (a){
+
+            if (ret->v){
+                if (ret->v->isExpansion){
+                    if (f->v){
+                        if (f->v->isExpansion){
+                            std::cout << "war schon EXP " << std::endl;
+                        }
+                        else {
+                            std::cout << "war kein EXP " << std::endl;
+                        }
+                    } else {
+                        std::cout << "f hatte keine node" << std::endl;
+                    }
+                    std::cout << "wir geben EXP " << std::endl;
+                }
+                else {
+                    std::cout << "wir geben was anderes " << std::endl;
+                }
+            }
+
+            return ret;
+
+        } else {
+            std::shared_ptr<detail::edge> ret = apply(f->w, f->v->lo);
+            if (ret->v){
+                if (ret->v->isExpansion){
+                    if (f->v){
+                        if (f->v->isExpansion){
+                            std::cout << "war schon EXP " << std::endl;
+                        }
+                        else {
+
+                            std::cout << "war kein EXP " << std::endl;
+                            if (f->v->lo->v->isExpansion){
+                                std::cout << "drin ist EXP " << std::endl;
+                            }
+                        }
+                    } else {
+                        std::cout << "f hatte keine node" << std::endl;
+                    }
+                    std::cout << "wir geben EXP " << std::endl;
+                }
+                else {
+                    std::cout << "wir geben was anderes " << std::endl;
+                }
+            }
+            return ret;
+        }
+         */
+
 
         return (a ? apply(f->w, f->v->hi) : apply(f->w, f->v->lo));
     }
@@ -907,8 +978,14 @@ class manager
 
             if (child->v)
             {
-                s << 'v' << child->v << " [shape=circle,label=\"" << vl[child->v->x].l << "\"];\n";
-                s << "{ rank=same; x" << child->v->x << "; v" << child->v << "; }\n";
+                if (child->v->isExpansion){
+                    s << 'v' << child->v << " [shape=box,label=\"" << "E::" << vl[child->v->x].l << "\"];\n";
+                    s << "{ rank=same; x" << child->v->x << "; v" << child->v << "; }\n";
+                }
+                else{
+                    s << 'v' << child->v << " [shape=circle,label=\"" << vl[child->v->x].l << "\"];\n";
+                    s << "{ rank=same; x" << child->v->x << "; v" << child->v << "; }\n";
+                }
             }
 
             s << 'v' << f->v << " -> v" << child->v << " [dir=none,style=" << style;
@@ -921,11 +998,14 @@ class manager
                 s << ",label=\"" << child->w << "\"];\n";
             }
         };
-        dump(f->v->hi, "solid");
-        dump(f->v->lo, "dashed");
 
-        to_dot(f->v->hi, s);
-        to_dot(f->v->lo, s);
+        if (!f->v->isExpansion){
+            dump(f->v->hi, "solid");
+            dump(f->v->lo, "dashed");
+
+            to_dot(f->v->hi, s);
+            to_dot(f->v->lo, s);
+        }
     }
 
     auto unmark() -> void  // all nodes
