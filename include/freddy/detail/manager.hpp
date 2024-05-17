@@ -4,9 +4,9 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "common.hpp"       // parallel_for
-#include "eddy/config.hpp"  // config::vl_size
-#include "variable.hpp"     // variable
+#include "common.hpp"         // parallel_for
+#include "freddy/config.hpp"  // config::vl_size
+#include "variable.hpp"       // variable
 
 #include <algorithm>      // std::max_element
 #include <array>          // std::array
@@ -34,7 +34,7 @@
 // Namespaces
 // *********************************************************************************************************************
 
-namespace eddy::detail
+namespace freddy::detail
 {
 
 class manager
@@ -963,4 +963,4 @@ class manager
     std::vector<variable> vl;
 };
 
-}  // namespace eddy::detail
+}  // namespace freddy::detail

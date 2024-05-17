@@ -1,10 +1,11 @@
-![EDDY](https://github.com/runekrauss/eddy/assets/5829946/44eecccb-e102-4cb9-9390-3feaf0dbe019)
+![FrEDDY](https://github.com/runekrauss/freddy/assets/5829946/560e4a18-3b76-4fba-875e-c29afc5ce6c4)
 
-[![Check](https://github.com/runekrauss/eddy/actions/workflows/check.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/check.yml)
-[![Build](https://github.com/runekrauss/eddy/actions/workflows/build.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/build.yml)
-[![Test](https://github.com/runekrauss/eddy/actions/workflows/test.yml/badge.svg)](https://github.com/runekrauss/eddy/actions/workflows/test.yml)
+[![Check](https://github.com/runekrauss/freddy/actions/workflows/check.yml/badge.svg)](https://github.com/runekrauss/freddy/actions/workflows/check.yml)
+[![Build](https://github.com/runekrauss/freddy/actions/workflows/build.yml/badge.svg)](https://github.com/runekrauss/freddy/actions/workflows/build.yml)
+[![Test](https://github.com/runekrauss/freddy/actions/workflows/test.yml/badge.svg)](https://github.com/runekrauss/freddy/actions/workflows/test.yml)
 
-**EDDY** is a framework to **Engineer Decision Diagrams Yourself** for efficient solving of problems in VLSI CAD.
+**FrEDDY** is the **Framework** to **Engineer Decision Diagrams Yourself** for efficient solving of problems in
+VLSI CAD.
 
 ## :dart: Features
 
@@ -21,35 +22,35 @@
 
 ## :rocket: Getting Started
 
-First, the installation of EDDY is described. Second, it is explained how a DD type can be used to solve a problem.
+First, the installation of FrEDDY is described. Second, it is explained how a DD type can be used to solve a problem.
 
 ### :wrench: Installation
 
-EDDY is designed as a **header-only library** that can be integrated into external projects. To include EDDY and link it
-against your [CMake](https://github.com/Kitware/CMake) project `<target>`, just clone it inside your project directory
-and add the following lines of code to your *CMakeLists.txt*:
+FrEDDY is designed as a **header-only library** that can be integrated into external projects. To include FrEDDY and
+link it against your [CMake](https://github.com/Kitware/CMake) project `<target>`, just clone it inside your project
+directory and add the following lines of code to your *CMakeLists.txt*:
 
 ```cmake
-add_subdirectory(eddy)
-target_link_libraries(<target> eddy)
+add_subdirectory(freddy)
+target_link_libraries(<target> freddy)
 ```
 
-Depending on the location of EDDY, the path must be adjusted accordingly.
+Depending on the location of FrEDDY, the path must be adjusted accordingly.
 
 ### :computer: Usage
 
 In order to use a DD type for solving a problem such as
 [equivalence checking of multipliers](https://dl.acm.org/doi/10.1145/370155.370315), the respective
-[header](include/eddy/dd/bmd.hpp) of an appropriate type like a
+[header](include/freddy/dd/bmd.hpp) of an appropriate type like a
 [binary moment diagram](https://en.wikipedia.org/wiki/Binary_moment_diagram) must be **included** and the corresponding
 manager `bmd_manager` must be **initialized** within your code file:
 
 ```cpp
-#include <eddy/dd/bmd.hpp>
+#include <freddy/dd/bmd.hpp>
 
 int main()
 {
-    eddy::dd::bmd_manager mgr;
+    freddy::dd::bmd_manager mgr;
 }
 ```
 
@@ -71,7 +72,7 @@ int main()
     auto const b1 = mgr.var("b1");
     auto const a0 = mgr.var("a0");
     auto const b0 = mgr.var("b0");
-    std::array<eddy::dd::bmd, 8> s;
+    std::array<freddy::dd::bmd, 8> s;
     s[0] = a0 & b1;
     s[1] = a0 & b0;
     s[2] = a1 & b0;
@@ -80,7 +81,7 @@ int main()
     s[5] = s[0] & s[2];
     s[6] = s[3] ^ s[5];
     s[7] = s[3] & s[5];
-    std::vector<eddy::dd::bmd> f{s[1], s[4], s[6], s[7]};
+    std::vector<freddy::dd::bmd> f{s[1], s[4], s[6], s[7]};
 }
 ```
 
@@ -122,7 +123,7 @@ Incidentally, every DD type supports drawing nodes and edges with
 [DOT](https://en.wikipedia.org/wiki/DOT_(graph_description_language)). The graph can be rendered with the corresponding
 layout engine and looks similar to the following BMD in this example:
 
-![BMD](https://github.com/runekrauss/eddy/assets/5829946/4cf0d118-23f6-4157-999f-eb886d97197a)
+![BMD](https://github.com/runekrauss/freddy/assets/5829946/4cf0d118-23f6-4157-999f-eb886d97197a)
 
 In addition, depending on the problem, it is possible to adjust various **parameters** such as the initial size
 `ct_size` of the operation cache:
@@ -132,7 +133,7 @@ In addition, depending on the problem, it is possible to adjust various **parame
 
 int main()
 {
-    eddy::config::ct_size = 127;
+    freddy::config::ct_size = 127;
 
     /* initialization */
     
@@ -144,27 +145,27 @@ int main()
 }
 ```
 
-Other parameters can be found in the [configuration](include/eddy/config.hpp).
+Other parameters can be found in the [configuration](include/freddy/config.hpp).
 
 ## :white_check_mark: Tests
 
-Tests can be built with CMake using the flag `-DEDDY_TEST=ON` on the command line and run by `ctest`:
+Tests can be built with CMake using the flag `-DFREDDY_TEST=ON` on the command line and run by `ctest`:
 
 ```console
-$ cmake -DCMAKE_BUILD_TYPE=Release -DEDDY_TEST=ON -B build/Release
+$ cmake -DCMAKE_BUILD_TYPE=Release -DFREDDY_TEST=ON -B build/Release
 $ cmake --build build/Release --config Release
 $ cd build/Release
 $ ctest -C Release
 ```
 
 For debugging purposes, type `Debug` instead of `Release`. Note that this may have a negative effect on the performance
-of EDDY. Additionally, you can add `-j k` to build on `k` cores, or `-v` to show in detail the commands used to build.
+of FrEDDY. Additionally, you can add `-j k` to build on `k` cores, or `-v` to show in detail the commands used to build.
 
 ## :+1: Contribute
 
-Do you want to contribute to EDDY? In particular, I am interested in the development of further **DD types**. Since the
-[base manager](include/eddy/detail/manager.hpp) is **abstract**, the following pure virtual methods must be implemented
-within the `eddy::dd` namespace in the [dd](include/eddy/dd) directory for basic operations to work:
+Do you want to contribute to FrEDDY? In particular, I am interested in the development of further **DD types**. Since
+the [base manager](include/freddy/detail/manager.hpp) is **abstract**, the following pure virtual methods must be
+implemented within the `freddy::dd` namespace in the [dd](include/freddy/dd) directory for basic operations to work:
 
 | Method          | Description                       |
 | --------------- | --------------------------------- |
@@ -180,8 +181,8 @@ within the `eddy::dd` namespace in the [dd](include/eddy/dd) directory for basic
 | `regw`          | Standard weight of an edge        |
 
 The associated wrapper `<type>` for a DD handle is implemented by calling operations realized by the derived manager
-`<type>_manager` as a pointer member. Examples can be found in [bdd.hpp](include/eddy/dd/bdd.hpp)
-and [bmd.hpp](include/eddy/dd/bmd.hpp).
+`<type>_manager` as a pointer member. Examples can be found in [bdd.hpp](include/freddy/dd/bdd.hpp)
+and [bmd.hpp](include/freddy/dd/bmd.hpp).
 
 To check the functionality, I use [Catch2](https://github.com/catchorg/Catch2). Already existing tests are located in
 the [test](test) directory and should be used as orientation for own DD types, where an executable is created
@@ -198,18 +199,18 @@ performed. To format the code according to my [style guide](.clang-format), use
 $ find . -iname '*.hpp' -o -iname '*.cpp' | xargs clang-format -i
 ```
 
-Following these standards, a [pull request](https://github.com/runekrauss/eddy/pulls) with or without an **issue** can
+Following these standards, a [pull request](https://github.com/runekrauss/freddy/pulls) with or without an **issue** can
 be submitted according to the [Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962).
-If you address an issue from the [tracking system](https://github.com/runekrauss/eddy/issues), it is helpful to also
+If you address an issue from the [tracking system](https://github.com/runekrauss/freddy/issues), it is helpful to also
 specify the corresponding ID in the title. Compliance with the policies mentioned above is enforced through a
-[CI/CD pipeline](https://github.com/runekrauss/eddy/actions) that has the following **workflows**:
+[CI/CD pipeline](https://github.com/runekrauss/freddy/actions) that has the following **workflows**:
 
-| Workflow | Description                                 |
-| -------- | ------------------------------------------- |
-| Check    | Analyzing the codebase without any warnings |
-| Build    | Building EDDY on Linux, macOS, and Windows  |
-| Test     | Achieving a code coverage of at least 80%   |
+| Workflow | Description                                  |
+| -------- | -------------------------------------------- |
+| Check    | Analyzing the codebase without any warnings  |
+| Build    | Building FrEDDY on Linux, macOS, and Windows |
+| Test     | Achieving a code coverage of at least 80%    |
 
 Changes are only integrated into my main branch when each stage has been passed.
 
-Thank you so much for your interest in growing the reach of EDDY! :blush:
+Thank you so much for your interest in growing the reach of FrEDDY! :blush:

@@ -4,7 +4,7 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <eddy/dd/bdd.hpp>  // dd::bdd_manager
+#include <freddy/dd/bdd.hpp>  // dd::bdd_manager
 
 #include <array>     // std::array
 #include <iostream>  // std::cout
@@ -13,7 +13,7 @@
 // Namespaces
 // *********************************************************************************************************************
 
-using namespace eddy;
+using namespace freddy;
 
 // *********************************************************************************************************************
 // Functions
@@ -30,7 +30,7 @@ auto static enc(dd::bdd_manager& mgr)
 
     auto constexpr n = 4;  // number of queens
 
-    std::array<std::array<eddy::dd::bdd, n>, n> x;
+    std::array<std::array<dd::bdd, n>, n> x;
     for (auto i = 0; i < n; ++i)
     {
         for (auto j = 0; j < n; ++j)

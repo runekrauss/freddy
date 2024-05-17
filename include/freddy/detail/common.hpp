@@ -17,7 +17,7 @@
 // Namespaces
 // *********************************************************************************************************************
 
-namespace eddy::detail
+namespace freddy::detail
 {
 
 // =====================================================================================================================
@@ -93,4 +93,4 @@ auto inline parallel_for(T const a, T const b, Callable func)
     }
 }
 
-}  // namespace eddy::detail
+}  // namespace freddy::detail

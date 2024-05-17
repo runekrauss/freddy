@@ -4,7 +4,7 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <eddy/dd/bmd.hpp>  // dd::bmd_manager
+#include <freddy/dd/bmd.hpp>  // dd::bmd_manager
 
 #include <array>     // std::array
 #include <iostream>  // std::cout
@@ -14,7 +14,7 @@
 // Namespaces
 // *********************************************************************************************************************
 
-using namespace eddy;
+using namespace freddy;
 
 // *********************************************************************************************************************
 // Functions
