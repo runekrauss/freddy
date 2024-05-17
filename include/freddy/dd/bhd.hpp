@@ -4,7 +4,7 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "eddy/detail/manager.hpp"  // detail::manager
+#include "freddy/detail/manager.hpp"  // detail::manager
 
 #include <algorithm>    // std::transform
 #include <cassert>      // assert
@@ -25,7 +25,7 @@
 // Namespaces
 // *********************************************************************************************************************
 
-namespace eddy::dd
+namespace freddy::dd
 {
 
 // =====================================================================================================================
@@ -177,8 +177,8 @@ class bhd_manager : public detail::manager
 
     bhd_manager()
     {
-        tmls[2] = foa(std::make_shared<eddy::detail::edge>(-1));
-        tmls[3] = foa(std::make_shared<eddy::detail::edge>(-2));
+        tmls[2] = foa(std::make_shared<freddy::detail::edge>(-1));
+        tmls[3] = foa(std::make_shared<freddy::detail::edge>(-2));
     }
 
     auto var(std::string_view l = {})
@@ -819,4 +819,4 @@ auto inline bhd::print() const
 
     mgr->print({*this});
 }
-}  // namespace eddy::dd
+}  // namespace freddy::dd
