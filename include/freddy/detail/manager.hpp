@@ -922,27 +922,30 @@ class manager
 
 
             if (child == tmls[2] || child == tmls[3]){
-                s << 'v' << f->v << " -> EXPAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA [dir=none,style=" << style;
+                s << 'v' << f->v << " -> EXP [dir=none,style=" << style;
             } else{
                 s << 'v' << f->v << " -> v" << child->v << " [dir=none,style=" << style;
             }
-            if (child->w == 0 || child->w == -1)
+            if (child->w == 0 || child->w == -1 || child == tmls[2])
             {
                 s << "];\n";
             }
             else
             {
-                s << ",label=\"" << child->w << "\"];\n";
+                if (child == tmls[3]){
+                    s << ",label=\"1\"];\n";
+                } else {
+                    s << ",label=\"" << child->w << "\"];\n";
+                }
+
             }
         };
 
-        if (f != tmls[2] && f != tmls[3]){
-            dump(f->v->hi, "solid");
-            dump(f->v->lo, "dashed");
+        dump(f->v->hi, "solid");
+        dump(f->v->lo, "dashed");
 
-            to_dot(f->v->hi, s);
-            to_dot(f->v->lo, s);
-        }
+        to_dot(f->v->hi, s);
+        to_dot(f->v->lo, s);
     }
 
     auto unmark() -> void  // all nodes

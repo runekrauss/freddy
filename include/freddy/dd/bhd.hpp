@@ -177,8 +177,12 @@ class bhd_manager : public detail::manager
 
     bhd_manager()
     {
-        tmls[2] = foa(std::make_shared<freddy::detail::edge>(-1));
-        tmls[3] = foa(std::make_shared<freddy::detail::edge>(-2));
+        tmls[2] = foa(std::make_shared<freddy::detail::edge>(-10));
+        tmls[3] = foa(std::make_shared<freddy::detail::edge>(-11));
+    }
+
+    auto getExp(){
+        return bhd{tmls[2], this};
     }
 
     auto var(std::string_view l = {})
@@ -483,7 +487,9 @@ class bhd_manager : public detail::manager
         assert(f);
 
         if (f == tmls[2] || f == tmls[3]){ //tmls[2] = -1 -> w=0 | tmls[3] = -2 -> w=1
-            return foa(std::make_shared<detail::edge>(((f->w == -2 && w == 0) || (f->w == -1 && w == 1)) ? 1 : 0, f->v));
+            std::cout << "im apply EXPANSION" << std::endl;
+
+            return foa(std::make_shared<detail::edge>(((f->w == -11 && w == 0) || (f->w == -10 && w == 1)) ? 1 : 0, f->v));
         }
 
 
@@ -495,11 +501,13 @@ class bhd_manager : public detail::manager
 
         assert(f);
 
-        if (tmls[2]){
-            return foa(std::make_shared<detail::edge>(1, f->v));
+        if (f == tmls[2]){
+            std::cout << "im complement EXPANSION 0" << std::endl;
+            return tmls[3];
         }
-        if (tmls[3]){
-            return foa(std::make_shared<detail::edge>(0, f->v));
+        if (f == tmls[3]){
+            std::cout << "im complement EXPANSION 1" << std::endl;
+            return tmls[2];
         }
 
         return ((f->w == 0) ? foa(std::make_shared<detail::edge>(1, f->v))
@@ -531,17 +539,17 @@ class bhd_manager : public detail::manager
 
 
         if ((f == tmls[2] || f == tmls[3]) && (g == tmls[2] || g == tmls[3])){
+            std::cout << "beide expansion" << std::endl;
             return tmls[2];
         }
 
         if (f == tmls[2] || f == tmls[3]){
             std::cout << "f ist expansion" << std::endl;
-
-            return g;
+            return replaceOnesWithExp(g, false);
         }
         if (g == tmls[2] || g == tmls[3]){
             std::cout << "g ist expansion" << std::endl;
-            return f;
+            return replaceOnesWithExp(f, false);
         }
 
 
@@ -599,6 +607,42 @@ class bhd_manager : public detail::manager
     int firstTime = -5000;
 
 
+    std::shared_ptr<detail::edge> replaceOnesWithExp(std::shared_ptr<detail::edge> f, bool goesTrue) {
+        assert(f);
+
+        if (f == tmls[2] || f == tmls[3]){
+            return f;
+        }
+
+        if (goesTrue){
+            if (f == tmls[0]){
+                return tmls[2];
+            }
+            if (f == tmls[1]){
+                return f;
+            }
+        } else {
+            if (f == tmls[0]){
+                return f;
+            }
+            if (f == tmls[1]){
+                return tmls[2];
+            }
+        }
+
+        if (f->w == 0) {
+            f->v->hi = replaceOnesWithExp(f->v->hi, goesTrue);
+            f->v->lo = replaceOnesWithExp(f->v->lo, goesTrue);
+        }
+        if (f->w == 1){
+            f->v->hi = replaceOnesWithExp(f->v->hi, !goesTrue);
+            f->v->lo = replaceOnesWithExp(f->v->lo, !goesTrue);
+        }
+
+        return f;
+    }
+
+
 
 
     auto disj(std::shared_ptr<detail::edge> const& f, std::shared_ptr<detail::edge> const& g)
@@ -616,7 +660,8 @@ class bhd_manager : public detail::manager
         assert(hi);
         assert(lo);
 
-        return (lo->w != 0 || lo->w != -1);
+        return (lo->w != 0 && lo->w != -10);
+        //return (lo->w != 0 || lo->w != -1);
     }
 
     auto make_branch(std::int32_t const x, std::shared_ptr<detail::edge> hi, std::shared_ptr<detail::edge> lo)

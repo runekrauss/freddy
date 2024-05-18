@@ -6,24 +6,24 @@
 void printBT();
 
 int main() {
-    freddy::dd::bhd_manager mgr;
+    freddy::dd::bhd_manager bhdM;
 
+    freddy::dd::bhd varA = bhdM.var();
+    //freddy::dd::bhd varB = bhdM.var();
+    //freddy::dd::bhd varC = bhdM.var();
+    //freddy::dd::bhd varD = bhdM.var();
+    //freddy::dd::bhd varE = bhdM.var();
+    //freddy::dd::bhd varF = bhdM.var();
+    auto exp = bhdM.getExp();
 
+    auto pred = varA & exp;
 
-    freddy::dd::bhd varA = mgr.var();
-    freddy::dd::bhd varB = mgr.var();
-    freddy::dd::bhd varC = mgr.var();
-    freddy::dd::bhd varD = mgr.var();
-    freddy::dd::bhd varE = mgr.var();
-    freddy::dd::bhd varF = mgr.var();
-
-
-    //auto pred = varA | varB | varC | varD;
-    //auto pred = varA & varB | varC & varD | varE & varF;
-
-    auto pred = varA & varB;
+    //auto e = pred & exp;
 
     pred.print();
+
+
+    //exp.print();
 
     return 0;
 }
