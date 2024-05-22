@@ -486,10 +486,10 @@ class bhd_manager : public detail::manager
 
         assert(f);
 
-        if (f == tmls[2] || f == tmls[3]){ //tmls[2] = -1 -> w=0 | tmls[3] = -2 -> w=1
+        if (f == tmls[2] || f == tmls[3]){ //tmls[2] = -10 -> w=0 | tmls[3] = -11 -> w=1
             std::cout << "im apply EXPANSION" << std::endl;
 
-            return foa(std::make_shared<detail::edge>(((f->w == -11 && w == 0) || (f->w == -10 && w == 1)) ? 1 : 0, f->v));
+            return foa(std::make_shared<detail::edge>(((f->w == -11 && w == 0) || (f->w == -10 && w == 1)) ? -11 : -10, f->v));
         }
 
 
@@ -523,6 +523,25 @@ class bhd_manager : public detail::manager
         assert(f);
         assert(g);
 
+
+
+
+
+        if ((f == tmls[2] || f == tmls[3]) && (g == tmls[2] || g == tmls[3])){
+            std::cout << "beide expansion" << std::endl;
+            return tmls[2];
+        }
+
+        if (f == tmls[2] || f == tmls[3]){
+            std::cout << "f ist expansion" << std::endl;
+
+            return replaceOnesWithExp(g, false);
+        }
+        if (g == tmls[2] || g == tmls[3]){
+            std::cout << "g ist expansion" << std::endl;
+            return replaceOnesWithExp(f, false);
+        }
+
         if (f == tmls[1])
         {  // 1g = g
             return g;
@@ -538,19 +557,7 @@ class bhd_manager : public detail::manager
 
 
 
-        if ((f == tmls[2] || f == tmls[3]) && (g == tmls[2] || g == tmls[3])){
-            std::cout << "beide expansion" << std::endl;
-            return tmls[2];
-        }
 
-        if (f == tmls[2] || f == tmls[3]){
-            std::cout << "f ist expansion" << std::endl;
-            return replaceOnesWithExp(g, false);
-        }
-        if (g == tmls[2] || g == tmls[3]){
-            std::cout << "g ist expansion" << std::endl;
-            return replaceOnesWithExp(f, false);
-        }
 
 
         auto const cr = ct.find({operation::AND, f, g});
@@ -575,10 +582,42 @@ class bhd_manager : public detail::manager
 
 
         //normal
-        if (randomNumber <= 60) {
-            std::cout << "1\n";
+        if (randomNumber <= 100) {
+            //std::cout << "1\n";
 
-            r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
+
+            std::shared_ptr<detail::edge> conj2;
+
+            auto cof4 = cof(g, x, false);
+            if (cof4->w < 0){
+                conj2 = cof4;
+            } else {
+                auto cof3 = cof(f, x, false);
+
+                if (cof3->w < 0){
+                    conj2 = cof3;
+                } else {
+                    conj2 = conj(cof3, cof4);
+                }
+            }
+
+
+            std::shared_ptr<detail::edge> conj1;
+
+            auto cof2 = cof(g, x, true);
+            if (cof2->w < 0){
+
+                conj1 = cof2;
+            } else {
+                auto cof1 = cof(f, x, true);
+                if (cof1->w < 0){
+                    conj1 = cof1;
+                } else {
+                    conj1 = conj(cof1, cof2);
+                }
+            }
+
+            r = make_branch(x, conj1, conj2);
 
         }
 
