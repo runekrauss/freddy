@@ -535,11 +535,15 @@ class bhd_manager : public detail::manager
         if (f == tmls[2] || f == tmls[3]){
             std::cout << "f ist expansion" << std::endl;
 
-            return replaceOnesWithExp(g, false);
+            return replaceOnesWithExp(g, false, f);
         }
         if (g == tmls[2] || g == tmls[3]){
             std::cout << "g ist expansion" << std::endl;
-            return replaceOnesWithExp(f, false);
+
+
+
+
+            return replaceOnesWithExp(f, false, g);
         }
 
         if (f == tmls[1])
@@ -646,8 +650,9 @@ class bhd_manager : public detail::manager
     int firstTime = -5000;
 
 
-    std::shared_ptr<detail::edge> replaceOnesWithExp(std::shared_ptr<detail::edge> f, bool goesTrue) {
+    std::shared_ptr<detail::edge> replaceOnesWithExp(std::shared_ptr<detail::edge> f, bool goesTrue, std::shared_ptr<detail::edge> ex) {
         assert(f);
+        assert(ex);
 
         if (f == tmls[2] || f == tmls[3]){
             return f;
@@ -655,7 +660,12 @@ class bhd_manager : public detail::manager
 
         if (goesTrue){
             if (f == tmls[0]){
-                return tmls[2];
+                if (ex == tmls[2]){
+                    return tmls[3];
+                }
+                if (ex == tmls[3]){
+                    return tmls[2];
+                }
             }
             if (f == tmls[1]){
                 return f;
@@ -665,23 +675,22 @@ class bhd_manager : public detail::manager
                 return f;
             }
             if (f == tmls[1]){
-                return tmls[2];
+                return ex;
             }
         }
 
         if (f->w == 0) {
-            f->v->hi = replaceOnesWithExp(f->v->hi, goesTrue);
-            f->v->lo = replaceOnesWithExp(f->v->lo, goesTrue);
+            f->v->hi = replaceOnesWithExp(f->v->hi, goesTrue, ex);
+            f->v->lo = replaceOnesWithExp(f->v->lo, goesTrue, ex);
         }
+
         if (f->w == 1){
-            f->v->hi = replaceOnesWithExp(f->v->hi, !goesTrue);
-            f->v->lo = replaceOnesWithExp(f->v->lo, !goesTrue);
+            f->v->hi = replaceOnesWithExp(f->v->hi, !goesTrue, ex);
+            f->v->lo = replaceOnesWithExp(f->v->lo, !goesTrue, ex);
         }
 
         return f;
     }
-
-
 
 
     auto disj(std::shared_ptr<detail::edge> const& f, std::shared_ptr<detail::edge> const& g)

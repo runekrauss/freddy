@@ -19,12 +19,12 @@ int main() {
     freddy::dd::bhd varC = bhdM.var();
     freddy::dd::bhd varD = bhdM.var();
 
-    auto pred = ~varA | exp;
+    auto pred = ~varA & ~exp;
 
 
     std::cout << "fertig" << std::endl;
 
-    auto a = pred & varB;
+    //auto a = pred & varB;
 
     pred.print();
 
