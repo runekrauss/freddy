@@ -593,12 +593,12 @@ class bhd_manager : public detail::manager
             std::shared_ptr<detail::edge> conj2;
 
             auto cof4 = cof(g, x, false);
-            if (cof4->w < 0){
+            if (cof4->w < 0 && (!f->v || f->v->x != x)){
                 conj2 = cof4;
             } else {
                 auto cof3 = cof(f, x, false);
 
-                if (cof3->w < 0){
+                if (cof3->w < 0 && (!g->v || g->v->x != x)){
                     conj2 = cof3;
                 } else {
                     conj2 = conj(cof3, cof4);
@@ -609,12 +609,12 @@ class bhd_manager : public detail::manager
             std::shared_ptr<detail::edge> conj1;
 
             auto cof2 = cof(g, x, true);
-            if (cof2->w < 0){
+            if (cof2->w < 0 && (!f->v || f->v->x != x)){
 
                 conj1 = cof2;
             } else {
                 auto cof1 = cof(f, x, true);
-                if (cof1->w < 0){
+                if (cof1->w < 0 && (!g->v || g->v->x != x)){
                     conj1 = cof1;
                 } else {
                     conj1 = conj(cof1, cof2);
@@ -623,12 +623,33 @@ class bhd_manager : public detail::manager
 
             r = make_branch(x, conj1, conj2);
 
+            //r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
+
         }
 
         //lo becomes extension
-        else if (randomNumber <= 80){
+        else if (randomNumber <= 100){
+            /*
             std::cout << "2\n";
-            firstTime += 1;
+
+             std::shared_ptr<detail::edge> conj1;
+
+            auto cof2 = cof(g, x, true);
+            if (cof2->w < 0 && (!f->v || f->v->x != x)){
+
+                conj1 = cof2;
+            } else {
+                auto cof1 = cof(f, x, true);
+                if (cof1->w < 0 && (!g->v || g->v->x != x)){
+                    conj1 = cof1;
+                } else {
+                    conj1 = conj(cof1, cof2);
+                }
+            }
+
+            r = make_branch(x, conj1, tmls[2]);
+             */
+
             r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), tmls[2]);
 
 
@@ -636,7 +657,24 @@ class bhd_manager : public detail::manager
         } else {
             std::cout << "3\n";
 
-            firstTime += 1;
+            /*
+            std::shared_ptr<detail::edge> conj2;
+
+            auto cof4 = cof(g, x, false);
+            if (cof4->w < 0 && (!f->v || f->v->x != x)){
+                conj2 = cof4;
+            } else {
+                auto cof3 = cof(f, x, false);
+
+                if (cof3->w < 0 && (!g->v || g->v->x != x)){
+                    conj2 = cof3;
+                } else {
+                    conj2 = conj(cof3, cof4);
+                }
+            }
+            r = make_branch(x, tmls[2], conj2);
+             */
+
             r = make_branch(x, tmls[2], conj(cof(f, x, false), cof(g, x, false)));
         }
 
@@ -646,8 +684,6 @@ class bhd_manager : public detail::manager
 
         return r;
     }
-
-    int firstTime = -5000;
 
 
     std::shared_ptr<detail::edge> replaceOnesWithExp(std::shared_ptr<detail::edge> f, bool goesTrue, std::shared_ptr<detail::edge> ex) {
