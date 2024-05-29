@@ -20,6 +20,8 @@
 #include <vector>       // std::vector
 
 #include <random>
+#include <sstream>
+#include <fstream>
 
 // *********************************************************************************************************************
 // Namespaces
@@ -152,7 +154,7 @@ class bhd
 
     auto print() const;
 
-    auto test() const;
+    auto createExpansionFiles() const;
 
   private:
     // wrapper is controlled by its BHD manager
@@ -223,8 +225,47 @@ class bhd_manager : public detail::manager
         to_dot(transform(fs), std::move(outputs), s);
     }
 
+    void createExpansionFiles(std::shared_ptr<detail::edge> const& f, std::vector<std::pair<std::int32_t, bool>> path){
+
+        if (f == tmls[1] || f == tmls[0]){
+            std::vector<int> v;
+            return;
+        }
+
+        if (f == tmls[2] || f == tmls[3]){
+            newExpansionFile(path);
+        } else{
+            path.push_back(std::pair<std::int32_t,bool> (f->v->x, true));
+            createExpansionFiles(f->v->hi, path);
+
+            path.pop_back();
+            path.push_back(std::pair<std::int32_t,bool> (f->v->x, false));
+            createExpansionFiles(f->v->lo, path);
+        }
+
+    }
+
 
   private:
+
+    int expCount = 0;
+
+    void newExpansionFile(std::vector<std::pair<std::int32_t, bool>> path){
+
+        std::string s = "e" + std::to_string(expCount);
+        s += ".txt";
+
+
+        std::ofstream outFile(s);
+        expCount++;
+
+        for (auto e : path){
+            if (e.second == 0){
+                outFile << "-";
+            }
+            outFile << e.first + 1 << " 0\n";
+        }
+    }
 
     [[nodiscard]] static auto transform(std::vector<bhd> const& fs) -> std::vector<std::shared_ptr<detail::edge>>
     {
@@ -275,20 +316,6 @@ class bhd_manager : public detail::manager
         }
 
         return satcount_rec(f);
-    }
-
-    void newExtensionNodeFromTest(std::vector<std::pair<std::int32_t, bool>> path){
-
-        for (auto e : path){
-            std::cout << "--";
-            std::cout << e.first;
-            std::cout << ":";
-            std::cout << e.second;
-        }
-
-        std::cout <<"\n";
-
-
     }
 
     auto simplify(std::shared_ptr<detail::edge>& f, std::shared_ptr<detail::edge>& g,
@@ -586,8 +613,9 @@ class bhd_manager : public detail::manager
 
 
         //normal
-        if (randomNumber <= 100) {
-            //std::cout << "1\n";
+        if (swap == 0) {
+            std::cout << "1\n";
+            swap = 1;
 
 
             std::shared_ptr<detail::edge> conj2;
@@ -628,9 +656,10 @@ class bhd_manager : public detail::manager
         }
 
         //lo becomes extension
-        else if (randomNumber <= 100){
+        else if (swap == 1){
+            swap = 2;
             /*
-            std::cout << "2\n";
+
 
              std::shared_ptr<detail::edge> conj1;
 
@@ -650,12 +679,15 @@ class bhd_manager : public detail::manager
             r = make_branch(x, conj1, tmls[2]);
              */
 
+
+            std::cout << "2\n";
             r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), tmls[2]);
 
 
         // hi becomes extension
         } else {
             std::cout << "3\n";
+            swap = 0;
 
             /*
             std::shared_ptr<detail::edge> conj2;
@@ -684,6 +716,9 @@ class bhd_manager : public detail::manager
 
         return r;
     }
+
+    int swap = 0;
+
 
 
     std::shared_ptr<detail::edge> replaceOnesWithExp(std::shared_ptr<detail::edge> f, bool goesTrue, std::shared_ptr<detail::edge> ex) {
@@ -948,4 +983,13 @@ auto inline bhd::print() const
 
     mgr->print({*this});
 }
+
+auto inline bhd::createExpansionFiles() const{
+    assert(mgr);
+
+    std::vector<std::pair<std::int32_t, bool>> v;
+
+    mgr->createExpansionFiles(f, v);
+}
+
 }  // namespace freddy::dd
