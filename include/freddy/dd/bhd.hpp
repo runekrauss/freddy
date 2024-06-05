@@ -177,8 +177,9 @@ class bhd_manager : public detail::manager
 {
   public:
 
-    bhd_manager()
+    bhd_manager(int h)
     {
+        heuristic = h;
         tmls[2] = foa(std::make_shared<freddy::detail::edge>(-10));
         tmls[3] = foa(std::make_shared<freddy::detail::edge>(-11));
     }
@@ -225,28 +226,44 @@ class bhd_manager : public detail::manager
         to_dot(transform(fs), std::move(outputs), s);
     }
 
-    void createExpansionFiles(std::shared_ptr<detail::edge> const& f, std::vector<std::pair<std::int32_t, bool>> path){
+    void createExpansionFiles(std::shared_ptr<detail::edge> const& f, std::vector<std::pair<std::int32_t, bool>> path, bool goingTrue){
 
-        if (f == tmls[1] || f == tmls[0]){
-            std::vector<int> v;
+        if (f == tmls[1]){
+            if (!goingTrue){
+                newTruePath(path);
+            }
+            return;
+        }
+
+        if (f == tmls[0]){
+            if (goingTrue){
+                newTruePath(path);
+            }
             return;
         }
 
         if (f == tmls[2] || f == tmls[3]){
             newExpansionFile(path);
         } else{
+
+            if (f->w == 1){
+                goingTrue = !goingTrue;
+            }
+
             path.push_back(std::pair<std::int32_t,bool> (f->v->x, true));
-            createExpansionFiles(f->v->hi, path);
+            createExpansionFiles(f->v->hi, path, goingTrue);
 
             path.pop_back();
             path.push_back(std::pair<std::int32_t,bool> (f->v->x, false));
-            createExpansionFiles(f->v->lo, path);
+            createExpansionFiles(f->v->lo, path, goingTrue);
         }
 
     }
 
 
   private:
+
+    int heuristic;
 
     int expCount = 0;
 
@@ -265,6 +282,13 @@ class bhd_manager : public detail::manager
             }
             outFile << e.first + 1 << " 0\n";
         }
+    }
+
+    void newTruePath(std::vector<std::pair<std::int32_t, bool>> path){
+        for (auto e : path){
+            std::cout << e.first << ":" << e.second << "--";
+        }
+        std::cout << "\n";
     }
 
     [[nodiscard]] static auto transform(std::vector<bhd> const& fs) -> std::vector<std::shared_ptr<detail::edge>>
@@ -401,8 +425,6 @@ class bhd_manager : public detail::manager
 
     auto ite(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::shared_ptr<detail::edge> h)
     {
-        std::cout << "im ite" << std::endl;
-
         assert(f);
         assert(g);
         assert(h);
@@ -453,8 +475,6 @@ class bhd_manager : public detail::manager
 
     auto antiv(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g)
     {
-        std::cout << "im antiv" << std::endl;
-
         assert(f);
         assert(g);
 
@@ -499,8 +519,6 @@ class bhd_manager : public detail::manager
 
     auto add(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g) -> std::shared_ptr<detail::edge> override
     {
-        std::cout << "im add" << std::endl;
-
         assert(f);
         assert(g);
 
@@ -509,13 +527,9 @@ class bhd_manager : public detail::manager
 
     auto apply(std::int32_t const w, std::shared_ptr<detail::edge> const& f) -> std::shared_ptr<detail::edge> override
     {
-        std::cout << "im apply" << std::endl;
-
         assert(f);
 
         if (f == tmls[2] || f == tmls[3]){ //tmls[2] = -10 -> w=0 | tmls[3] = -11 -> w=1
-            std::cout << "im apply EXPANSION" << std::endl;
-
             return foa(std::make_shared<detail::edge>(((f->w == -11 && w == 0) || (f->w == -10 && w == 1)) ? -11 : -10, f->v));
         }
 
@@ -529,11 +543,9 @@ class bhd_manager : public detail::manager
         assert(f);
 
         if (f == tmls[2]){
-            std::cout << "im complement EXPANSION 0" << std::endl;
             return tmls[3];
         }
         if (f == tmls[3]){
-            std::cout << "im complement EXPANSION 1" << std::endl;
             return tmls[2];
         }
 
@@ -544,32 +556,18 @@ class bhd_manager : public detail::manager
     auto conj(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g)
         -> std::shared_ptr<detail::edge> override
     {
-        std::cout << "im conj" << std::endl;
-
-
         assert(f);
         assert(g);
 
-
-
-
-
         if ((f == tmls[2] || f == tmls[3]) && (g == tmls[2] || g == tmls[3])){
-            std::cout << "beide expansion" << std::endl;
             return tmls[2];
         }
 
         if (f == tmls[2] || f == tmls[3]){
-            std::cout << "f ist expansion" << std::endl;
 
             return replaceOnesWithExp(g, false, f);
         }
         if (g == tmls[2] || g == tmls[3]){
-            std::cout << "g ist expansion" << std::endl;
-
-
-
-
             return replaceOnesWithExp(f, false, g);
         }
 
@@ -599,126 +597,78 @@ class bhd_manager : public detail::manager
 
         auto const x = top_var(f, g);
 
-
-
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dist(1, 100);
-        int randomNumber = dist(gen);
-
-
         std::shared_ptr<detail::edge> r = f;
 
-
-
-
-        //normal
-        if (swap == 0) {
-            std::cout << "1\n";
-            swap = 1;
-
-
-            std::shared_ptr<detail::edge> conj2;
-
-            auto cof4 = cof(g, x, false);
-            if (cof4->w < 0 && (!f->v || f->v->x != x)){
-                conj2 = cof4;
-            } else {
-                auto cof3 = cof(f, x, false);
-
-                if (cof3->w < 0 && (!g->v || g->v->x != x)){
-                    conj2 = cof3;
-                } else {
-                    conj2 = conj(cof3, cof4);
-                }
-            }
-
-
-            std::shared_ptr<detail::edge> conj1;
-
-            auto cof2 = cof(g, x, true);
-            if (cof2->w < 0 && (!f->v || f->v->x != x)){
-
-                conj1 = cof2;
-            } else {
-                auto cof1 = cof(f, x, true);
-                if (cof1->w < 0 && (!g->v || g->v->x != x)){
-                    conj1 = cof1;
-                } else {
-                    conj1 = conj(cof1, cof2);
-                }
-            }
-
-            r = make_branch(x, conj1, conj2);
-
-            //r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
-
-        }
-
-        //lo becomes extension
-        else if (swap == 1){
-            swap = 2;
-            /*
-
-
-             std::shared_ptr<detail::edge> conj1;
-
-            auto cof2 = cof(g, x, true);
-            if (cof2->w < 0 && (!f->v || f->v->x != x)){
-
-                conj1 = cof2;
-            } else {
-                auto cof1 = cof(f, x, true);
-                if (cof1->w < 0 && (!g->v || g->v->x != x)){
-                    conj1 = cof1;
-                } else {
-                    conj1 = conj(cof1, cof2);
-                }
-            }
-
-            r = make_branch(x, conj1, tmls[2]);
-             */
-
-
-            std::cout << "2\n";
-            r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), tmls[2]);
-
-
-        // hi becomes extension
-        } else {
-            std::cout << "3\n";
-            swap = 0;
-
-            /*
-            std::shared_ptr<detail::edge> conj2;
-
-            auto cof4 = cof(g, x, false);
-            if (cof4->w < 0 && (!f->v || f->v->x != x)){
-                conj2 = cof4;
-            } else {
-                auto cof3 = cof(f, x, false);
-
-                if (cof3->w < 0 && (!g->v || g->v->x != x)){
-                    conj2 = cof3;
-                } else {
-                    conj2 = conj(cof3, cof4);
-                }
-            }
-            r = make_branch(x, tmls[2], conj2);
-             */
-
-            r = make_branch(x, tmls[2], conj(cof(f, x, false), cof(g, x, false)));
-        }
-
-
+        r = doHeuristic(f, g, x);
 
         ct.insert_or_assign({operation::AND, f, g}, std::make_pair(r, 0.0));
 
         return r;
     }
 
-    int swap = 0;
 
+    std::shared_ptr<detail::edge> doHeuristic(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::int32_t x)
+    {
+        switch(heuristic)
+        {
+            case 0: return heuristicNoExp(f, g, x);
+            case 1: return heuristicRandom(f, g, x);
+            //case 2: return heuristicEarlyExp(f, g, x);
+            //case 3: return heuristicLateExp(f, g, x);
+        }
+
+        return f;
+    }
+
+    std::shared_ptr<detail::edge> heuristicNoExp(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::int32_t x)
+    {
+        return make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
+    }
+
+
+    std::shared_ptr<detail::edge> heuristicRandom(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::int32_t x)
+    {
+        std::random_device rd;
+        std::mt19937 gen(rd());
+        std::uniform_int_distribution<> dist(1, 1000000);
+        int randomNumber = dist(gen);
+
+        if (randomNumber <= 999000) {
+            std::shared_ptr<detail::edge> conj2 = skipLowerVarsConj(f, g, x, false);
+            std::shared_ptr<detail::edge> conj1 = skipLowerVarsConj(f, g, x, true);
+
+            return make_branch(x, conj1, conj2);
+        }
+
+        //lo becomes extension
+        else if (randomNumber <= 999500){
+            std::shared_ptr<detail::edge> conj = skipLowerVarsConj(f, g, x, true);
+            return make_branch(x, conj, tmls[2]);
+
+        // hi becomes extension
+        } else {
+            std::shared_ptr<detail::edge> conj = skipLowerVarsConj(f, g, x, false);
+
+            return make_branch(x, tmls[2], conj);
+        }
+    }
+
+
+    std::shared_ptr<detail::edge> skipLowerVarsConj(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::int32_t x, bool varA)
+    {
+        auto cofR = cof(g, x, varA);
+        if (cofR->w < 0 && (!f->v || f->v->x != x)){
+            return cofR;
+        } else {
+            auto  cofL = cof(f, x, varA);
+
+            if (cofL->w < 0 && (!g->v || g->v->x != x)){
+                return cofL;
+            } else {
+                return conj(cofL, cofR);
+            }
+        }
+    }
 
 
     std::shared_ptr<detail::edge> replaceOnesWithExp(std::shared_ptr<detail::edge> f, bool goesTrue, std::shared_ptr<detail::edge> ex) {
@@ -786,8 +736,6 @@ class bhd_manager : public detail::manager
     auto make_branch(std::int32_t const x, std::shared_ptr<detail::edge> hi, std::shared_ptr<detail::edge> lo)
         -> std::shared_ptr<detail::edge> override
     {
-        std::cout << "making branch" << std::endl;
-
         assert(x < var_count());
         assert(hi);
         assert(lo);
@@ -989,7 +937,7 @@ auto inline bhd::createExpansionFiles() const{
 
     std::vector<std::pair<std::int32_t, bool>> v;
 
-    mgr->createExpansionFiles(f, v);
+    mgr->createExpansionFiles(f, v, false);
 }
 
 }  // namespace freddy::dd

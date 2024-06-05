@@ -6,20 +6,20 @@
 void printBT();
 
 int main() {
-    freddy::dd::bhd_manager bhdM;
+    freddy::dd::bhd_manager bhdM = freddy::dd::bhd_manager(1);
 
-    freddy::dd::bhd varA = bhdM.var();
-    freddy::dd::bhd varB = bhdM.var();
-    freddy::dd::bhd varC = bhdM.var();
-    freddy::dd::bhd varD = bhdM.var();
-    freddy::dd::bhd varE = bhdM.var();
-    freddy::dd::bhd varF = bhdM.var();
+    //freddy::dd::bhd varA = bhdM.var();
+    //freddy::dd::bhd varB = bhdM.var();
+    //freddy::dd::bhd varC = bhdM.var();
+    //freddy::dd::bhd varD = bhdM.var();
+    //freddy::dd::bhd varE = bhdM.var();
+    //freddy::dd::bhd varF = bhdM.var();
 
-    auto pred = varA & varB;
-    pred.print();
+    //auto pred = varA & varB;
+    //pred.print();
 
 
-    pred = pred & varC;
+    //pred = pred & varC;
 
     //std::cout << "fertig" << std::endl;
 
@@ -27,8 +27,8 @@ int main() {
 
 
 
-    /*
-    auto constexpr n = 4;  // number of queens
+
+    auto constexpr n = 5;  // number of queens
 
     std::array<std::array<freddy::dd::bhd, n>, n> x;
     for (auto i = 0; i < n; ++i)
@@ -88,9 +88,6 @@ int main() {
         }
         pred &= tmp;
     }
-
-
-    */
 
     pred.print();
 
