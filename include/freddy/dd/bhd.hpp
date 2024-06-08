@@ -94,7 +94,7 @@ class bhd
     {
         assert(f);
 
-        return (f->w != 0 || f->w != -1);
+        return (f->w != 0 || f->w != -10);
     }
 
     [[nodiscard]] auto equals(bhd const& g) const noexcept
@@ -302,6 +302,7 @@ class bhd_manager : public detail::manager
 
     auto satcount_rec(std::shared_ptr<detail::edge> const& f) -> double  // as results can be very large
     {
+        //nicht benutzt
         assert(f);
 
         if (!f->v)
@@ -328,6 +329,8 @@ class bhd_manager : public detail::manager
 
     auto satcount(std::shared_ptr<detail::edge> const& f)
     {
+        //nicht benutzt
+
         assert(f);
 
         if (f == tmls[0])
@@ -345,6 +348,8 @@ class bhd_manager : public detail::manager
     auto simplify(std::shared_ptr<detail::edge>& f, std::shared_ptr<detail::edge>& g,
                   std::shared_ptr<detail::edge>& h) const noexcept
     {
+        //nicht benutzt
+
         assert(f);
         assert(g);
         assert(h);
@@ -375,6 +380,9 @@ class bhd_manager : public detail::manager
     auto std_triple(std::int32_t const simplification, std::shared_ptr<detail::edge>& f,
                     std::shared_ptr<detail::edge>& g, std::shared_ptr<detail::edge>& h)
     {
+        //nicht benutzt
+
+
         assert(f);
         assert(g);
         assert(h);
@@ -425,6 +433,8 @@ class bhd_manager : public detail::manager
 
     auto ite(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::shared_ptr<detail::edge> h)
     {
+        //nicht benutzt
+
         assert(f);
         assert(g);
         assert(h);
@@ -475,6 +485,8 @@ class bhd_manager : public detail::manager
 
     auto antiv(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g)
     {
+        //nicht benutzt
+
         assert(f);
         assert(g);
 
@@ -519,6 +531,8 @@ class bhd_manager : public detail::manager
 
     auto add(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g) -> std::shared_ptr<detail::edge> override
     {
+        //nicht benutzt
+
         assert(f);
         assert(g);
 
@@ -597,9 +611,7 @@ class bhd_manager : public detail::manager
 
         auto const x = top_var(f, g);
 
-        std::shared_ptr<detail::edge> r = f;
-
-        r = doHeuristic(f, g, x);
+        auto r = doHeuristic(f, g, x);
 
         ct.insert_or_assign({operation::AND, f, g}, std::make_pair(r, 0.0));
 
@@ -730,7 +742,6 @@ class bhd_manager : public detail::manager
         assert(lo);
 
         return (lo->w != 0 && lo->w != -10);
-        //return (lo->w != 0 || lo->w != -1);
     }
 
     auto make_branch(std::int32_t const x, std::shared_ptr<detail::edge> hi, std::shared_ptr<detail::edge> lo)
