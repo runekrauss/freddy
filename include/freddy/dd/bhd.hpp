@@ -22,6 +22,7 @@
 #include <random>
 #include <sstream>
 #include <fstream>
+#include <filesystem>
 
 // *********************************************************************************************************************
 // Namespaces
@@ -177,9 +178,10 @@ class bhd_manager : public detail::manager
 {
   public:
 
-    bhd_manager(int h)
+    bhd_manager(int h1, int h2)
     {
-        heuristic = h;
+        heuristic = h1;
+        heuristicAtt = h2;
         tmls[2] = foa(std::make_shared<freddy::detail::edge>(-10));
         tmls[3] = foa(std::make_shared<freddy::detail::edge>(-11));
     }
@@ -226,7 +228,28 @@ class bhd_manager : public detail::manager
         to_dot(transform(fs), std::move(outputs), s);
     }
 
-    void createExpansionFiles(std::shared_ptr<detail::edge> const& f, std::vector<std::pair<std::int32_t, bool>> path, bool goingTrue){
+    void createExpansionFiles(std::shared_ptr<detail::edge> const& f){
+
+        for (const auto& entry : std::filesystem::directory_iterator("ExpansionNodes")) {
+            if (std::filesystem::is_regular_file(entry)) {
+                std::filesystem::remove(entry);
+            }
+        }
+
+        std::vector<std::pair<std::int32_t, bool>> v;
+        searchExpansionFiles(f, v, false);
+    }
+
+
+  private:
+
+    int heuristic;
+    int heuristicAtt;
+    bool onlyExpansion;
+
+    int expCount = 0;
+
+    void searchExpansionFiles(std::shared_ptr<detail::edge> const& f, std::vector<std::pair<std::int32_t, bool>> path, bool goingTrue){
 
         if (f == tmls[1]){
             if (!goingTrue){
@@ -251,25 +274,18 @@ class bhd_manager : public detail::manager
             }
 
             path.push_back(std::pair<std::int32_t,bool> (f->v->x, true));
-            createExpansionFiles(f->v->hi, path, goingTrue);
+            searchExpansionFiles(f->v->hi, path, goingTrue);
 
             path.pop_back();
             path.push_back(std::pair<std::int32_t,bool> (f->v->x, false));
-            createExpansionFiles(f->v->lo, path, goingTrue);
+            searchExpansionFiles(f->v->lo, path, goingTrue);
         }
 
     }
 
-
-  private:
-
-    int heuristic;
-
-    int expCount = 0;
-
     void newExpansionFile(std::vector<std::pair<std::int32_t, bool>> path){
 
-        std::string s = "e" + std::to_string(expCount);
+        std::string s = "ExpansionNodes/e" + std::to_string(expCount);
         s += ".txt";
 
 
@@ -598,6 +614,12 @@ class bhd_manager : public detail::manager
             return ((f->w == g->w) ? f : tmls[0]);
         }
 
+        if (f == tmls[0]){
+            return f;
+        }
+        if (g == tmls[0]){
+            return g;
+        }
 
 
 
@@ -624,9 +646,10 @@ class bhd_manager : public detail::manager
         switch(heuristic)
         {
             case 0: return heuristicNoExp(f, g, x);
-            case 1: return heuristicRandom(f, g, x);
-            //case 2: return heuristicEarlyExp(f, g, x);
-            //case 3: return heuristicLateExp(f, g, x);
+            case 1: return heuristicMemory(f, g, x);
+            case 2: return heuristicNodePathCount(f, g, x);
+            case 3: return heuristicLayer(f, g, x);
+            case 4: return heuristicRandom(f, g, x);
         }
 
         return f;
@@ -637,6 +660,86 @@ class bhd_manager : public detail::manager
         return make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
     }
 
+    std::shared_ptr<detail::edge> heuristicMemory(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::int32_t x)
+    {
+        std::ifstream statm("/proc/self/statm");
+        if (statm.is_open()) {
+            long size, resident, shared, text, lib, data, dt;
+            statm >> size >> resident >> shared >> text >> lib >> data >> dt;
+            statm.close();
+
+            long pageSize = sysconf(_SC_PAGESIZE); // get the page size in bytes
+            long rss = resident * pageSize; // resident set size in bytes
+
+            std::cout << "Physical memory used by process: " << rss / 1024 << " KB" << std::endl;
+
+
+            if ((rss / 1024) > heuristicAtt){
+
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                std::uniform_int_distribution<> dist(1, 100);
+                int randomNumber = dist(gen);
+
+                if (randomNumber <= 50){
+                    std::shared_ptr<detail::edge> conj = skipLowerVarsConj(f, g, x, true);
+                    return make_branch(x, conj, tmls[2]);
+                } else{
+                    std::shared_ptr<detail::edge> conj = skipLowerVarsConj(f, g, x, false);
+                    return make_branch(x, tmls[2], conj);
+                }
+            } else {
+                std::shared_ptr<detail::edge> conj2 = skipLowerVarsConj(f, g, x, false);
+                std::shared_ptr<detail::edge> conj1 = skipLowerVarsConj(f, g, x, true);
+
+                return make_branch(x, conj1, conj2);
+            }
+
+        } else {
+            std::cerr << "Failed to open /proc/self/statm." << std::endl;
+        }
+    }
+
+    std::shared_ptr<detail::edge> heuristicNodePathCount(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::int32_t x)
+    {
+        int amount = node_count() + path_count(f);
+
+        if (amount >= heuristicAtt){
+            return tmls[2];
+        }
+        else {
+            std::shared_ptr<detail::edge> conj2 = skipLowerVarsConj(f, g, x, false);
+            std::shared_ptr<detail::edge> conj1 = skipLowerVarsConj(f, g, x, true);
+
+            return make_branch(x, conj1, conj2);
+        }
+    }
+
+    std::shared_ptr<detail::edge> heuristicLayer(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::int32_t x)
+    {
+
+        if (!f->v->x || f->v->x < heuristicAtt){
+            if (g->v->x < heuristicAtt){
+                std::shared_ptr<detail::edge> conj2 = skipLowerVarsConj(f, g, x, false);
+                std::shared_ptr<detail::edge> conj1 = skipLowerVarsConj(f, g, x, true);
+
+                return make_branch(x, conj1, conj2);
+            }
+            else {
+                return replaceOnesWithExp(f, false, tmls[2]);
+            }
+        }
+        else {
+            if (g->v->x < heuristicAtt){
+                return replaceOnesWithExp(g, false, tmls[2]);
+            }
+            else {
+                return tmls[2];
+            }
+        }
+    }
+
+
 
     std::shared_ptr<detail::edge> heuristicRandom(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::int32_t x)
     {
@@ -645,7 +748,7 @@ class bhd_manager : public detail::manager
         std::uniform_int_distribution<> dist(1, 1000000);
         int randomNumber = dist(gen);
 
-        if (randomNumber <= 999000) {
+        if (randomNumber <= 1000000 - heuristicAtt) {
             std::shared_ptr<detail::edge> conj2 = skipLowerVarsConj(f, g, x, false);
             std::shared_ptr<detail::edge> conj1 = skipLowerVarsConj(f, g, x, true);
 
@@ -653,7 +756,7 @@ class bhd_manager : public detail::manager
         }
 
         //lo becomes extension
-        else if (randomNumber <= 999500){
+        else if (randomNumber <= 1000000 - (heuristicAtt/2)){
             std::shared_ptr<detail::edge> conj = skipLowerVarsConj(f, g, x, true);
             return make_branch(x, conj, tmls[2]);
 
@@ -946,9 +1049,11 @@ auto inline bhd::print() const
 auto inline bhd::createExpansionFiles() const{
     assert(mgr);
 
-    std::vector<std::pair<std::int32_t, bool>> v;
+    for (const auto& entry : std::filesystem::directory_iterator("ExpansionNodes")) {
+        std::filesystem::remove_all(entry.path());
+    }
 
-    mgr->createExpansionFiles(f, v, false);
+    mgr->createExpansionFiles(f);
 }
 
 }  // namespace freddy::dd

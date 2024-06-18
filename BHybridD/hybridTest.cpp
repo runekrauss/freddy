@@ -6,7 +6,7 @@
 void printBT();
 
 int main() {
-    freddy::dd::bhd_manager bhdM = freddy::dd::bhd_manager(1);
+    freddy::dd::bhd_manager bhdM = freddy::dd::bhd_manager(4, 1000);
 
     //freddy::dd::bhd varA = bhdM.var();
     //freddy::dd::bhd varB = bhdM.var();
