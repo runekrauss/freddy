@@ -697,6 +697,7 @@ class bhd_manager : public detail::manager
 
         } else {
             std::cerr << "Failed to open /proc/self/statm." << std::endl;
+            return 0;
         }
     }
 
