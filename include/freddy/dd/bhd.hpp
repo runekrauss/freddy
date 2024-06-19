@@ -671,23 +671,12 @@ class bhd_manager : public detail::manager
             long pageSize = sysconf(_SC_PAGESIZE); // get the page size in bytes
             long rss = resident * pageSize; // resident set size in bytes
 
-            std::cout << "Physical memory used by process: " << rss / 1024 << " KB" << std::endl;
+            //std::cout << "Physical memory used by process: " << rss / 1024 << " KB" << std::endl;
 
 
             if ((rss / 1024) > heuristicAtt){
 
-                std::random_device rd;
-                std::mt19937 gen(rd());
-                std::uniform_int_distribution<> dist(1, 100);
-                int randomNumber = dist(gen);
-
-                if (randomNumber <= 50){
-                    std::shared_ptr<detail::edge> conj = skipLowerVarsConj(f, g, x, true);
-                    return make_branch(x, conj, tmls[2]);
-                } else{
-                    std::shared_ptr<detail::edge> conj = skipLowerVarsConj(f, g, x, false);
-                    return make_branch(x, tmls[2], conj);
-                }
+                return replaceOnesWithExp(f, false, tmls[2]);
             } else {
                 std::shared_ptr<detail::edge> conj2 = skipLowerVarsConj(f, g, x, false);
                 std::shared_ptr<detail::edge> conj1 = skipLowerVarsConj(f, g, x, true);
@@ -703,10 +692,11 @@ class bhd_manager : public detail::manager
 
     std::shared_ptr<detail::edge> heuristicNodePathCount(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::int32_t x)
     {
-        int amount = node_count() + path_count(f);
+        int amount = node_count() + edge_count();
+		//std::cout << amount << "\n";
 
         if (amount >= heuristicAtt){
-            return tmls[2];
+            return replaceOnesWithExp(f, false, tmls[2]);
         }
         else {
             std::shared_ptr<detail::edge> conj2 = skipLowerVarsConj(f, g, x, false);
