@@ -559,6 +559,7 @@ class bhd_manager : public detail::manager
     {
         assert(f);
 
+
         if (f == tmls[2] || f == tmls[3]){ //tmls[2] = -10 -> w=0 | tmls[3] = -11 -> w=1
             return foa(std::make_shared<detail::edge>(((f->w == -11 && w == 0) || (f->w == -10 && w == 1)) ? -11 : -10, f->v));
         }
@@ -809,12 +810,8 @@ class bhd_manager : public detail::manager
 
 
         if (f->w == 0) {
+            return make_branch(f->v->x, replaceOnesWithExp(f->v->hi, goesTrue, ex), replaceOnesWithExp(f->v->lo, goesTrue, ex));
 
-            auto e = make_branch(f->v->x, replaceOnesWithExp(f->v->hi, goesTrue, ex), replaceOnesWithExp(f->v->lo, goesTrue, ex));
-            int x = e->w;
-            int y = f->w;
-            e->w = f->w;
-            return e;
         }
         else{
             auto e = make_branch(f->v->x, replaceOnesWithExp(f->v->hi, !goesTrue, ex), replaceOnesWithExp(f->v->lo, !goesTrue, ex));
