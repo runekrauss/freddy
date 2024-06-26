@@ -806,17 +806,23 @@ class bhd_manager : public detail::manager
             }
         }
 
+
+
         if (f->w == 0) {
-            f->v->hi = replaceOnesWithExp(f->v->hi, goesTrue, ex);
-            f->v->lo = replaceOnesWithExp(f->v->lo, goesTrue, ex);
-        }
 
-        if (f->w == 1){
-            f->v->hi = replaceOnesWithExp(f->v->hi, !goesTrue, ex);
-            f->v->lo = replaceOnesWithExp(f->v->lo, !goesTrue, ex);
+            auto e = make_branch(f->v->x, replaceOnesWithExp(f->v->hi, goesTrue, ex), replaceOnesWithExp(f->v->lo, goesTrue, ex));
+            int x = e->w;
+            int y = f->w;
+            e->w = f->w;
+            return e;
         }
-
-        return f;
+        else{
+            auto e = make_branch(f->v->x, replaceOnesWithExp(f->v->hi, !goesTrue, ex), replaceOnesWithExp(f->v->lo, !goesTrue, ex));
+            int x = e->w;
+            int y = f->w;
+            e->w = f->w;
+            return e;
+        }
     }
 
 
