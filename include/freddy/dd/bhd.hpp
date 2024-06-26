@@ -810,15 +810,39 @@ class bhd_manager : public detail::manager
 
 
         if (f->w == 0) {
-            return make_branch(f->v->x, replaceOnesWithExp(f->v->hi, goesTrue, ex), replaceOnesWithExp(f->v->lo, goesTrue, ex));
+            auto hi = replaceOnesWithExp(f->v->hi, goesTrue, ex);
+            auto lo = replaceOnesWithExp(f->v->lo, goesTrue, ex);
+            auto w = is_normalized(hi, lo) ? 1 : 0;
+
+            if (w == 1){
+                hi = complement(hi);
+                lo = complement(lo);
+            }
+
+            if (f->w == 1){
+                (w == 0) ? w = 1 : w = 0;
+            }
+
+            return foa(std::make_shared<detail::edge>(
+                    w, foa(std::make_shared<detail::node>(f->v->x, hi, lo))));
 
         }
         else{
-            auto e = make_branch(f->v->x, replaceOnesWithExp(f->v->hi, !goesTrue, ex), replaceOnesWithExp(f->v->lo, !goesTrue, ex));
-            int x = e->w;
-            int y = f->w;
-            e->w = f->w;
-            return e;
+            auto hi = replaceOnesWithExp(f->v->hi, !goesTrue, ex);
+            auto lo = replaceOnesWithExp(f->v->lo, !goesTrue, ex);
+            auto w = is_normalized(hi, lo) ? 1 : 0;
+
+            if (w == 1){
+                hi = complement(hi);
+                lo = complement(lo);
+            }
+
+            if (f->w == 1){
+                (w == 0) ? w = 1 : w = 0;
+            }
+
+            return foa(std::make_shared<detail::edge>(
+                    w, foa(std::make_shared<detail::node>(f->v->x, hi, lo))));
         }
     }
 
