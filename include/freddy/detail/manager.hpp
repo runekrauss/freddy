@@ -190,7 +190,8 @@ class manager
         MUL,      // multiplication
         RESTR,    // variable substitution
         SAT,      // satisfiability
-        XOR       // antivalence
+        XOR,      // antivalence
+        FINDEXP
     };
 
     struct entry  // for caching
@@ -616,7 +617,7 @@ class manager
         if (vl[v->x].nt.load_factor() >= config::load_factor)
         {  // collision probability is too high => clean up nodes
             auto const old_lf = vl[v->x].nt.load_factor();
-            //gc();
+            gc();
 
             if (vl[v->x].nt.load_factor() > old_lf - config::dead_factor)
             {  // too few nodes were deleted => resize this UT
@@ -639,7 +640,7 @@ class manager
             old_lf = vl[e->v->x].et.load_factor();
             if (old_lf >= config::load_factor)
             {
-                //gc();
+                gc();
 
                 if (vl[e->v->x].et.load_factor() > old_lf - config::dead_factor)
                 {
@@ -653,7 +654,7 @@ class manager
         old_lf = consts.load_factor();
         if (old_lf >= config::load_factor)
         {
-            //gc();
+            gc();
 
             if (consts.load_factor() > old_lf - config::dead_factor)
             {

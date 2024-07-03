@@ -32,7 +32,7 @@ int main() {
 
     //auto a = pred & varB;
 
-    /*
+
 
     auto constexpr n = 4;  // number of queens
 
@@ -46,10 +46,10 @@ int main() {
     }
 
     auto pred = bhdM.one();
-    std::cout << "pred = 1" << std::endl;
+    //std::cout << "pred = 1" << std::endl;
     for (auto i = 0; i < n; ++i)
     {
-        std::cout << "tmp = 0" << std::endl;
+        //std::cout << "tmp = 0" << std::endl;
         auto tmp = bhdM.zero();
         for (auto j = 0; j < n; ++j)
         {
@@ -58,7 +58,7 @@ int main() {
             {
                 if (k != j)
                 {
-                    std::cout << "pred &= ~(x" << i << "-" << j << " & x" << i << "-"<< k << ")" << std::endl;
+                    //std::cout << "pred &= ~(x" << i << "-" << j << " & x" << i << "-"<< k << ")" << std::endl;
                     pred &= ~(x[i][j] & x[i][k]);
                 }
             }
@@ -68,7 +68,7 @@ int main() {
             {
                 if (k != i)
                 {
-                    std::cout << "pred &= ~(x" << i << "-" << j << " & x" << k << "-"<< j << ")" << std::endl;
+                    //std::cout << "pred &= ~(x" << i << "-" << j << " & x" << k << "-"<< j << ")" << std::endl;
                     pred &= ~(x[i][j] & x[k][j]);
                 }
             }
@@ -79,7 +79,7 @@ int main() {
                 auto const l = j + k - i;
                 if (l >= 0 && l < n && k != i)
                 {
-                    std::cout << "pred &= ~(x" << i << "-" << j << " & x" << k << "-"<< l << ")" << std::endl;
+                    //std::cout << "pred &= ~(x" << i << "-" << j << " & x" << k << "-"<< l << ")" << std::endl;
                     pred &= ~(x[i][j] & x[k][l]);
                 }
             }
@@ -90,22 +90,22 @@ int main() {
                 auto const l = j + i - k;
                 if (l >= 0 && l < n && k != i)
                 {
-                    std::cout << "pred &= ~(x" << i << "-" << j << "& x" << k << "-"<< l << ")" << std::endl;
+                    //std::cout << "pred &= ~(x" << i << "-" << j << "& x" << k << "-"<< l << ")" << std::endl;
                     pred &= ~(x[i][j] & x[k][l]);
                 }
             }
 
             // there must be a queen in each row globally
-            std::cout << "tmp |= " << "x" << i << "-"<< j << std::endl;
+            //std::cout << "tmp |= " << "x" << i << "-"<< j << std::endl;
             tmp |= x[i][j];
         }
-        std::cout << "pred &= tmp" << std::endl;
+        //std::cout << "pred &= tmp" << std::endl;
         pred &= tmp;
     }
-    */
 
+    pred.print();
 
-
+    /*
     freddy::dd::bhd var1 = bhdM.var();
     freddy::dd::bhd var2 = bhdM.var();
     freddy::dd::bhd var3 = bhdM.var();
@@ -122,6 +122,8 @@ int main() {
     freddy::dd::bhd var14 = bhdM.var();
     freddy::dd::bhd var15 = bhdM.var();
     freddy::dd::bhd var16 = bhdM.var();
+
+
 
     auto pred = bhdM.one();
     auto tmp = bhdM.zero();
@@ -279,9 +281,9 @@ int main() {
     pred &= ~(var14 & var6);
     pred &= ~(var14 & var10);
     //funktioniert
-    auto srs = ~(var14 & var9);
-    pred.print();
-    srs.print();
+    auto srs = ~(var9 & var14);
+    //pred.print();
+    //srs.print();
     pred &= srs;
     //pred.print();
     //falsch
@@ -310,15 +312,29 @@ int main() {
     tmp |= var16;
     pred &= tmp;
 
+	pred.print();
 
+    /*
+    auto e = bhdM.getExp();
 
+    auto a = var7 & e;
 
-    //auto xlxl = ~(var8 & var12);
-    //xlxl.print();
+    auto x = ~(var7 & e);
+    auto k = x & a;
 
-    //pred.print();
+    k.print();
+*/
 
-    //pred.createExpansionFiles();
+    /*
+    auto pred = bhdM.one();
+    pred &= ~(var14 & var9);
+
+    pred &= ~(var2 & var7);
+    pred &= ~(var9 & var12);
+
+    pred.print();
+    */
+
 
     return 0;
 }

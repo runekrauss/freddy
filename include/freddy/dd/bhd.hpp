@@ -584,6 +584,35 @@ class bhd_manager : public detail::manager
                             : foa(std::make_shared<detail::edge>(0, f->v)));
     }
 
+    auto hasExpansion(std::shared_ptr<detail::edge> f)
+    {
+        assert(f);
+
+        if (f == tmls[2] || f == tmls[3]){
+            return 1.0;
+        }
+        if (f == tmls[0] || f == tmls[1]){
+            return 0.0;
+        }
+
+
+        auto const cr = ct.find({operation::FINDEXP, f});
+        if (cr != ct.end())
+        {
+            return cr->second.second;
+        }
+
+        auto h = hasExpansion(f->v->hi);
+        auto l = hasExpansion(f->v->lo);
+
+        if (h || l){
+            ct.insert_or_assign({operation::FINDEXP, f}, std::make_pair(std::shared_ptr<detail::edge>{}, 1));
+            return 1.0;
+        }
+        return 0.0;
+
+    }
+
     auto conj(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g)
         -> std::shared_ptr<detail::edge> override
     {
@@ -610,10 +639,6 @@ class bhd_manager : public detail::manager
         {  // f1 = f
             return f;
         }
-        if (f->v == g->v)
-        {  // check for complement
-            return ((f->w == g->w) ? f : tmls[0]);
-        }
 
         if (f == tmls[0]){
             return f;
@@ -622,6 +647,19 @@ class bhd_manager : public detail::manager
             return g;
         }
 
+        if (f->v == g->v)
+        {  // check for complement
+
+            if (f->w == g->w){
+                return f;
+            }
+            if (hasExpansion(f)){
+                return tmls[2];
+            }
+            return tmls[0];
+
+            //return ((f->w == g->w) ? f : tmls[0]);
+        }
 
 
 
@@ -632,6 +670,8 @@ class bhd_manager : public detail::manager
             return cr->second.first.lock();
         }
 
+
+
         auto const x = top_var(f, g);
 
         auto r = doHeuristic(f, g, x);
@@ -640,6 +680,8 @@ class bhd_manager : public detail::manager
 
         return r;
     }
+
+
 
 
     std::shared_ptr<detail::edge> doHeuristic(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g, std::int32_t x)
