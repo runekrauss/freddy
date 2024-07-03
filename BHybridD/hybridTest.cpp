@@ -125,6 +125,7 @@ int main() {
 
     auto pred = bhdM.one();
     auto tmp = bhdM.zero();
+
     pred &= ~(var1 & var2);
     pred &= ~(var1 & var3);
     pred &= ~(var1 & var4);
@@ -145,6 +146,7 @@ int main() {
     pred &= ~(var2 & var12);
     pred &= ~(var2 & var5);
     tmp |= var2;
+
     pred &= ~(var3 & var1);
     pred &= ~(var3 & var2);
     pred &= ~(var3 & var4);
@@ -159,11 +161,7 @@ int main() {
     pred &= ~(var4 & var2);
     pred &= ~(var4 & var3);
     pred &= ~(var4 & var8);
-    //HIER VAR8 NORMAL
-    auto rir = ~(var4 & var12);
-
-    pred &= rir;
-    //HIER VAR8 FALSCH
+    pred &= ~(var4 & var12);
     pred &= ~(var4 & var16);
     pred &= ~(var4 & var7);
     pred &= ~(var4 & var10);
@@ -180,6 +178,7 @@ int main() {
     pred &= ~(var5 & var10);
     pred &= ~(var5 & var15);
     pred &= ~(var5 & var2);
+
     tmp |= var5;
     pred &= ~(var6 & var5);
     pred &= ~(var6 & var7);
@@ -209,15 +208,7 @@ int main() {
     pred &= ~(var8 & var6);
     pred &= ~(var8 & var7);
     pred &= ~(var8 & var4);
-    //HIER FUNKTIONIERTS
-
-
-    auto xlxl = ~(var8 & var12);
-    //xlxl.print();
-    pred &= xlxl;
-
-    //pred.print();
-    //HIER FALSCH
+    pred &= ~(var8 & var12);
     pred &= ~(var8 & var16);
     pred &= ~(var8 & var3);
     pred &= ~(var8 & var11);
@@ -287,7 +278,13 @@ int main() {
     pred &= ~(var14 & var2);
     pred &= ~(var14 & var6);
     pred &= ~(var14 & var10);
-    pred &= ~(var14 & var9);
+    //funktioniert
+    auto srs = ~(var14 & var9);
+    pred.print();
+    srs.print();
+    pred &= srs;
+    //pred.print();
+    //falsch
     pred &= ~(var14 & var8);
     pred &= ~(var14 & var11);
     tmp |= var14;
@@ -313,7 +310,8 @@ int main() {
     tmp |= var16;
     pred &= tmp;
 
-    var1.print();
+
+
 
     //auto xlxl = ~(var8 & var12);
     //xlxl.print();
