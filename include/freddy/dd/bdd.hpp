@@ -470,10 +470,10 @@ class bdd_manager : public detail::manager<bool, bool>
         }
         std::cout << "TEST9" << std::endl;
         auto const cr = ct.find({operation::AND, f, g});
-        if (cr != ct.end())
+        /*if (cr != ct.end())
         {
             return cr->second.first.lock();
-        }
+        }*/
         std::cout << "TEST10" << std::endl;
         auto const x = top_var(f, g);
         auto r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));

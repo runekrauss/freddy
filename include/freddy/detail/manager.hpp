@@ -584,7 +584,7 @@ class manager
         }
         // collision probability is too high => clean up nodes/edges
         auto const old_lf = ut.load_factor();
-        gc();
+        //gc();
 
         if (ut.load_factor() > old_lf - config::dead_factor)
         {  // too few nodes were deleted => resize/rehash this UT
