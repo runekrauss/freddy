@@ -40,54 +40,9 @@ auto static enc(dd::bdd_manager& mgr)
     }
 
     auto pred = mgr.one();
-    for (auto i = 0; i < n; ++i)
-    {
-        auto tmp = mgr.zero();
-        for (auto j = 0; j < n; ++j)
-        {
-            // two queens must not be in the same row
-            /*for (auto k = 0; k < n; ++k)
-            {
-                if (k != j)
-                {
-                    pred &= ~(x[i][j] & x[i][k]);
-                }
-            }*/
+    pred |= x[0][0];
 
-            // two queens must not be in the same column
-            /*for (auto k = 0; k < n; ++k)
-            {
-                if (k != i)
-                {
-                    pred &= ~(x[i][j] & x[k][j]);
-                }
-            }
 
-            // two queens must not be along an up right diagonal
-            for (auto k = 0; k < n; ++k)
-            {
-                auto const l = j + k - i;
-                if (l >= 0 && l < n && k != i)
-                {
-                    pred &= ~(x[i][j] & x[k][l]);
-                }
-            }
-
-            // two queens must not be along a down right diagonal
-            for (auto k = 0; k < n; ++k)
-            {
-                auto const l = j + i - k;
-                if (l >= 0 && l < n && k != i)
-                {
-                    pred &= ~(x[i][j] & x[k][l]);
-                }
-            }*/
-
-            // there must be a queen in each row globally
-            //tmp |= x[i][j];
-        }
-        pred &= tmp;
-    }
     return pred;
 }
 
