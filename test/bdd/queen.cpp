@@ -278,6 +278,8 @@ TEST_CASE("BDD variable order is changeable", "[queen]")
 TEST_CASE("BDD SAT analysis is performed", "[queen]")
 {
     dd::bdd_manager mgr;
+    
+    enc(mgr);
 
     CHECK(2 == 2);
 }
