@@ -52,7 +52,7 @@ auto static enc(dd::bdd_manager& mgr)
                 if (k != j)
                 {
                     std::cout << "TEST" << std::endl;
-                    pred &= ~(x[i][j] & x[i][k]);
+                    pred &= (x[i][j] & x[i][k]);
                     std::cout << "TEST2" << std::endl;
                 }
             }
