@@ -447,7 +447,7 @@ class bdd_manager : public detail::manager<bool, bool>
         return (!f->w ? foa(std::make_shared<bool_edge>(true, f->v)) : foa(std::make_shared<bool_edge>(false, f->v)));
     }
 
-    auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
+    auto conj(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         assert(f);
         assert(g);
@@ -478,7 +478,7 @@ class bdd_manager : public detail::manager<bool, bool>
         auto const x = top_var(f, g);
         auto r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
         std::cout << "TEST11" << std::endl;
-        ct.insert_or_assign({operation::AND, f, g}, std::make_pair(r, 0.0));
+        //ct.insert_or_assign({operation::AND, f, g}, std::make_pair(r, 0.0));
 
         return r;
     }

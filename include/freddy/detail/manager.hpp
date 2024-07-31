@@ -552,7 +552,7 @@ class manager
 
     auto virtual complement(edge_ptr const&) -> edge_ptr = 0;  // computes NOT
 
-    auto virtual conj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects conjuncts logically (AND)
+    auto virtual conj(edge_ptr, edge_ptr) -> edge_ptr = 0;  // connects conjuncts logically (AND)
 
     auto virtual disj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects disjuncts logically (OR)
 

@@ -414,7 +414,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         return sub(consts[1], f);
     }
 
-    auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
+    auto conj(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         assert(f);
         assert(g);
