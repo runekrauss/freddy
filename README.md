@@ -178,11 +178,9 @@ implemented within the `freddy::dd` namespace in the [dd](include/freddy/dd) dir
 | `complement`  | Computation of NOT                  |
 | `conj`        | Connecting two conjuncts (AND)      |
 | `disj`        | Connecting two disjuncts (OR)       |
-| `is_normd`    | Checking if edges are normalized    |
 | `make_branch` | Creation of a node and an edge      |
 | `merge`       | Evaluation of aggregates (subtrees) |
 | `mul`         | Multiplicative combination of DDs   |
-| `neg`         | Negating a DD                       |
 | `regw`        | Regular weight of an edge           |
 
 Analogous to the methods listed, both a contradiction and tautology must be defined using a DD edge weight `E` and node

@@ -45,7 +45,6 @@ class manager
     {
         ec.reserve(config::ut_size);
         lvl2var.reserve(config::vl_size);
-        marks.max_load_factor(0.7f);
         nc.reserve(config::ut_size);
         vl.reserve(config::vl_size);
 
@@ -247,7 +246,7 @@ class manager
     }
 
     template <typename T>
-    requires std::same_as<T, bool>
+        requires std::same_as<T, bool>
     auto subfunc(edge_ptr const& f, T const a)
     {
         assert(f);
@@ -257,7 +256,7 @@ class manager
     }
 
     template <typename T, typename... Ts>
-    requires std::same_as<T, bool>
+        requires std::same_as<T, bool>
     auto subfunc(edge_ptr const& f, T const a, Ts... args)
     {
         assert(f);
@@ -266,13 +265,13 @@ class manager
         return (a ? subfunc(high(f, true), args...) : subfunc(low(f, true), args...));
     }
 
-    auto node_count(std::vector<edge_ptr> const& fs)
+    [[nodiscard]] auto node_count(std::vector<edge_ptr> const& fs) const
     {
-        marks.clear();
+        auto marks = get_marks();
 
         for (auto const& f : fs)
         {  // (shared) number of nodes
-            node_count_rec(f);
+            node_count(f, marks);
         }
 
         return marks.size();  // including leaves
@@ -495,7 +494,7 @@ class manager
         return disj(conj(f, g), conj(complement(f), h));
     }
 
-    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s)
+    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
         -> void
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
@@ -527,7 +526,7 @@ class manager
             }
         }
 
-        marks.clear();
+        auto marks = get_marks();
 
         for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
         {
@@ -538,7 +537,7 @@ class manager
             s << "{ rank=same; f; f" << fs[i] << "; }\n";
             s << 'f' << fs[i] << " -> v" << fs[i]->v << " [label=\" " << fs[i]->w << " \"];\n";
 
-            to_dot(fs[i], s);
+            to_dot(fs[i], marks, s);
         }
 
         s << "}\n";
@@ -557,9 +556,6 @@ class manager
 
     auto virtual disj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects disjuncts logically (OR)
 
-    // checks if edges are normalized
-    [[nodiscard]] auto virtual is_normd(edge_ptr const&, edge_ptr const&) const -> bool = 0;
-
     // creates/reuses a node and an incoming edge
     auto virtual make_branch(std::int32_t, edge_ptr, edge_ptr) -> edge_ptr = 0;
 
@@ -567,8 +563,6 @@ class manager
 
     // combines DDs multiplicatively
     auto virtual mul(edge_ptr, edge_ptr) -> edge_ptr = 0;
-
-    auto virtual neg(edge_ptr const&) -> edge_ptr = 0;  // negates a DD
 
     [[nodiscard]] auto virtual regw() const -> E = 0;  // returns the regular weight of an edge
 
@@ -654,8 +648,6 @@ class manager
             return (hi->v->br().x == y || lo->v->br().x == y);
         };
 
-        marks.clear();
-
         for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
         {
             if (swap_is_needed((*it)->br().hi, (*it)->br().lo))  // swapping levels is a local operation
@@ -667,14 +659,6 @@ class manager
                 v->br().lo = make_branch(x, cof(v->br().hi, y, false), cof(v->br().lo, y, false));
                 v->br().hi = hi;
                 v->br().x = y;
-
-                if (is_normd(v->br().hi, v->br().lo))
-                {
-                    v->br().hi = neg(v->br().hi);
-                    v->br().lo = neg(v->br().lo);
-
-                    marks.insert(v);
-                }
 
                 foa(v);
             }
@@ -697,18 +681,17 @@ class manager
             }
         }
 
-        for (const auto& e : vl[y].et)
-        {  // adjust edges pointing to marked nodes
-            if (marks.find(e->v) != marks.end())
-            {
-                e->w = -e->w;
-            }
-        }
-
         gc();  // clean up possible dead nodes
 
         std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
         std::swap(var2lvl[x], var2lvl[y]);
+    }
+
+    [[nodiscard]] auto get_marks() const -> std::unordered_set<node_ptr, hash, comp>
+    {
+        std::unordered_set<node_ptr, hash, comp> marks;
+        marks.max_load_factor(0.7f);
+        return marks;
     }
 
     [[nodiscard]] auto longest_path_rec(edge_ptr const& f) const noexcept -> std::int32_t
@@ -719,7 +702,7 @@ class manager
                                  : (std::max(longest_path_rec(f->v->br().hi), longest_path_rec(f->v->br().lo)) + 1));
     }
 
-    auto node_count_rec(edge_ptr const& f) -> void
+    auto node_count(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks) const -> void
     {
         assert(f);
 
@@ -732,8 +715,8 @@ class manager
 
         if (!f->v->is_const())
         {  // DD traversal
-            node_count_rec(f->v->br().hi);
-            node_count_rec(f->v->br().lo);
+            node_count(f->v->br().hi, marks);
+            node_count(f->v->br().lo, marks);
         }
     }
 
@@ -806,7 +789,7 @@ class manager
         return ++lvl;
     }
 
-    auto to_dot(edge_ptr const& f, std::ostream& s) -> void
+    auto to_dot(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks, std::ostream& s) const -> void
     {
         assert(f);
 
@@ -833,15 +816,13 @@ class manager
         s << 'v' << f->v << " -> v" << f->v->br().lo->v << " [style=dashed,color=red,dir=none,label=\" "
           << f->v->br().lo->w << " \"];\n";
 
-        to_dot(f->v->br().hi, s);
-        to_dot(f->v->br().lo, s);
+        to_dot(f->v->br().hi, marks, s);
+        to_dot(f->v->br().lo, marks, s);
     }
 
     std::unordered_set<edge_ptr, hash, comp> ec;
 
     std::vector<std::int32_t> lvl2var;
-
-    std::unordered_set<node_ptr, hash, comp> marks;
 
     std::unordered_set<node_ptr, hash, comp> nc;  // constants
 

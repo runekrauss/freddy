@@ -35,7 +35,7 @@ jobs:
 
       - name: Run tests
         working-directory: ${{ github.workspace }}/build
-        run: ctest
+        run: ctest --output-on-failure
         
       - name: Collect coverage
         working-directory: ${{ github.workspace }}/build

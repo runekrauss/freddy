@@ -241,7 +241,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         return bmd{consts[2], this};
     }
 
-    auto size(std::vector<bmd> const& fs)
+    [[nodiscard]] auto size(std::vector<bmd> const& fs) const
     {
         return node_count(transform(fs));
     }
@@ -272,7 +272,8 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
                    this};
     }
 
-    auto print(std::vector<bmd> const& fs, std::vector<std::string> const& outputs = {}, std::ostream& s = std::cout)
+    auto print(std::vector<bmd> const& fs, std::vector<std::string> const& outputs = {},
+               std::ostream& s = std::cout) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -283,6 +284,13 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     using int_edge = detail::edge<std::int32_t, std::int32_t>;
 
     using int_node = detail::node<std::int32_t, std::int32_t>;
+
+    auto neg(edge_ptr const& f)
+    {
+        assert(f);
+
+        return ((f == consts[0]) ? f : mul(consts[3], f));
+    }
 
     auto sub(edge_ptr const& f, edge_ptr const& g)
     {
@@ -430,14 +438,6 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         return sub(add(f, g), mul(f, g));
     }
 
-    [[nodiscard]] auto is_normd(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bool override
-    {
-        assert(hi);
-        assert(lo);
-
-        return ((hi == consts[0]) ? false : lo->w < 0 || (hi->w < 0 && lo->w == 0));
-    }
-
     auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
     {
         assert(x < var_count());
@@ -500,13 +500,6 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         ct.insert_or_assign({operation::MUL, f, g}, std::make_pair(r, 0.0));
 
         return apply(w, r);
-    }
-
-    auto neg(edge_ptr const& f) -> edge_ptr override
-    {
-        assert(f);
-
-        return ((f == consts[0]) ? f : mul(consts[3], f));
     }
 
     [[nodiscard]] auto regw() const noexcept -> std::int32_t override

@@ -201,7 +201,7 @@ class bdd_manager : public detail::manager<bool, bool>
         return bdd{consts[1], this};
     }
 
-    auto size(std::vector<bdd> const& fs)
+    [[nodiscard]] auto size(std::vector<bdd> const& fs) const
     {
         return node_count(transform(fs));
     }
@@ -213,7 +213,8 @@ class bdd_manager : public detail::manager<bool, bool>
         return longest_path(transform(fs));
     }
 
-    auto print(std::vector<bdd> const& fs, std::vector<std::string> const& outputs = {}, std::ostream& s = std::cout)
+    auto print(std::vector<bdd> const& fs, std::vector<std::string> const& outputs = {},
+               std::ostream& s = std::cout) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -486,14 +487,6 @@ class bdd_manager : public detail::manager<bool, bool>
         return complement(conj(complement(f), complement(g)));
     }
 
-    [[nodiscard]] auto is_normd([[maybe_unused]] edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bool override
-    {
-        assert(hi);
-        assert(lo);
-
-        return lo->w;
-    }
-
     auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
     {
         assert(x < var_count());
@@ -521,13 +514,6 @@ class bdd_manager : public detail::manager<bool, bool>
         assert(g);
 
         return conj(f, g);
-    }
-
-    auto neg(edge_ptr const& f) noexcept -> edge_ptr override
-    {
-        assert(f);
-
-        return f;
     }
 
     [[nodiscard]] auto regw() const noexcept -> bool override
