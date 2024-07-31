@@ -608,7 +608,7 @@ class manager
             return v->c();
         }
 
-        V r;
+        V r{};
         switch (vl[v->br().x].t)
         {
             case expansion::PD:
