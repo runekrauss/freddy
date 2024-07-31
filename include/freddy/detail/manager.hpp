@@ -552,7 +552,7 @@ class manager
 
     auto virtual complement(edge_ptr const&) -> edge_ptr = 0;  // computes NOT
 
-    auto virtual conj(edge_ptr, edge_ptr) -> edge_ptr = 0;  // connects conjuncts logically (AND)
+    auto virtual conj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects conjuncts logically (AND)
 
     auto virtual disj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects disjuncts logically (OR)
 
@@ -584,7 +584,7 @@ class manager
         }
         // collision probability is too high => clean up nodes/edges
         auto const old_lf = ut.load_factor();
-        //gc();
+        gc();
 
         if (ut.load_factor() > old_lf - config::dead_factor)
         {  // too few nodes were deleted => resize/rehash this UT

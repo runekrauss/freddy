@@ -42,7 +42,6 @@ auto static enc(dd::bdd_manager& mgr)
     auto pred = mgr.one();
     for (auto i = 0; i < n; ++i)
     {
-        std::cout << i << std::endl;
         auto tmp = mgr.zero();
         for (auto j = 0; j < n; ++j)
         {
@@ -51,12 +50,9 @@ auto static enc(dd::bdd_manager& mgr)
             {
                 if (k != j)
                 {
-                    std::cout << "TEST" << std::endl;
-                    pred &= (x[i][j] & x[i][k]);
-                    std::cout << "TEST2" << std::endl;
+                    pred &= ~(x[i][j] & x[i][k]);
                 }
             }
-            
 
             // two queens must not be in the same column
             for (auto k = 0; k < n; ++k)
