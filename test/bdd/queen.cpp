@@ -40,7 +40,7 @@ auto static enc(dd::bdd_manager& mgr)
     }
 
     auto pred = mgr.one();
-    for (auto i = 0; i < n; ++i)
+    /*for (auto i = 0; i < n; ++i)
     {
         auto tmp = mgr.zero();
         for (auto j = 0; j < n; ++j)
@@ -87,7 +87,7 @@ auto static enc(dd::bdd_manager& mgr)
             tmp |= x[i][j];
         }
         pred &= tmp;
-    }
+    }*/
     return pred;
 }
 
