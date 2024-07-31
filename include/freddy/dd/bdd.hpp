@@ -553,6 +553,7 @@ auto inline bdd::operator&=(bdd const& rhs) -> bdd&
     assert(mgr == rhs.mgr);
     std::cout << "TEST6" << std::endl;
     f = mgr->conj(f, rhs.f);
+    std::cout << "TEST7" << std::endl;
     return *this;
 }
 
