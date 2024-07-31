@@ -84,7 +84,7 @@ auto static enc(dd::bdd_manager& mgr)
             }*/
 
             // there must be a queen in each row globally
-            tmp |= x[i][j];
+            //tmp |= x[i][j];
         }
         pred &= tmp;
     }
