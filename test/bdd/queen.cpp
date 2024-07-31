@@ -54,6 +54,7 @@ auto static enc(dd::bdd_manager& mgr)
                     pred &= ~(x[i][j] & x[i][k]);
                 }
             }
+            std::cout << j << std::endl;
 
             // two queens must not be in the same column
             for (auto k = 0; k < n; ++k)
