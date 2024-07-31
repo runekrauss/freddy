@@ -22,7 +22,7 @@ VLSI CAD.
 
 ## :rocket: Getting Started
 
-First, the installation of FrEDDY is described. Second, it is explained how a DD type can be used to solve a problem.
+The installation of FrEDDY is described first. Second, it is explained how a DD type can be used to solve a problem.
 
 ### :wrench: Installation
 
@@ -147,8 +147,8 @@ int main()
 ```
 
 You can incidentally also choose how a variable should be decomposed if the DD type supports it. Although the
-[positive Davio expansion](https://en.wikipedia.org/wiki/Reed–Muller_expansion) always applies to BMDs, other available
-expansion types can be found in the [decomposition type list](include/freddy/expansion.hpp).
+[positive Davio expansion](https://en.wikipedia.org/wiki/Reed–Muller_expansion) applies to BMDs, other expansion types
+can be found in the [decomposition type list](include/freddy/expansion.hpp).
 
 ## :white_check_mark: Tests
 
@@ -190,7 +190,7 @@ value `V`, and passed to the base constructor. Note that if `E` or `V` does not 
 must be overloaded for hashing purposes: `==` to compare list nodes and `<<` for outputs. A specialization for
 [std::hash](https://en.cppreference.com/w/cpp/utility/hash) must also be added. Other virtual methods such as garbage
 collection can be overridden if needed. The associated wrapper `<type>` of the derived class `<type>_manager` is
-implemented by calling the class operations through a DD handle (pointer member). Examples can be found in
+implemented by calling the class operations through a DD pointer member. Examples can be found in
 [bdd.hpp](include/freddy/dd/bdd.hpp) and [bmd.hpp](include/freddy/dd/bmd.hpp).
 
 To check the functionality, I use [Catch2](https://github.com/catchorg/Catch2). Already existing tests are located in
