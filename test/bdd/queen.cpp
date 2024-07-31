@@ -119,7 +119,7 @@ auto static enc(dd::bdd_manager& mgr)
     CHECK((pred & mgr.var(1)) == pred.ite(mgr.var(1), mgr.zero()));
     CHECK((pred | mgr.var(1)) == pred.ite(mgr.one(), mgr.var(1)));
     CHECK((pred ^ mgr.var(1)) == pred.ite(~mgr.var(1), mgr.var(1)));
-}*/
+}
 
 TEST_CASE("BDD character can be investigated", "[queen]")
 {
@@ -273,7 +273,7 @@ TEST_CASE("BDD variable order is changeable", "[queen]")
         CHECK_FALSE(pred.eval({false, true, false, false, false, false, false, true, true, false, false, false, false,
                                false, true, true}));
     }
-}
+}*/
 
 TEST_CASE("BDD SAT analysis is performed", "[queen]")
 {
