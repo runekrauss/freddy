@@ -40,9 +40,55 @@ auto static enc(dd::bdd_manager& mgr)
     }
 
     auto pred = mgr.one();
-    pred |= x[0][0];
+    for (auto i = 0; i < n; ++i)
+    {
+        std::cout << i << std::endl;
+        auto tmp = mgr.zero();
+        for (auto j = 0; j < n; ++j)
+        {
+            // two queens must not be in the same row
+            for (auto k = 0; k < n; ++k)
+            {
+                if (k != j)
+                {
+                    pred &= ~(x[i][j] & x[i][k]);
+                }
+            }
 
+            // two queens must not be in the same column
+            for (auto k = 0; k < n; ++k)
+            {
+                if (k != i)
+                {
+                    pred &= ~(x[i][j] & x[k][j]);
+                }
+            }
 
+            // two queens must not be along an up right diagonal
+            for (auto k = 0; k < n; ++k)
+            {
+                auto const l = j + k - i;
+                if (l >= 0 && l < n && k != i)
+                {
+                    pred &= ~(x[i][j] & x[k][l]);
+                }
+            }
+
+            // two queens must not be along a down right diagonal
+            for (auto k = 0; k < n; ++k)
+            {
+                auto const l = j + i - k;
+                if (l >= 0 && l < n && k != i)
+                {
+                    pred &= ~(x[i][j] & x[k][l]);
+                }
+            }
+
+            // there must be a queen in each row globally
+            tmp |= x[i][j];
+        }
+        pred &= tmp;
+    }
     return pred;
 }
 
@@ -50,7 +96,7 @@ auto static enc(dd::bdd_manager& mgr)
 // Macros
 // *********************************************************************************************************************
 
-/*TEST_CASE("BDD synthesis is performed", "[queen]")
+TEST_CASE("BDD synthesis is performed", "[queen]")
 {
     dd::bdd_manager mgr;
     auto const pred = enc(mgr);
@@ -228,13 +274,11 @@ TEST_CASE("BDD variable order is changeable", "[queen]")
         CHECK_FALSE(pred.eval({false, true, false, false, false, false, false, true, true, false, false, false, false,
                                false, true, true}));
     }
-}*/
+}
 
 TEST_CASE("BDD SAT analysis is performed", "[queen]")
 {
     dd::bdd_manager mgr;
-    
-    enc(mgr);
 
-    CHECK(2 == 2);
+    CHECK(enc(mgr).satcount() == 2);
 }
