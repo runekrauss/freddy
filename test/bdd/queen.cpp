@@ -46,13 +46,13 @@ auto static enc(dd::bdd_manager& mgr)
         for (auto j = 0; j < n; ++j)
         {
             // two queens must not be in the same row
-            for (auto k = 0; k < n; ++k)
+            /*for (auto k = 0; k < n; ++k)
             {
                 if (k != j)
                 {
                     pred &= ~(x[i][j] & x[i][k]);
                 }
-            }
+            }*/
 
             // two queens must not be in the same column
             /*for (auto k = 0; k < n; ++k)
