@@ -275,6 +275,7 @@ TEST_CASE("BMD variable order is changeable", "[mult]")
 TEST_CASE("BMD equivalence is checked", "[mult]")
 {
     dd::bmd_manager mgr;
+    auto const p = bit_lvl_impl(mgr);
 
-    CHECK(mgr.weighted_sum(bit_lvl_impl(mgr)) == word_lvl_spec(mgr));
+    CHECK(mgr.weighted_sum(p) == word_lvl_spec(mgr));
 }
