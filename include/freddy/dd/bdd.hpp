@@ -454,14 +454,18 @@ class bdd_manager : public detail::manager<bool, bool>
         std::cout << "TEST8" << std::endl;
         if (f == consts[1])
         {  // 1g == g
+            std::cout << "TEST12" << std::endl;
             return g;
         }
         if (g == consts[1])
         {  // f1 == f
+            std::cout << "TEST13" << std::endl;
             return f;
         }
+        std::cout << "TEST11" << std::endl;
         if (f->v == g->v)
         {  // check for complement
+            std::cout << "TEST14" << std::endl;
             return ((f->w == g->w) ? f : consts[0]);
         }
         std::cout << "TEST9" << std::endl;
