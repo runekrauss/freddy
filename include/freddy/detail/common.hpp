@@ -27,19 +27,19 @@ namespace freddy::detail
 struct comp
 {
     template <typename T>
-    auto operator()(std::shared_ptr<T> const& a, std::shared_ptr<T> const& b) const noexcept
+    auto operator()(std::shared_ptr<T> const& lhs, std::shared_ptr<T> const& rhs) const
     {
-        assert(a);
-        assert(b);
+        assert(lhs);
+        assert(rhs);
 
-        return (*a == *b);
+        return (*lhs == *rhs);
     }
 };
 
 struct hash
 {
     template <typename T>
-    auto operator()(std::shared_ptr<T> const& p) const noexcept
+    auto operator()(std::shared_ptr<T> const& p) const
     {
         assert(p);
 
@@ -52,7 +52,7 @@ struct hash
 // =====================================================================================================================
 
 template <typename T, typename Callable>
-requires std::integral<T>
+    requires std::integral<T>
 auto inline parallel_for(T const a, T const b, Callable func)
 {
     assert(b >= a);

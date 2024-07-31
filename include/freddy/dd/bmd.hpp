@@ -7,6 +7,7 @@
 #include "freddy/detail/manager.hpp"  // detail::manager
 
 #include <algorithm>    // std::transform
+#include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::pow
 #include <cstdint>      // std::int32_t
@@ -40,7 +41,7 @@ class bmd_manager;
 class bmd
 {
   public:
-    bmd() = default;
+    bmd() = default;  // so that BMDs initially work with standard containers
 
     auto operator+=(bmd const&) -> bmd&;
 
@@ -108,16 +109,9 @@ class bmd
 
     auto friend operator<<(std::ostream& s, bmd const& g) -> std::ostream&
     {
-        s << "Wrapper: " << g.f;
-        s << "\nManager = " << g.mgr;
+        s << "Wrapper = " << g.f;
+        s << "\nBMD manager = " << g.mgr;
         return s;
-    }
-
-    [[nodiscard]] auto weight() const noexcept
-    {
-        assert(f);
-
-        return f->w;
     }
 
     [[nodiscard]] auto equals(bmd const& g) const noexcept
@@ -127,18 +121,31 @@ class bmd
         return (f->v == g.f->v);
     }
 
+    [[nodiscard]] auto weight() const noexcept
+    {
+        assert(f);
+
+        return f->w;
+    }
+
     [[nodiscard]] auto is_const() const noexcept
     {
         assert(f);
 
-        return !f->v;
+        return f->v->is_const();
     }
 
-    [[nodiscard]] auto var() const noexcept
+    [[nodiscard]] auto is_zero() const noexcept;
+
+    [[nodiscard]] auto is_one() const noexcept;
+
+    [[nodiscard]] auto is_two() const noexcept;
+
+    [[nodiscard]] auto var() const
     {
         assert(!is_const());
 
-        return f->v->x;
+        return f->v->br().x;
     }
 
     [[nodiscard]] auto high(bool = false) const;
@@ -148,22 +155,17 @@ class bmd
     template <typename T, typename... Ts>
     auto cof(T, Ts...) const;
 
-    template <typename T, typename... Ts>
-    auto eval(T, Ts...) const;
-
     [[nodiscard]] auto size() const;
-
-    [[nodiscard]] auto path_count() const noexcept;
 
     [[nodiscard]] auto depth() const;
 
-    [[nodiscard]] auto is_essential(std::int32_t) const noexcept;
+    [[nodiscard]] auto path_count() const noexcept;
 
-    [[nodiscard]] auto is_zero() const noexcept;
+    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
 
-    [[nodiscard]] auto is_one() const noexcept;
+    [[nodiscard]] auto has_const(std::int32_t) const;
 
-    [[nodiscard]] auto is_two() const noexcept;
+    [[nodiscard]] auto is_essential(std::int32_t) const;
 
     [[nodiscard]] auto ite(bmd const&, bmd const&) const;
 
@@ -178,8 +180,10 @@ class bmd
     auto print() const;
 
   private:
+    friend bmd_manager;
+
     // wrapper is controlled by its BMD manager
-    bmd(std::shared_ptr<detail::edge> f, bmd_manager* const mgr) :
+    bmd(std::shared_ptr<detail::edge<std::int32_t, std::int32_t>> f, bmd_manager* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
@@ -187,19 +191,26 @@ class bmd
         assert(mgr);
     }
 
-    std::shared_ptr<detail::edge> f;
+    std::shared_ptr<detail::edge<std::int32_t, std::int32_t>> f;
 
     bmd_manager* mgr{};
-
-    friend bmd_manager;
 };
 
-class bmd_manager : public detail::manager
+class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
 {
   public:
+    friend bmd;
+
+    bmd_manager() :
+            manager(tmls())
+    {
+        consts.push_back(make_const(2, 1));
+        consts.push_back(make_const(-1, 1));
+    }
+
     auto var(std::string_view l = {})
     {
-        return bmd{make_var(detail::decomposition::PD, l), this};
+        return bmd{make_var(expansion::PD, l), this};
     }
 
     auto var(std::int32_t const i) noexcept
@@ -212,22 +223,22 @@ class bmd_manager : public detail::manager
 
     auto constant(std::int32_t const w)
     {
-        return bmd{foa(std::make_shared<detail::edge>(w)), this};
+        return bmd{make_const(w, 1), this};
     }
 
     auto zero() noexcept
     {
-        return bmd{tmls[0], this};
+        return bmd{consts[0], this};
     }
 
     auto one() noexcept
     {
-        return bmd{tmls[1], this};
+        return bmd{consts[1], this};
     }
 
     auto two() noexcept
     {
-        return bmd{tmls[2], this};
+        return bmd{consts[2], this};
     }
 
     auto size(std::vector<bmd> const& fs)
@@ -237,15 +248,17 @@ class bmd_manager : public detail::manager
 
     [[nodiscard]] auto depth(std::vector<bmd> const& fs) const
     {
+        assert(!fs.empty());
+
         return longest_path(transform(fs));
     }
 
     auto weighted_sum(std::vector<bmd> const& fs)
     {
-        auto r = tmls[0];
+        auto r = consts[0];
         for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
         {  // LSB ... MSB
-            r = add(r, mul(foa(std::make_shared<detail::edge>(static_cast<std::int32_t>(std::pow(2, i)))), fs[i].f));
+            r = add(r, mul(make_const(static_cast<std::int32_t>(std::pow(2, i)), 1), fs[i].f));
         }
         return bmd{r, this};
     }
@@ -259,22 +272,19 @@ class bmd_manager : public detail::manager
                    this};
     }
 
-    auto print(std::vector<bmd> const& fs, std::vector<std::string> outputs = {}, std::ostream& s = std::cout)
+    auto print(std::vector<bmd> const& fs, std::vector<std::string> const& outputs = {}, std::ostream& s = std::cout)
     {
-        to_dot(transform(fs), std::move(outputs), s);
+        assert(outputs.empty() ? true : outputs.size() == fs.size());
+
+        to_dot(transform(fs), outputs, s);
     }
 
   private:
-    [[nodiscard]] static auto transform(std::vector<bmd> const& fs) -> std::vector<std::shared_ptr<detail::edge>>
-    {
-        std::vector<std::shared_ptr<detail::edge>> gs;
-        gs.reserve(fs.size());
-        std::transform(fs.begin(), fs.end(), std::back_inserter(gs), [](auto const& g) { return g.f; });
+    using int_edge = detail::edge<std::int32_t, std::int32_t>;
 
-        return gs;
-    }
+    using int_node = detail::node<std::int32_t, std::int32_t>;
 
-    auto sub(std::shared_ptr<detail::edge> const& f, std::shared_ptr<detail::edge> const& g)
+    auto sub(edge_ptr const& f, edge_ptr const& g)
     {
         assert(f);
         assert(g);
@@ -282,31 +292,20 @@ class bmd_manager : public detail::manager
         return add(f, neg(g));
     }
 
-    auto ite(std::shared_ptr<detail::edge> const& f, std::shared_ptr<detail::edge> const& g,
-             std::shared_ptr<detail::edge> const& h)
+    auto antiv(edge_ptr const& f, edge_ptr const& g)
     {
         assert(f);
         assert(g);
-        assert(h);
 
-        return disj(conj(f, g), conj(complement(f), h));
+        return sub(add(f, g), mul(consts[2], mul(f, g)));
     }
 
-    auto antiv(std::shared_ptr<detail::edge> const& f, std::shared_ptr<detail::edge> const& g)
-    {
+    auto rearrange(operation const op, edge_ptr& f, edge_ptr& g)
+    {  // increase the probability of reusing previously computed results
         assert(f);
         assert(g);
 
-        return sub(add(f, g), mul(tmls[2], mul(f, g)));
-    }
-
-    auto rearrange(operation const op, std::shared_ptr<detail::edge>& f, std::shared_ptr<detail::edge>& g)
-    {
-        assert(f);
-        assert(g);
-
-        std::int32_t w{};
-
+        std::int32_t w = 0;
         switch (op)
         {
             case operation::ADD:
@@ -322,8 +321,8 @@ class bmd_manager : public detail::manager
 
                 assert(w != 0);
 
-                f = foa(std::make_shared<detail::edge>(f->w / w, f->v));
-                g = foa(std::make_shared<detail::edge>(g->w / w, g->v));
+                f = foa(std::make_shared<int_edge>(f->w / w, f->v));
+                g = foa(std::make_shared<int_edge>(g->w / w, g->v));
                 break;
             case operation::MUL:
                 w = f->w * g->w;
@@ -333,31 +332,45 @@ class bmd_manager : public detail::manager
                     std::swap(f, g);
                 }
 
-                f = foa(std::make_shared<detail::edge>(1, f->v));
-                g = foa(std::make_shared<detail::edge>(1, g->v));
+                f = foa(std::make_shared<int_edge>(1, f->v));
+                g = foa(std::make_shared<int_edge>(1, g->v));
                 break;
             default: assert(false);
         }
-
         return w;
     }
 
-    auto add(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g) -> std::shared_ptr<detail::edge> override
+    auto apply(std::int32_t const& w, edge_ptr const& f) -> edge_ptr override
+    {
+        assert(f);
+
+        if (w == 1)
+        {
+            return f;
+        }
+        if (w == 0 || f->w == 0)
+        {
+            return consts[0];
+        }
+        return foa(std::make_shared<int_edge>(comb(w, f->w), f->v));
+    }
+
+    auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         assert(f);
         assert(g);
 
-        if (f == tmls[0])
+        if (f == consts[0])
         {
             return g;
         }
-        if (g == tmls[0])
+        if (g == consts[0])
         {
             return f;
         }
         if (f->v == g->v)
         {
-            return ((f->w + g->w == 0) ? tmls[0] : foa(std::make_shared<detail::edge>(f->w + g->w, f->v)));
+            return ((f->w + g->w == 0) ? consts[0] : foa(std::make_shared<int_edge>(f->w + g->w, f->v)));
         }
 
         auto const w = rearrange(operation::ADD, f, g);
@@ -376,31 +389,24 @@ class bmd_manager : public detail::manager
         return apply(w, r);
     }
 
-    auto apply(std::int32_t const w, std::shared_ptr<detail::edge> const& f) -> std::shared_ptr<detail::edge> override
+    [[nodiscard]] auto agg(std::int32_t const& w, std::int32_t const& val) const noexcept -> std::int32_t override
+    {
+        return (w * val);
+    }
+
+    [[nodiscard]] auto comb(std::int32_t const& w1, std::int32_t const& w2) const noexcept -> std::int32_t override
+    {
+        return (w1 * w2);
+    }
+
+    auto complement(edge_ptr const& f) -> edge_ptr override
     {
         assert(f);
 
-        if (w == 1)
-        {
-            return f;
-        }
-        if (w == 0 || f->w == 0)
-        {
-            return tmls[0];
-        }
-
-        return foa(std::make_shared<detail::edge>(w * f->w, f->v));
+        return sub(consts[1], f);
     }
 
-    auto complement(std::shared_ptr<detail::edge> const& f) -> std::shared_ptr<detail::edge> override
-    {
-        assert(f);
-
-        return sub(tmls[1], f);
-    }
-
-    auto conj(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g)
-        -> std::shared_ptr<detail::edge> override
+    auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
         assert(g);
@@ -408,41 +414,37 @@ class bmd_manager : public detail::manager
         return mul(f, g);
     }
 
-    auto disj(std::shared_ptr<detail::edge> const& f, std::shared_ptr<detail::edge> const& g)
-        -> std::shared_ptr<detail::edge> override
+    auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
         assert(g);
 
-        if (f == tmls[0])
+        if (f == consts[0])
         {
             return g;
         }
-        if (g == tmls[0])
+        if (g == consts[0])
         {
             return f;
         }
-
         return sub(add(f, g), mul(f, g));
     }
 
-    [[nodiscard]] auto is_normalized(std::shared_ptr<detail::edge> const& hi,
-                                     std::shared_ptr<detail::edge> const& lo) const noexcept -> bool override
+    [[nodiscard]] auto is_normd(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bool override
     {
         assert(hi);
         assert(lo);
 
-        return ((hi == tmls[0]) ? false : lo->w < 0 || (hi->w < 0 && lo->w == 0));
+        return ((hi == consts[0]) ? false : lo->w < 0 || (hi->w < 0 && lo->w == 0));
     }
 
-    auto make_branch(std::int32_t const x, std::shared_ptr<detail::edge> hi, std::shared_ptr<detail::edge> lo)
-        -> std::shared_ptr<detail::edge> override
+    auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
     {
         assert(x < var_count());
         assert(hi);
         assert(lo);
 
-        if (hi == tmls[0])  // redundancy rule
+        if (hi == consts[0])  // redundancy rule
         {
             return lo;
         }
@@ -451,28 +453,31 @@ class bmd_manager : public detail::manager
 
         assert(w != 0);
 
-        return (
-            (w != 1)
-                ? foa(std::make_shared<detail::edge>(
-                      w, foa(std::make_shared<detail::node>(x, foa(std::make_shared<detail::edge>(hi->w / w, hi->v)),
-                                                            foa(std::make_shared<detail::edge>(lo->w / w, lo->v))))))
-                : foa(std::make_shared<detail::edge>(w, foa(std::make_shared<detail::node>(x, hi, lo)))));
+        return ((w != 1) ? foa(std::make_shared<int_edge>(
+                               w, foa(std::make_shared<int_node>(x, foa(std::make_shared<int_edge>(hi->w / w, hi->v)),
+                                                                 foa(std::make_shared<int_edge>(lo->w / w, lo->v))))))
+                         : foa(std::make_shared<int_edge>(w, foa(std::make_shared<int_node>(x, hi, lo)))));
     }
 
-    auto mul(std::shared_ptr<detail::edge> f, std::shared_ptr<detail::edge> g) -> std::shared_ptr<detail::edge> override
+    [[nodiscard]] auto merge(std::int32_t const& val1, std::int32_t const& val2) const noexcept -> std::int32_t override
+    {
+        return (val1 + val2);
+    }
+
+    auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         assert(f);
         assert(g);
 
-        if (f == tmls[0] || g == tmls[0])
+        if (f == consts[0] || g == consts[0])
         {
-            return tmls[0];
+            return consts[0];
         }
-        if (!f->v)
+        if (f->v->is_const())
         {
             return apply(f->w, g);
         }
-        if (!g->v)
+        if (g->v->is_const())
         {
             return apply(g->w, f);
         }
@@ -497,11 +502,11 @@ class bmd_manager : public detail::manager
         return apply(w, r);
     }
 
-    auto neg(std::shared_ptr<detail::edge> const& f) -> std::shared_ptr<detail::edge> override
+    auto neg(edge_ptr const& f) -> edge_ptr override
     {
         assert(f);
 
-        return ((f == tmls[0]) ? f : mul(tmls[3], f));
+        return ((f == consts[0]) ? f : mul(consts[3], f));
     }
 
     [[nodiscard]] auto regw() const noexcept -> std::int32_t override
@@ -509,8 +514,7 @@ class bmd_manager : public detail::manager
         return 1;
     }
 
-    auto static normw(std::shared_ptr<detail::edge> const& f, std::shared_ptr<detail::edge> const& g) noexcept
-        -> std::int32_t
+    auto static normw(edge_ptr const& f, edge_ptr const& g) noexcept -> std::int32_t
     {
         assert(f);
         assert(g);
@@ -518,7 +522,21 @@ class bmd_manager : public detail::manager
         return ((g->w < 0 || (f->w < 0 && g->w == 0)) ? -std::gcd(f->w, g->w) : std::gcd(f->w, g->w));
     }
 
-    friend bmd;
+    auto static transform(std::vector<bmd> const& fs) -> std::vector<edge_ptr>
+    {
+        std::vector<edge_ptr> gs;
+        gs.reserve(fs.size());
+        std::transform(fs.begin(), fs.end(), std::back_inserter(gs), [](auto const& g) { return g.f; });
+
+        return gs;
+    }
+
+    auto static tmls() -> std::array<edge_ptr, 2>
+    {
+        auto const leaf = std::make_shared<int_node>(1);
+
+        return std::array<edge_ptr, 2>{std::make_shared<int_edge>(0, leaf), std::make_shared<int_edge>(1, leaf)};
+    }
 };
 
 auto inline bmd::operator+=(bmd const& rhs) -> bmd&
@@ -589,6 +607,27 @@ auto inline bmd::operator^=(bmd const& rhs) -> bmd&
     return *this;
 }
 
+auto inline bmd::is_zero() const noexcept
+{
+    assert(mgr);
+
+    return (*this == mgr->zero());
+}
+
+auto inline bmd::is_one() const noexcept
+{
+    assert(mgr);
+
+    return (*this == mgr->one());
+}
+
+auto inline bmd::is_two() const noexcept
+{
+    assert(mgr);
+
+    return (*this == mgr->two());
+}
+
 auto inline bmd::high(bool const weighting) const
 {
     assert(mgr);
@@ -611,26 +650,11 @@ auto inline bmd::cof(T const a, Ts... args) const
     return bmd{mgr->subfunc(f, a, std::forward<Ts>(args)...), mgr};
 }
 
-template <typename T, typename... Ts>
-auto inline bmd::eval(T const a, Ts... args) const
-{
-    assert(mgr);
-
-    return mgr->eval(f, a, std::forward<Ts>(args)...);
-}
-
 auto inline bmd::size() const
 {
     assert(mgr);
 
     return mgr->size({*this});
-}
-
-auto inline bmd::path_count() const noexcept
-{
-    assert(mgr);
-
-    return mgr->path_count(f);
 }
 
 auto inline bmd::depth() const
@@ -640,32 +664,33 @@ auto inline bmd::depth() const
     return mgr->depth({*this});
 }
 
-auto inline bmd::is_essential(std::int32_t const x) const noexcept
+auto inline bmd::path_count() const noexcept
+{
+    assert(mgr);
+
+    return mgr->path_count(f);
+}
+
+auto inline bmd::eval(std::vector<bool> const& as) const noexcept
+{
+    assert(mgr);
+    assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
+
+    return mgr->eval(f, as);
+}
+
+auto inline bmd::has_const(std::int32_t const c) const
+{
+    assert(mgr);
+
+    return mgr->has_const(f, c);
+}
+
+auto inline bmd::is_essential(std::int32_t const x) const
 {
     assert(mgr);
 
     return mgr->is_essential(f, x);
-}
-
-auto inline bmd::is_zero() const noexcept
-{
-    assert(mgr);
-
-    return (*this == mgr->zero());
-}
-
-auto inline bmd::is_one() const noexcept
-{
-    assert(mgr);
-
-    return (*this == mgr->one());
-}
-
-auto inline bmd::is_two() const noexcept
-{
-    assert(mgr);
-
-    return (*this == mgr->two());
 }
 
 auto inline bmd::ite(bmd const& g, bmd const& h) const

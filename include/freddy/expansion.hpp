@@ -11,7 +11,7 @@ namespace freddy
 // Types
 // =====================================================================================================================
 
-enum class decomposition
+enum class expansion
 {
     PD,  // positive Davio
     S    // Shannon
