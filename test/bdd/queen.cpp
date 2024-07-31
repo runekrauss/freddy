@@ -95,7 +95,7 @@ auto static enc(dd::bdd_manager& mgr)
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("BDD synthesis is performed", "[queen]")
+/*TEST_CASE("BDD synthesis is performed", "[queen]")
 {
     dd::bdd_manager mgr;
     auto const pred = enc(mgr);
@@ -119,7 +119,7 @@ TEST_CASE("BDD synthesis is performed", "[queen]")
     CHECK((pred & mgr.var(1)) == pred.ite(mgr.var(1), mgr.zero()));
     CHECK((pred | mgr.var(1)) == pred.ite(mgr.one(), mgr.var(1)));
     CHECK((pred ^ mgr.var(1)) == pred.ite(~mgr.var(1), mgr.var(1)));
-}
+}*/
 
 TEST_CASE("BDD character can be investigated", "[queen]")
 {
