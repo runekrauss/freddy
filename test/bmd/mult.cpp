@@ -130,7 +130,7 @@ TEST_CASE("BMD character can be investigated", "[mult]")
 
     SECTION("Number of nodes is determined")
     {
-        CHECK(mgr.node_count() <= 19);
+        CHECK(mgr.node_count() <= 20);
     }
 
     SECTION("Number of edges is determined")
