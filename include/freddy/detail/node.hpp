@@ -62,9 +62,18 @@ class node
 
     auto friend operator==(node const& lhs, node const& rhs)
     {
-        return (lhs.is_const() == rhs.is_const() && lhs.is_const()
-                    ? lhs.c() == rhs.c()
-                    : lhs.br().x == rhs.br().x && lhs.br().hi == rhs.br().hi && lhs.br().lo == rhs.br().lo);
+        if (lhs.is_const() != rhs.is_const())
+        {
+            return false;
+        }
+        if (lhs.is_const())
+        {
+            return lhs.c() == rhs.c();
+        }
+        else
+        {
+            return lhs.br().x == rhs.br().x && lhs.br().hi == rhs.br().hi && lhs.br().lo == rhs.br().lo;
+        }
     }
 
     auto friend operator<<(std::ostream& s, node const& v) -> std::ostream&
