@@ -499,9 +499,9 @@ class bdd_manager : public detail::manager<bool, bool>
         }
 
         auto const w = lo->w;
-        return foa(std::make_shared<bool_edge>(
-            w, foa(std::make_shared<bool_node>(x, !w ? std::move(hi) : complement(hi),
-                                                   !w ? std::move(lo) : complement(lo)))));
+        return foa(
+            std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(x, !w ? std::move(hi) : complement(hi),
+                                                                           !w ? std::move(lo) : complement(lo)))));
     }
 
     [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
