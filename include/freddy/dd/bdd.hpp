@@ -498,8 +498,9 @@ class bdd_manager : public detail::manager<bool, bool>
             return hi;  // without limitation of generality
         }
 
+        auto const w = lo->w;
         return foa(std::make_shared<bool_edge>(
-            lo->w, foa(std::make_shared<bool_node>(x, !lo->w ? std::move(hi) : complement(hi),
+            w, foa(std::make_shared<bool_node>(x, !lo->w ? std::move(hi) : complement(hi),
                                                    !lo->w ? std::move(lo) : complement(lo)))));
     }
 
