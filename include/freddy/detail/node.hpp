@@ -70,10 +70,7 @@ class node
         {
             return lhs.c() == rhs.c();
         }
-        else
-        {
-            return lhs.br().x == rhs.br().x && lhs.br().hi == rhs.br().hi && lhs.br().lo == rhs.br().lo;
-        }
+        return lhs.br().x == rhs.br().x && lhs.br().hi == rhs.br().hi && lhs.br().lo == rhs.br().lo;
     }
 
     auto friend operator<<(std::ostream& s, node const& v) -> std::ostream&
