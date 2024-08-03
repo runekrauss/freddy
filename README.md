@@ -22,7 +22,7 @@ VLSI CAD.
 
 ## :rocket: Getting Started
 
-First, the installation of FrEDDY is described. Second, it is explained how a DD type can be used to solve a problem.
+The installation of FrEDDY is described first. Second, it is explained how a DD type can be used to solve a problem.
 
 ### :wrench: Installation
 
@@ -41,8 +41,8 @@ Depending on the location of FrEDDY, the path must be adjusted accordingly.
 
 In order to use a DD type for solving a problem such as
 [equivalence checking of multipliers](https://dl.acm.org/doi/10.1145/370155.370315), the respective
-[header](include/freddy/dd/bmd.hpp) of an appropriate type like a
-[binary moment diagram](https://en.wikipedia.org/wiki/Binary_moment_diagram) must be **included** and the corresponding
+[header](include/freddy/dd) of an appropriate reduced and ordered type like a
+[binary moment diagram](https://en.wikipedia.org/wiki/Binary_moment_diagram) must be **included**, and the corresponding
 manager `bmd_manager` must be **initialized** within your code file:
 
 ```cpp
@@ -54,9 +54,9 @@ int main()
 }
 ```
 
-In general, a correspondence is proved by interpreting binary signals $x_1,\ldots,x_n$ of a logical network $f$ using
-an encoding function $e$ and comparing it with a word-level specification $g$:
-$e(f(x_1,\ldots,x_n)) = g(e(x_1),\ldots,e(x_n))$.
+A correspondence is generally proven by interpreting binary signals $x_1, \ldots, x_n$ of a logical network $f$ using an
+encoding function $e$ and comparing it with a word-level specification $g$:
+$e(f(x_1, \ldots, x_n)) = g(e(x_1), \ldots, e(x_n))$.
 
 In this example, a **bit-level implementation** $f$ for a 2-bit multiplier is developed via
 [symbolic simulation](https://dl.acm.org/doi/abs/10.1145/123186.128296):
@@ -81,7 +81,7 @@ int main()
     s[5] = s[0] & s[2];
     s[6] = s[3] ^ s[5];
     s[7] = s[3] & s[5];
-    std::vector<freddy::dd::bmd> f{s[1], s[4], s[6], s[7]};
+    std::vector<freddy::dd::bmd> const f{s[1], s[4], s[6], s[7]};
 }
 ```
 
@@ -119,21 +119,22 @@ int main()
 }
 ```
 
-Incidentally, every DD type supports drawing nodes and edges with
-[DOT](https://en.wikipedia.org/wiki/DOT_(graph_description_language)). The graph can be rendered with the corresponding
-layout engine and looks similar to the following BMD in this example:
+While there are individual encodings such as `weighted_sum`, numerous methods exist for each DD type. One of these
+involves drawing nodes and edges with [DOT](https://en.wikipedia.org/wiki/DOT_(graph_description_language)). The graph
+can be rendered with the corresponding layout engine and looks similar to the following BMD in this example:
 
 ![BMD](https://github.com/runekrauss/freddy/assets/5829946/4cf0d118-23f6-4157-999f-eb886d97197a)
 
-In addition, depending on the problem, it is possible to adjust various **parameters** such as the initial size
-`ct_size` of the operation cache:
+It is still possible to adjust various [configuration](include/freddy/config.hpp) **parameters** depending on the
+problem. For example, the initial capacity `ct_size` of the cache used for many other
+[operations](include/freddy/operation.hpp) in addition to multiplication can be set as follows:
 
 ```cpp
 /* includes */
 
 int main()
 {
-    freddy::config::ct_size = 127;
+    freddy::config::ct_size = 23;
 
     /* initialization */
     
@@ -145,11 +146,13 @@ int main()
 }
 ```
 
-Other parameters can be found in the [configuration](include/freddy/config.hpp).
+You can incidentally also choose how a variable should be decomposed if the DD type supports it. Although the
+[positive Davio expansion](https://en.wikipedia.org/wiki/Reed–Muller_expansion) applies to BMDs, other expansion types
+can be found in the [decomposition type list](include/freddy/expansion.hpp).
 
 ## :white_check_mark: Tests
 
-Tests can be built with CMake using the flag `-DFREDDY_TEST=ON` on the command line and run by `ctest`:
+[Tests](test) can be built with CMake using the flag `-DFREDDY_TEST=ON` on the command line and run by `ctest`:
 
 ```console
 $ cmake -DCMAKE_BUILD_TYPE=Release -DFREDDY_TEST=ON -B build/Release
@@ -159,7 +162,7 @@ $ ctest -C Release
 ```
 
 For debugging purposes, type `Debug` instead of `Release`. Note that this may have a negative effect on the performance
-of FrEDDY. Additionally, you can add `-j k` to build on `k` cores, or `-v` to show in detail the commands used to build.
+of FrEDDY. Additionally, you can add `-j k` to build on `k` cores or `-v` to show in detail the commands used to build.
 
 ## :+1: Contribute
 
@@ -167,25 +170,29 @@ Do you want to contribute to FrEDDY? In particular, I am interested in the devel
 the [base manager](include/freddy/detail/manager.hpp) is **abstract**, the following pure virtual methods must be
 implemented within the `freddy::dd` namespace in the [dd](include/freddy/dd) directory for basic operations to work:
 
-| Method          | Description                       |
-| --------------- | --------------------------------- |
-| `add`           | Additive combination of DDs       |
-| `apply`         | Adjusting a pair weight           |
-| `complement`    | Computation of NOT                |
-| `conj`          | Connecting two conjuncts (AND)    |
-| `disj`          | Connecting two disjuncts (OR)     |
-| `is_normalized` | Checking if a node is normalized  |
-| `make_branch`   | Creation of an edge and a node    |
-| `mul`           | Multiplicative combination of DDs |
-| `neg`           | Negating a DD                     |
-| `regw`          | Standard weight of an edge        |
+| Method        | Description                         |
+| ------------- | ----------------------------------- |
+| `add`         | Additive combination of DDs         |
+| `agg`         | Aggregating a weight and node value |
+| `comb`        | Adjusting a pair weight             |
+| `complement`  | Computation of NOT                  |
+| `conj`        | Connecting two conjuncts (AND)      |
+| `disj`        | Connecting two disjuncts (OR)       |
+| `make_branch` | Creation of a node and an edge      |
+| `merge`       | Evaluation of aggregates (subtrees) |
+| `mul`         | Multiplicative combination of DDs   |
+| `regw`        | Regular weight of an edge           |
 
-The associated wrapper `<type>` for a DD handle is implemented by calling operations realized by the derived manager
-`<type>_manager` as a pointer member. Examples can be found in [bdd.hpp](include/freddy/dd/bdd.hpp)
-and [bmd.hpp](include/freddy/dd/bmd.hpp).
+Analogous to the methods listed, both a contradiction and tautology must be defined using a DD edge weight `E` and node
+value `V`, and passed to the base constructor. Note that if `E` or `V` does not correspond to a built-in type, operators
+must be overloaded for hashing purposes: `==` to compare list nodes and `<<` for outputs. A specialization for
+[std::hash](https://en.cppreference.com/w/cpp/utility/hash) must also be added. Other virtual methods such as garbage
+collection can be overridden if needed. The associated wrapper `<type>` of the derived class `<type>_manager` is
+implemented by calling the class operations through a DD pointer member. Examples can be found in
+[bdd.hpp](include/freddy/dd/bdd.hpp) and [bmd.hpp](include/freddy/dd/bmd.hpp).
 
 To check the functionality, I use [Catch2](https://github.com/catchorg/Catch2). Already existing tests are located in
-the [test](test) directory and should be used as orientation for own DD types, where an executable is created
+the [test](test) directory and should be used as orientation for your own DD types, where an executable is created
 automatically from an existing test file when [building the tests](#white_check_mark-tests). To collect test coverage,
 execute `ctest -T Test -T Coverage` in a terminal window.
 

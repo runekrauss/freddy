@@ -22,12 +22,12 @@ using namespace freddy;
 
 auto static bit_lvl_impl(dd::bmd_manager& mgr)
 {
-    config::ct_size = 127;
-    config::ut_size = 11;
-    config::vl_size = 4;
     config::dead_factor = 0.75f;
     config::growth_factor = 1.25f;
     config::load_factor = 0.7f;
+    config::ct_size = 23;
+    config::ut_size = 11;
+    config::vl_size = 4;
 
     auto const a1 = mgr.var("a1");
     auto const b1 = mgr.var("b1");
@@ -50,12 +50,12 @@ auto static bit_lvl_impl(dd::bmd_manager& mgr)
 
 auto static word_lvl_spec(dd::bmd_manager& mgr)
 {
-    config::ct_size = 127;
-    config::ut_size = 11;
-    config::vl_size = 4;
     config::dead_factor = 0.75f;
     config::growth_factor = 1.25f;
     config::load_factor = 0.7f;
+    config::ct_size = 23;
+    config::ut_size = 11;
+    config::vl_size = 4;
 
     std::vector<dd::bmd> a(2);
     std::vector<dd::bmd> b(2);
@@ -72,6 +72,47 @@ auto static word_lvl_spec(dd::bmd_manager& mgr)
 // Macros
 // *********************************************************************************************************************
 
+TEST_CASE("BMD synthesis is performed", "[mult]")
+{
+    dd::bmd_manager mgr;
+    auto const f = word_lvl_spec(mgr);
+
+    CHECK(f.weight() == 1);
+    CHECK_FALSE(f.high().is_const());
+    CHECK(f.low().low().low().is_zero());
+    CHECK(f.high().low().high().is_one());
+    CHECK(f.high().high().is_two());
+    CHECK(f == ((mgr.two() * mgr.var(0) * (mgr.two() * mgr.var(1) + mgr.var(3))) +
+                (mgr.var(2) * (mgr.two() * mgr.var(1) + mgr.var(3)))));
+    CHECK(f.high() == mgr.two() * (mgr.two() * mgr.var(1) + mgr.var(3)));
+    CHECK(f.low() == mgr.var(2) * (mgr.two() * mgr.var(1) + mgr.var(3)));
+    CHECK_FALSE(f.cof(true, false) == f.cof(false, false, true));
+    CHECK(f.cof(true, false).same_node(f.cof(false, false, true)));
+}
+
+TEST_CASE("BMD can represent Boolean functions", "[mult]")
+{
+    dd::bmd_manager mgr;
+    auto const p = bit_lvl_impl(mgr);
+#ifndef NDEBUG
+    std::cout << mgr << std::endl;
+    for (auto const& g : p)
+    {
+        std::cout << g << std::endl;
+    }
+    mgr.print(p, {"p0", "p1", "p2", "p3"});
+#endif
+    CHECK(p[0].high() == mgr.var(3));
+    CHECK(p[0].low().is_zero());
+    CHECK(p[1].cof(true, true) == mgr.constant(-2) * (mgr.var(2) & mgr.var(3)));
+    CHECK(p[1].cof(true, false) == mgr.var(3));
+    CHECK(p[1].cof(false, true) == mgr.var(2));
+    CHECK(p[2].cof(true, true) == -(mgr.var(2) * mgr.var(3)) + mgr.one());
+    CHECK(p[3].high() == mgr.var(2) * mgr.var(1) * mgr.var(3));
+    CHECK(p[3].low().is_zero());
+    CHECK(p[3].ite(mgr.zero(), mgr.one()) == ~p[3]);
+}
+
 TEST_CASE("BMD character can be investigated", "[mult]")
 {
     dd::bmd_manager mgr;
@@ -79,20 +120,17 @@ TEST_CASE("BMD character can be investigated", "[mult]")
 
     SECTION("Variables are supported")
     {
-#ifndef NDEBUG
-        std::cout << mgr << std::endl;
-        for (auto const& g : p)
-        {
-            std::cout << g << std::endl;
-        }
-        mgr.print(p, {"p0", "p1", "p2", "p3"});
-#endif
         CHECK(mgr.var_count() == 4);
+    }
+
+    SECTION("Number of constants is determined")
+    {
+        CHECK(mgr.const_count() == 1);
     }
 
     SECTION("Number of nodes is determined")
     {
-        CHECK(mgr.node_count() <= 19);
+        CHECK(mgr.node_count() <= 20);
     }
 
     SECTION("Number of edges is determined")
@@ -100,7 +138,7 @@ TEST_CASE("BMD character can be investigated", "[mult]")
         CHECK(mgr.edge_count() <= 36);
     }
 
-    SECTION("Nodes can be counted")
+    SECTION("Nodes are counted")
     {
         CHECK(p[0].size() == 3);
         CHECK(p[1].size() == 7);
@@ -109,15 +147,29 @@ TEST_CASE("BMD character can be investigated", "[mult]")
         CHECK(mgr.size(p) == 12);
     }
 
+    SECTION("Longest path is computed")
+    {
+        CHECK(p[0].depth() == 2);
+        CHECK(mgr.depth(p) == 4);
+    }
+
     SECTION("Number of paths is computed")
     {
         CHECK(p[1].path_count() == 8);
     }
 
-    SECTION("Longest path is computed")
+    SECTION("Assignments are evaluated")
     {
-        CHECK(p[0].depth() == 2);
-        CHECK(mgr.depth(p) == 4);
+        CHECK(p[0].eval({true, false, true, true}) == 1);
+        CHECK(p[0].eval({false, true, true, false}) == 0);
+        CHECK(p[2].eval({true, true, true, true}) == 0);
+        CHECK(p[2].eval({true, true, false, true}) == 1);
+    }
+
+    SECTION("Constant is found")
+    {
+        CHECK(p[0].has_const(1));
+        CHECK_FALSE(p[0].has_const(2));
     }
 
     SECTION("Essential variables are identifiable")
@@ -127,38 +179,6 @@ TEST_CASE("BMD character can be investigated", "[mult]")
         CHECK(p[0].is_essential(2));
         CHECK(p[0].is_essential(3));
     }
-}
-
-TEST_CASE("BMD synthesis is performed", "[mult]")
-{
-    dd::bmd_manager mgr;
-    auto const f = word_lvl_spec(mgr);
-
-    CHECK(f == ((mgr.two() * mgr.var(0) * (mgr.two() * mgr.var(1) + mgr.var(3))) +
-                (mgr.var(2) * (mgr.two() * mgr.var(1) + mgr.var(3)))));
-    CHECK(f.high() == mgr.two() * (mgr.two() * mgr.var(1) + mgr.var(3)));
-    CHECK(f.low() == mgr.var(2) * (mgr.two() * mgr.var(1) + mgr.var(3)));
-    CHECK(f.eval(false, false, false) == 0);
-    CHECK_FALSE(f.cof(true, false) == f.cof(false, false, true));
-    CHECK(f.cof(true, false).equals(f.cof(false, false, true)));
-}
-
-TEST_CASE("BMD can represent Boolean functions", "[mult]")
-{
-    dd::bmd_manager mgr;
-    auto const p = bit_lvl_impl(mgr);
-
-    CHECK(p[0].high() == mgr.var(3));
-    CHECK(p[0].low().is_zero());
-    CHECK(p[1].cof(true, true) == mgr.constant(-2) * (mgr.var(2) & mgr.var(3)));
-    CHECK(p[1].cof(true, false) == mgr.var(3));
-    CHECK(p[1].cof(false, true) == mgr.var(2));
-    CHECK(p[1].eval(false, false) == 0);
-    CHECK(p[2].cof(true, true) == -(mgr.var(2) * mgr.var(3)) + mgr.one());
-    CHECK(p[2].eval(true, false) == 0);
-    CHECK(p[3].high() == mgr.var(2) * mgr.var(1) * mgr.var(3));
-    CHECK(p[3].low().is_zero());
-    CHECK(p[3].ite(mgr.zero(), mgr.one()) == ~p[3]);
 }
 
 TEST_CASE("BMD can interpret bits numerically", "[mult]")
@@ -192,7 +212,7 @@ TEST_CASE("BMD substitution can be made", "[mult]")
 
         CHECK_FALSE(g.is_essential(3));
         CHECK(g.cof(false, false, true) == x4 * x5);
-        CHECK(g.eval(true, false, true, true) == 2);
+        CHECK(g.eval({true, false, false, true, true, true}) == 2);
     }
 
     SECTION("Variable is restricted to constant value")
@@ -233,17 +253,18 @@ TEST_CASE("BMD variable order is changeable", "[mult]")
         CHECK(f.var() == 3);
         CHECK(f.high() == mgr.two() * mgr.var(0) + mgr.var(2));
         CHECK(f.low() == (mgr.two() * mgr.var(0) + mgr.var(2)) * (mgr.two() * mgr.var(1)));
-        CHECK(f.eval(false, false, false) == 0);
+        CHECK(f.eval({true, false, true, true}) == 3);
+        CHECK(f.eval({false, true, true, false}) == 2);
         CHECK_FALSE(f.cof(true, false) == f.cof(false, false, true));
-        CHECK(f.cof(true, false).equals(f.cof(false, false, true)));
+        CHECK(f.cof(true, false).same_node(f.cof(false, false, true)));
     }
 
     SECTION("Variable reordering finds a minimum")
     {
-        auto const nc_old = f.size();
+        auto const ncnt_old = f.size();
         mgr.reorder();
 
-        CHECK(nc_old > f.size());
+        CHECK(ncnt_old > f.size());
         CHECK(f.var() == 0);
         CHECK(f.low().var() == 2);
         CHECK(f.cof(false, true).var() == 1);
