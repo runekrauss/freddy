@@ -388,7 +388,7 @@ class manager
 
         if (f->v->is_const() || f->v->br().x != x)
         {
-            if (vl[x].t == expansion::PD && a)
+            if (vl[x].t == expansion::PD && a)  // dependent on two subtrees: f ^ f = 0
             {
                 return consts[0];
             }
