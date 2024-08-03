@@ -87,8 +87,8 @@ class bdd
         return s;
     }
 
-    [[nodiscard]] auto equals(bdd const& g) const noexcept
-    {  // check if edges point to the same node
+    [[nodiscard]] auto same_node(bdd const& g) const noexcept
+    {
         assert(f);
 
         return (f->v == g.f->v);

@@ -46,46 +46,74 @@ struct entry  // for caching
             op{op},
             f{std::move(f)}
     {
+        assert(op == operation::SAT);
         assert(this->f);
     }
 
     entry(operation const op, edge_ptr f, edge_ptr g) :
-            entry(op, std::move(f))
+            op{op},
+            f{std::move(f)},
+            g{std::move(g)}
     {
-        assert(g);
-
-        this->g = std::move(g);
+        assert(op == operation::ADD || op == operation::AND || op == operation::MUL || op == operation::XOR);
+        assert(this->f);
+        assert(this->g);
     }
 
     entry(operation const op, edge_ptr f, edge_ptr g, edge_ptr h) :
-            entry(op, std::move(f), std::move(g))
+            op{op},
+            f{std::move(f)},
+            g{std::move(g)},
+            h{std::move(h)}
     {
-        assert(h);
-
-        this->h = std::move(h);
+        assert(op == operation::ITE);
+        assert(this->f);
+        assert(this->g);
+        assert(this->h);
     }
 
     entry(operation const op, edge_ptr f, std::int32_t const x, edge_ptr g) :
-            entry(op, std::move(f), std::move(g))
+            op{op},
+            f{std::move(f)},
+            g{std::move(g)},
+            x{x}
     {
+        assert(op == operation::COMPOSE);
+        assert(this->f);
         assert(x >= 0);
-
-        this->x = x;
+        assert(this->g);
     }
 
     entry(operation const op, edge_ptr f, std::int32_t const x, bool const a) :
-            entry(op, std::move(f))
+            op{op},
+            f{std::move(f)},
+            x{x},
+            a{a}
     {
+        assert(op == operation::RESTR);
+        assert(this->f);
         assert(x >= 0);
-
-        this->x = x;
-        this->a = a;
     }
 
     auto friend operator==(entry const& lhs, entry const& rhs)
     {
-        return (lhs.op == rhs.op && lhs.f == rhs.f && lhs.g == rhs.g && lhs.h == rhs.h && lhs.x == rhs.x &&
-                lhs.a == rhs.a);
+        if (lhs.op != rhs.op)
+        {
+            return false;
+        }
+
+        bool r{};
+        switch (lhs.op)
+        {
+            case operation::ADD:  // commutativity check
+            case operation::AND:
+            case operation::MUL:
+            case operation::XOR: r = (lhs.f == rhs.f && lhs.g == rhs.g) || (lhs.f == rhs.g && lhs.g == rhs.f); break;
+            default:
+                r = lhs.op == rhs.op && lhs.f == rhs.f && lhs.g == rhs.g && lhs.h == rhs.h && lhs.x == rhs.x &&
+                    lhs.a == rhs.a;
+        }
+        return r;
     }
 
     auto friend operator<<(std::ostream& s, entry const& o) -> std::ostream&

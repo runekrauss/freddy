@@ -114,7 +114,7 @@ class bmd
         return s;
     }
 
-    [[nodiscard]] auto equals(bmd const& g) const noexcept
+    [[nodiscard]] auto same_node(bmd const& g) const noexcept
     {
         assert(f);
 

@@ -114,8 +114,8 @@ TEST_CASE("BDD synthesis is performed", "[queen]")
     CHECK(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true, false, true) ==
           ~(mgr.var(14) | mgr.var(15)));
     CHECK(pred.cof(false, true, false, false, false, false, false, true, true, false, false, false, false, false, true)
-              .equals(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true, false,
-                               true, false)));
+              .same_node(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true,
+                                  false, true, false)));
     CHECK((pred & mgr.var(1)) == pred.ite(mgr.var(1), mgr.zero()));
     CHECK((pred | mgr.var(1)) == pred.ite(mgr.one(), mgr.var(1)));
     CHECK((pred ^ mgr.var(1)) == pred.ite(~mgr.var(1), mgr.var(1)));
@@ -267,7 +267,7 @@ TEST_CASE("BDD variable order is changeable", "[queen]")
                        false)
                   .var() == 15);
         CHECK(pred.cof(false, true, true, false, false, true, true, false)
-                  .equals(pred.cof(true, false, false, true, true, false, false, true)));
+                  .same_node(pred.cof(true, false, false, true, true, false, false, true)));
         CHECK(pred.eval({false, true, false, false, false, false, false, true, true, false, false, false, false, false,
                          true, false}));
         CHECK_FALSE(pred.eval({false, true, false, false, false, false, false, true, true, false, false, false, false,

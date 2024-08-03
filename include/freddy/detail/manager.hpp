@@ -246,7 +246,7 @@ class manager
     }
 
     template <typename T>
-    requires std::same_as<T, bool>
+        requires std::same_as<T, bool>
     auto subfunc(edge_ptr const& f, T const a)
     {
         assert(f);
@@ -256,7 +256,7 @@ class manager
     }
 
     template <typename T, typename... Ts>
-    requires std::same_as<T, bool>
+        requires std::same_as<T, bool>
     auto subfunc(edge_ptr const& f, T const a, Ts... args)
     {
         assert(f);
@@ -386,9 +386,15 @@ class manager
         assert(x < var_count());
         assert(!consts.empty());
 
-        return ((f->v->is_const() || f->v->br().x != x)
-                    ? ((vl[x].t == expansion::PD && a) ? consts[0] : f)
-                    : (a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo)));
+        if (f->v->is_const() || f->v->br().x != x)
+        {
+            if (vl[x].t == expansion::PD && a)
+            {
+                return consts[0];
+            }
+            return f;
+        }
+        return (a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo));
     }
 
     auto restr(edge_ptr const& f, std::int32_t const x, bool const a)
@@ -603,14 +609,13 @@ class manager
         }
 
         V r{};
-        switch (vl[v->br().x].t)
+        auto const br = v->br();
+        switch (vl[br.x].t)
         {
-            case expansion::PD:
-                r = as[v->br().x] ? merge(eval(v->br().hi, as), eval(v->br().lo, as)) : eval(v->br().lo, as);
-                break;
+            case expansion::PD: r = as[br.x] ? merge(eval(br.hi, as), eval(br.lo, as)) : eval(br.lo, as); break;
             case expansion::S:
             {
-                r = as[v->br().x] ? eval(v->br().hi, as) : eval(v->br().lo, as);
+                r = as[br.x] ? eval(br.hi, as) : eval(br.lo, as);
                 break;
             }
             default: assert(false);
@@ -655,10 +660,11 @@ class manager
                 auto v = *it;
                 it = vl[x].nt.erase(it);
 
-                auto const hi = make_branch(x, cof(v->br().hi, y, true), cof(v->br().lo, y, true));
-                v->br().lo = make_branch(x, cof(v->br().hi, y, false), cof(v->br().lo, y, false));
-                v->br().hi = hi;
-                v->br().x = y;
+                auto& br = v->br();
+                auto const hi = make_branch(x, cof(br.hi, y, true), cof(br.lo, y, true));
+                br.lo = make_branch(x, cof(br.hi, y, false), cof(br.lo, y, false));
+                br.hi = hi;
+                br.x = y;
 
                 foa(v);
             }

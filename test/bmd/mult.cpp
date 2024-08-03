@@ -87,7 +87,7 @@ TEST_CASE("BMD synthesis is performed", "[mult]")
     CHECK(f.high() == mgr.two() * (mgr.two() * mgr.var(1) + mgr.var(3)));
     CHECK(f.low() == mgr.var(2) * (mgr.two() * mgr.var(1) + mgr.var(3)));
     CHECK_FALSE(f.cof(true, false) == f.cof(false, false, true));
-    CHECK(f.cof(true, false).equals(f.cof(false, false, true)));
+    CHECK(f.cof(true, false).same_node(f.cof(false, false, true)));
 }
 
 TEST_CASE("BMD can represent Boolean functions", "[mult]")
@@ -256,7 +256,7 @@ TEST_CASE("BMD variable order is changeable", "[mult]")
         CHECK(f.eval({true, false, true, true}) == 3);
         CHECK(f.eval({false, true, true, false}) == 2);
         CHECK_FALSE(f.cof(true, false) == f.cof(false, false, true));
-        CHECK(f.cof(true, false).equals(f.cof(false, false, true)));
+        CHECK(f.cof(true, false).same_node(f.cof(false, false, true)));
     }
 
     SECTION("Variable reordering finds a minimum")
