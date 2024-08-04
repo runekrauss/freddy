@@ -21,12 +21,12 @@ using namespace freddy;
 
 auto static enc(dd::bdd_manager& mgr)
 {
-    config::ct_size = 1013;
-    config::ut_size = 101;
-    config::vl_size = 16;
     config::dead_factor = 0.75f;
     config::growth_factor = 1.25f;
     config::load_factor = 0.7f;
+    config::ct_size = 1013;
+    config::ut_size = 101;
+    config::vl_size = 16;
 
     auto constexpr n = 4;  // number of queens
 
@@ -95,6 +95,32 @@ auto static enc(dd::bdd_manager& mgr)
 // Macros
 // *********************************************************************************************************************
 
+TEST_CASE("BDD synthesis is performed", "[queen]")
+{
+    dd::bdd_manager mgr;
+    auto const pred = enc(mgr);
+#ifndef NDEBUG
+    std::cout << mgr << std::endl;
+    std::cout << pred << std::endl;
+    pred.print();
+#endif
+    CHECK_FALSE(pred.high().is_complemented());
+    CHECK(pred.high().is_const());
+    CHECK(pred.high().is_zero());
+    CHECK((~pred.high()).is_one());
+    CHECK_FALSE(pred.low().is_const());
+    CHECK(pred.cof(false, true, false, false, false, false, false, true, true, false, false, false, false, false) ==
+          (mgr.var(14) & ~mgr.var(15)));
+    CHECK(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true, false, true) ==
+          ~(mgr.var(14) | mgr.var(15)));
+    CHECK(pred.cof(false, true, false, false, false, false, false, true, true, false, false, false, false, false, true)
+              .same_node(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true,
+                                  false, true, false)));
+    CHECK((pred & mgr.var(1)) == pred.ite(mgr.var(1), mgr.zero()));
+    CHECK((pred | mgr.var(1)) == pred.ite(mgr.one(), mgr.var(1)));
+    CHECK((pred ^ mgr.var(1)) == pred.ite(~mgr.var(1), mgr.var(1)));
+}
+
 TEST_CASE("BDD character can be investigated", "[queen]")
 {
     dd::bdd_manager mgr;
@@ -102,12 +128,12 @@ TEST_CASE("BDD character can be investigated", "[queen]")
 
     SECTION("Variables are supported")
     {
-#ifndef NDEBUG
-        std::cout << mgr << std::endl;
-        std::cout << pred << std::endl;
-        pred.print();
-#endif
         CHECK(mgr.var_count() == 16);
+    }
+
+    SECTION("Number of constants is determined")
+    {
+        CHECK(mgr.const_count() == 1);
     }
 
     SECTION("Number of nodes is determined")
@@ -120,9 +146,14 @@ TEST_CASE("BDD character can be investigated", "[queen]")
         CHECK(mgr.edge_count() <= 688);
     }
 
-    SECTION("Nodes can be counted")
+    SECTION("Nodes are counted")
     {
         CHECK(pred.size() == 30);
+    }
+
+    SECTION("Longest path is computed")
+    {
+        CHECK(pred.depth() == 16);
     }
 
     SECTION("Number of paths is computed")
@@ -130,9 +161,18 @@ TEST_CASE("BDD character can be investigated", "[queen]")
         CHECK(pred.path_count() == 31);
     }
 
-    SECTION("Longest path is computed")
+    SECTION("Assignments are evaluated")
     {
-        CHECK(pred.depth() == 16);
+        CHECK(pred.eval({false, true, false, false, false, false, false, true, true, false, false, false, false, false,
+                         true, false}));
+        CHECK_FALSE(pred.eval({false, true, false, false, false, false, false, true, true, false, false, false, false,
+                               false, true, true}));
+    }
+
+    SECTION("Constant is found")
+    {
+        CHECK(pred.has_const(false));
+        CHECK_FALSE(pred.has_const(true));
     }
 
     SECTION("Essential variables are identifiable")
@@ -141,34 +181,6 @@ TEST_CASE("BDD character can be investigated", "[queen]")
         CHECK(pred.is_essential(1));
         CHECK(pred.is_essential(15));
     }
-}
-
-TEST_CASE("BDD synthesis is performed", "[queen]")
-{
-    dd::bdd_manager mgr;
-    auto const pred = enc(mgr);
-
-    CHECK(pred.high().is_const());
-    CHECK(pred.high().is_zero());
-    CHECK(!pred.high().is_complemented());
-    CHECK((~pred.high()).is_one());
-    CHECK(pred.cof(false, true, false, false, false, false, false, true, true, false, false, false, false, false) ==
-          (mgr.var(14) & ~mgr.var(15)));
-    CHECK(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true, false, true) ==
-          ~(mgr.var(14) | mgr.var(15)));
-    CHECK(pred.eval(false, true, false, false, false, false, false, true, true, false, false, false, false, false, true,
-                    true) == 0);
-    CHECK(pred.eval(false, true, false, false, false, false, false, true, true, false, false, false, false, false, true,
-                    false) == 1);
-    CHECK(pred.eval(false, true, false, false, false, false, false, true, true, false, false, false, false, false,
-                    true) == pred.eval(false, false, true, false, true, false, false, false, false, false, false, true,
-                                       false, true, false));
-    CHECK(pred.cof(false, true, false, false, false, false, false, true, true, false, false, false, false, false, true)
-              .equals(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true, false,
-                               true, false)));
-    CHECK((pred & mgr.var(1)) == pred.ite(mgr.var(1), mgr.zero()));
-    CHECK((pred | mgr.var(1)) == pred.ite(mgr.one(), mgr.var(1)));
-    CHECK((pred ^ mgr.var(1)) == pred.ite(~mgr.var(1), mgr.var(1)));
 }
 
 TEST_CASE("BDD substitution can be made", "[queen]")
@@ -224,16 +236,16 @@ TEST_CASE("BDD variable order is changeable", "[queen]")
               (mgr.var(14) & ~mgr.var(0)));
         CHECK(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true, false, true) ==
               ~(mgr.var(14) | mgr.var(0)));
-        CHECK(pred.eval(false, true, false, false, false, false, false, true, true, false, false, false, false, false,
-                        true, false) == 1);
+        CHECK(pred.eval({false, true, false, false, false, false, false, true, true, false, false, false, false, false,
+                         true, false}));
     }
 
     SECTION("Variable reordering finds a minimum")
     {
-        auto const nc_old = pred.size();
+        auto const ncnt_old = pred.size();
         mgr.reorder();
 
-        CHECK(nc_old > pred.size());
+        CHECK(ncnt_old > pred.size());
         CHECK(pred.var() == 1);
         CHECK(pred.low().var() == 2);
         CHECK(pred.cof(false, true).var() == 4);
@@ -255,11 +267,11 @@ TEST_CASE("BDD variable order is changeable", "[queen]")
                        false)
                   .var() == 15);
         CHECK(pred.cof(false, true, true, false, false, true, true, false)
-                  .equals(pred.cof(true, false, false, true, true, false, false, true)));
-        CHECK(pred.eval(false, true, true, false, false, true, true, false, false, false, false, false, false, false,
-                        false) == 1);
-        CHECK(pred.eval(false, true, true, false, false, true, true, false, false, false, false, false, false, false,
-                        true) == 0);
+                  .same_node(pred.cof(true, false, false, true, true, false, false, true)));
+        CHECK(pred.eval({false, true, false, false, false, false, false, true, true, false, false, false, false, false,
+                         true, false}));
+        CHECK_FALSE(pred.eval({false, true, false, false, false, false, false, true, true, false, false, false, false,
+                               false, true, true}));
     }
 }
 
