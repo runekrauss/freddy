@@ -52,8 +52,6 @@ class bhd
 
     auto operator|=(bhd const&) -> bhd&;
 
-    auto operator^=(bhd const&) -> bhd&;
-
     auto friend operator&(bhd lhs, bhd const& rhs)
     {
         lhs &= rhs;
@@ -63,12 +61,6 @@ class bhd
     auto friend operator|(bhd lhs, bhd const& rhs)
     {
         lhs |= rhs;
-        return lhs;
-    }
-
-    auto friend operator^(bhd lhs, bhd const& rhs)
-    {
-        lhs ^= rhs;
         return lhs;
     }
 
@@ -116,6 +108,8 @@ class bhd
 
     [[nodiscard]] auto is_one() const noexcept;
 
+    [[nodiscard]] auto is_exp() const noexcept;
+
     [[nodiscard]] auto var() const
     {
         assert(!is_const());
@@ -141,18 +135,6 @@ class bhd
     [[nodiscard]] auto has_const(bool) const;
 
     [[nodiscard]] auto is_essential(std::int32_t) const;
-
-    [[nodiscard]] auto ite(bhd const&, bhd const&) const;
-
-    [[nodiscard]] auto compose(std::int32_t, bhd const&) const;
-
-    [[nodiscard]] auto restr(std::int32_t, bool) const;
-
-    [[nodiscard]] auto exist(std::int32_t) const;
-
-    [[nodiscard]] auto forall(std::int32_t) const;
-
-    [[nodiscard]] auto satcount() const;
 
     auto print() const;
 
@@ -213,7 +195,11 @@ class bhd_manager : public detail::manager<bool, bool>
         return bhd{consts[1], this};
     }
 
-    auto exp(){
+    auto expZero(){
+        return bhd{consts[2], this};
+    }
+
+    auto expOne(){
         return bhd{consts[2], this};
     }
 
@@ -316,171 +302,8 @@ class bhd_manager : public detail::manager<bool, bool>
 
     using bool_node = detail::node<bool, bool>;
 
-    auto satcount(edge_ptr const& f) -> double
+    auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
-        std::cout << "satcount WIRD BENUTZT\n";
-
-        assert(f);
-
-        if (f->v->is_const())
-        {
-            return (f == consts[0]) ? 0 : std::pow(2, var_count());
-        }
-
-        auto const cr = ct.find({operation::SAT, f});
-        if (cr != ct.end())
-        {
-            return cr->second.second;
-        }
-
-        auto count = (satcount(f->v->br().hi) + satcount(f->v->br().lo)) / 2;
-        if (f->w)
-        {  // complemented edge
-            count = std::pow(2, var_count()) - count;
-        }
-
-        ct.insert_or_assign({operation::SAT, f}, std::make_pair(edge_ptr{}, count));
-
-        return count;
-    }
-
-    auto simplify(edge_ptr const& f, edge_ptr& g, edge_ptr& h) const noexcept
-    {
-        std::cout << "simplify WIRD BENUTZT\n";
-
-        assert(f);
-        assert(g);
-        assert(h);
-
-        if (f == g)
-        {  // ite(f, f, h) => ite(f, 1, h)
-            g = consts[1];
-            return 1;
-        }
-        if (f == h)
-        {  // ite(f, g, f) => ite(f, g, 0)
-            h = consts[0];
-            return 2;
-        }
-        if (f->v == h->v && !(f->w == h->w))
-        {  // ite(f, g, ~f) => ite(f, g, 1)
-            h = consts[1];
-            return 3;
-        }
-        if (f->v == g->v && !(f->w == g->w))
-        {  // ite(f, ~f, h) => ite(f, 0, h)
-            g = consts[0];
-            return 4;
-        }
-        return 0;
-    }
-
-    auto std_triple(std::int32_t const simpl, edge_ptr& f, edge_ptr& g, edge_ptr& h)
-    {
-        std::cout << "std_triple WIRD BENUTZT\n";
-
-        assert(f);
-        assert(!f->v->is_const());
-        assert(g);
-        assert(h);
-
-        switch (simpl)
-        {
-            case 1:
-                assert(!h->v->is_const());
-
-                if (var2lvl[f->v->br().x] >= var2lvl[h->v->br().x])
-                {  // ite(f, 1, h) == ite(h, 1, f)
-                    std::swap(f, h);
-                }
-                break;
-            case 2:
-                assert(!g->v->is_const());
-
-                if (var2lvl[f->v->br().x] >= var2lvl[g->v->br().x])
-                {  // ite(f, g, 0) == ite(g, f, 0)
-                    std::swap(f, g);
-                }
-                break;
-            case 3:
-                assert(!g->v->is_const());
-
-                if (var2lvl[f->v->br().x] >= var2lvl[g->v->br().x])
-                {  // ite(f, g, 1) == ite(~g, ~f, 1)
-                    f = complement(g);
-                    g = complement(f);
-                }
-                break;
-            case 4:
-                assert(!h->v->is_const());
-
-                if (var2lvl[f->v->br().x] >= var2lvl[h->v->br().x])
-                {  // ite(f, 0, h) == ite(~h, 0, ~f)
-                    f = complement(h);
-                    h = complement(f);
-                }
-                break;
-            default: assert(false);
-        }
-    }
-
-    auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr override
-    {
-        std::cout << "ite WIRD BENUTZT\n";
-
-        assert(f);
-        assert(g);
-        assert(h);
-
-        auto const ret = simplify(f, g, h);
-
-        // terminal cases
-        if (f == consts[0])
-        {
-            return h;
-        }
-        if (f == consts[1])
-        {
-            return g;
-        }
-        if (g == h)
-        {
-            return g;
-        }
-        if (h == consts[0] && g == consts[1])
-        {
-            return f;
-        }
-        if (g == consts[0] && h == consts[1])
-        {
-            return complement(f);
-        }
-
-        if (ret != 0)
-        {
-            std_triple(ret, f, g, h);
-        }
-
-        auto const cr = ct.find({operation::ITE, f, g, h});
-        if (cr != ct.end())
-        {
-            return cr->second.first.lock();
-        }
-
-        auto const x = (f->v->br().x == top_var(f, g)) ? top_var(f, h) : top_var(g, h);
-        auto r = make_branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
-                             ite(cof(f, x, false), cof(g, x, false), cof(h, x, false)));
-
-        ct.insert_or_assign({operation::ITE, f, g, h}, std::make_pair(r, 0.0));
-
-        return r;
-    }
-
-    auto antiv(edge_ptr const& f, edge_ptr const& g)
-    {
-        std::cout << "antiv WIRD BENUTZT\n";
-
-
         assert(f);
         assert(g);
 
@@ -516,21 +339,11 @@ class bhd_manager : public detail::manager<bool, bool>
         }
 
         auto const x = top_var(f, g);
-        auto r = make_branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false)));
+        auto r = make_branch(x, add(cof(f, x, true), cof(g, x, true)), add(cof(f, x, false), cof(g, x, false)));
 
         ct.insert_or_assign({operation::XOR, f, g}, std::make_pair(r, 0.0));
 
         return r;
-    }
-
-    auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
-    {
-        std::cout << "add WIRD BENUTZT\n";
-
-        assert(f);
-        assert(g);
-
-        return antiv(f, g);
     }
 
     [[nodiscard]] auto agg(bool const& w, bool const& val) const noexcept -> bool override
@@ -582,6 +395,7 @@ class bhd_manager : public detail::manager<bool, bool>
             if (f->w == g->w){
                 return f;
             }
+
             if (has_const(f, true)){
                 return consts[2];
             }
@@ -900,15 +714,6 @@ auto inline bhd::operator|=(bhd const& rhs) -> bhd&
     return *this;
 }
 
-auto inline bhd::operator^=(bhd const& rhs) -> bhd&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->antiv(f, rhs.f);
-    return *this;
-}
-
 auto inline bhd::is_zero() const noexcept
 {
     assert(mgr);
@@ -922,6 +727,14 @@ auto inline bhd::is_one() const noexcept
 
     return (*this == mgr->one());
 }
+
+auto inline bhd::is_exp() const noexcept
+{
+    assert(mgr);
+
+    return (*this == mgr->expZero() || *this == mgr->expOne());
+}
+
 
 auto inline bhd::high(bool const weighting) const
 {
@@ -986,51 +799,6 @@ auto inline bhd::is_essential(std::int32_t const x) const
     assert(mgr);
 
     return mgr->is_essential(f, x);
-}
-
-auto inline bhd::ite(bhd const& g, bhd const& h) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-    assert(g.mgr == h.mgr);  // transitive property
-
-    return bhd{mgr->ite(f, g.f, h.f), mgr};
-}
-
-auto inline bhd::compose(std::int32_t const x, bhd const& g) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-
-    return bhd{mgr->compose(f, x, g.f), mgr};
-}
-
-auto inline bhd::restr(std::int32_t const x, bool const a) const
-{
-    assert(mgr);
-
-    return bhd{mgr->restr(f, x, a), mgr};
-}
-
-auto inline bhd::exist(std::int32_t const x) const
-{
-    assert(mgr);
-
-    return bhd{mgr->exist(f, x), mgr};
-}
-
-auto inline bhd::forall(std::int32_t const x) const
-{
-    assert(mgr);
-
-    return bhd{mgr->forall(f, x), mgr};
-}
-
-auto inline bhd::satcount() const
-{
-    assert(mgr);
-
-    return mgr->satcount(f);
 }
 
 auto inline bhd::print() const
