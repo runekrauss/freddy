@@ -223,8 +223,16 @@ class bhd_manager : public detail::manager<bool, bool>
         to_dot(transform(fs), outputs, s);
     }
 
-    void createExpansionFiles(edge_ptr const& f){
 
+
+  private:
+
+    int heuristic;
+    int heuristicAtt;
+
+    int expCount = 0;
+
+    void createExpansionFiles(edge_ptr const& f){
         for (const auto& entry : std::filesystem::directory_iterator("ExpansionNodes")) {
             if (std::filesystem::is_regular_file(entry)) {
                 std::filesystem::remove(entry);
@@ -234,13 +242,6 @@ class bhd_manager : public detail::manager<bool, bool>
         std::vector<std::pair<std::int32_t, bool>> v;
         searchExpansionNodes(f, v, false);
     }
-
-  private:
-
-    int heuristic;
-    int heuristicAtt;
-
-    int expCount = 0;
 
     void searchExpansionNodes(edge_ptr const& f, std::vector<std::pair<std::int32_t, bool>> path, bool goingTrue){
 
