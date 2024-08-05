@@ -2,6 +2,7 @@
 
 !*/
 build
+_deps
 
 !.github/workflows/*.yml
 !include/freddy/**/*.hpp
