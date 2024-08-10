@@ -20,7 +20,8 @@ enum class operation
     MUL,      // multiplication
     RESTR,    // variable substitution
     SAT,      // satisfiability
-    XOR       // antivalence
+    XOR,      // antivalence
+    MISC      // individual usage
 };
 
 }  // namespace freddy

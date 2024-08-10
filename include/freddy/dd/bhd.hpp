@@ -585,7 +585,15 @@ class bhd_manager : public detail::manager<bool, bool>
         }
 
 
+        auto const cr = ct.find({operation::MISC, f, goesTrue});
 
+        if (cr != ct.end())
+        {
+            return cr->second.first.lock();
+        }
+
+
+        edge_ptr r;
         if (f->w == false) {
             auto hi = replaceOnesWithExp(f->v->br().hi, goesTrue, ex);
             auto lo = replaceOnesWithExp(f->v->br().lo, goesTrue, ex);
@@ -600,7 +608,7 @@ class bhd_manager : public detail::manager<bool, bool>
                 (w == 0) ? w = 1 : w = 0;
             }
 
-            return foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(f->v->br().x, hi, lo))));
+            r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(f->v->br().x, hi, lo))));
 
         }
         else{
@@ -617,9 +625,13 @@ class bhd_manager : public detail::manager<bool, bool>
                 (w == 0) ? w = 1 : w = 0;
             }
 
-            return foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(f->v->br().x, hi, lo))));
+            r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(f->v->br().x, hi, lo))));
 
         }
+
+        ct.insert_or_assign({operation::MISC, r, goesTrue}, std::make_pair(r, 0.0));
+
+        return r;
     }
 
 

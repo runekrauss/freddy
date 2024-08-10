@@ -50,6 +50,15 @@ struct entry  // for caching
         assert(this->f);
     }
 
+    entry(operation const op, edge_ptr f, bool const a) :
+            op{op},
+            f{std::move(f)},
+            a{a}
+    {
+        assert(op == operation::MISC);
+        assert(this->f);
+    }
+
     entry(operation const op, edge_ptr f, edge_ptr g) :
             op{op},
             f{std::move(f)},
