@@ -629,7 +629,7 @@ class bhd_manager : public detail::manager<bool, bool>
 
         }
 
-        ct.insert_or_assign({operation::MISC, r, goesTrue}, std::make_pair(r, 0.0));
+        ct.insert_or_assign({operation::MISC, f, goesTrue}, std::make_pair(r, 0.0));
 
         return r;
     }
