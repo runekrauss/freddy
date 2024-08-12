@@ -168,9 +168,28 @@ class bhd_manager : public detail::manager<bool, bool>
         consts.push_back(make_const(false, true)); // tmls[2] == Exp weight 0
         consts.push_back(make_const(true, true));  // tmls[3] == Exp weight 1
 
-        heuristic = h1;
         heuristicAtt = h2;
+		switch(h1)
+        {
+            case 0: heur = [this](edge_ptr f, edge_ptr g, std::int32_t x){
+          		return heuristicNoExp(f, g, x);
+        		}; break;
+            case 1: heur = [this](edge_ptr f, edge_ptr g, std::int32_t x){
+            	return heuristicMemory(f, g, x);
+        		}; break;
+            case 2: heur = [this](edge_ptr f, edge_ptr g, std::int32_t x){
+            	return heuristicNodePathCount(f, g, x);
+        		}; break;
+            case 3: heur = [this](edge_ptr f, edge_ptr g, std::int32_t x){
+            	return heuristicLayer(f, g, x);
+        		}; break;
+            case 4: heur = [this](edge_ptr f, edge_ptr g, std::int32_t x){
+            	return heuristicRandom(f, g, x);
+        		}; break;
+        }
     }
+
+
 
     auto var(std::string_view l = {})
     {
@@ -227,8 +246,8 @@ class bhd_manager : public detail::manager<bool, bool>
 
   private:
 
-    int heuristic;
     int heuristicAtt;
+    std::function<edge_ptr(edge_ptr,edge_ptr,std::int32_t)> heur;
 
     int expCount = 0;
 
@@ -349,8 +368,6 @@ class bhd_manager : public detail::manager<bool, bool>
 
     [[nodiscard]] auto agg(bool const& w, bool const& val) const noexcept -> bool override
     {
-        std::cout << "agg WIRD BENUTZT\n";
-
         return !(w == val);  // XOR
     }
 
@@ -413,28 +430,11 @@ class bhd_manager : public detail::manager<bool, bool>
 
         auto const x = top_var(f, g);
 
-
-        auto r = doHeuristic(f, g, x);
-
-
+        auto r = heur(f, g, x);
 
         ct.insert_or_assign({operation::AND, f, g}, std::make_pair(r, 0.0));
 
         return r;
-    }
-
-    edge_ptr doHeuristic(edge_ptr f, edge_ptr g, std::int32_t x)
-    {
-        switch(heuristic)
-        {
-            case 0: return heuristicNoExp(f, g, x);
-            case 1: return heuristicMemory(f, g, x);
-            case 2: return heuristicNodePathCount(f, g, x);
-            case 3: return heuristicLayer(f, g, x);
-            case 4: return heuristicRandom(f, g, x);
-        }
-
-        return f;
     }
 
     edge_ptr heuristicNoExp(edge_ptr f, edge_ptr g, std::int32_t x)
@@ -490,7 +490,6 @@ class bhd_manager : public detail::manager<bool, bool>
 
     edge_ptr heuristicLayer(edge_ptr f, edge_ptr g, std::int32_t x)
     {
-
         if (f->v->is_const() || f->v->br().x < heuristicAtt){
             if (g->v->is_const() || g->v->br().x < heuristicAtt){
                 edge_ptr conj2 = skipLowerVarsConj(f, g, x, false);
@@ -531,7 +530,7 @@ class bhd_manager : public detail::manager<bool, bool>
             edge_ptr conj = skipLowerVarsConj(f, g, x, true);
             return make_branch(x, conj, consts[2]);
 
-            // hi becomes extension
+        // hi becomes extension
         } else {
             edge_ptr conj = skipLowerVarsConj(f, g, x, false);
             return make_branch(x, consts[2], conj);
@@ -555,7 +554,7 @@ class bhd_manager : public detail::manager<bool, bool>
         }
     }
 
-    edge_ptr replaceOnesWithExp(edge_ptr f, bool goesTrue, edge_ptr ex) {
+    edge_ptr replaceOnesWithExp(edge_ptr const& f, bool goesTrue, edge_ptr const& ex) {
         assert(f);
         assert(ex);
 
@@ -584,56 +583,40 @@ class bhd_manager : public detail::manager<bool, bool>
             }
         }
 
-
         auto const cr = ct.find({operation::MISC, f, goesTrue});
-
         if (cr != ct.end())
         {
             return cr->second.first.lock();
         }
 
-
+		edge_ptr hi;
+		edge_ptr lo;
         edge_ptr r;
         if (f->w == false) {
-            auto hi = replaceOnesWithExp(f->v->br().hi, goesTrue, ex);
-            auto lo = replaceOnesWithExp(f->v->br().lo, goesTrue, ex);
-            auto w = lo->w;
-
-            if (w == 1){
-                hi = complement(hi);
-                lo = complement(lo);
-            }
-
-            if (f->w == 1){
-                (w == 0) ? w = 1 : w = 0;
-            }
-
-            r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(f->v->br().x, hi, lo))));
-
+            hi = replaceOnesWithExp(f->v->br().hi, goesTrue, ex);
+            lo = replaceOnesWithExp(f->v->br().lo, goesTrue, ex);
         }
         else{
-            auto hi = replaceOnesWithExp(f->v->br().hi, !goesTrue, ex);
-            auto lo = replaceOnesWithExp(f->v->br().lo, !goesTrue, ex);
-            auto w = lo->w;
-
-            if (w == 1){
-                hi = complement(hi);
-                lo = complement(lo);
-            }
-
-            if (f->w == 1){
-                (w == 0) ? w = 1 : w = 0;
-            }
-
-            r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(f->v->br().x, hi, lo))));
-
+            hi = replaceOnesWithExp(f->v->br().hi, !goesTrue, ex);
+            lo = replaceOnesWithExp(f->v->br().lo, !goesTrue, ex);
         }
+
+		auto w = lo->w;
+        if (w == 1){
+            hi = complement(hi);
+            lo = complement(lo);
+        }
+
+        if (f->w == 1){
+            (w == 0) ? w = 1 : w = 0;
+        }
+
+        r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(f->v->br().x, hi, lo))));
 
         ct.insert_or_assign({operation::MISC, f, goesTrue}, std::make_pair(r, 0.0));
 
         return r;
     }
-
 
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -663,15 +646,11 @@ class bhd_manager : public detail::manager<bool, bool>
 
     [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
     {
-        std::cout << "merge WIRD BENUTZT\n";
-
         return !(val1 == val2);
     }
 
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
-        std::cout << "mul WIRD BENUTZT\n";
-
         assert(f);
         assert(g);
 
