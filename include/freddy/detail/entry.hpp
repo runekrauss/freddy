@@ -36,7 +36,7 @@ struct entry  // for caching
     {
         auto operator()(entry const& o) const -> std::size_t
         {
-            return (std::hash<std::int32_t>()(static_cast<std::underlying_type<operation>::type>(o.op)) ^
+            return (std::hash<std::int32_t>()(static_cast<std::underlying_type_t<operation>>(o.op)) ^
                     std::hash<edge_ptr>()(o.f) ^ std::hash<edge_ptr>()(o.g) ^ std::hash<edge_ptr>()(o.h) ^
                     std::hash<std::int32_t>()(o.x) ^ std::hash<std::optional<bool>>()(o.a));
         }

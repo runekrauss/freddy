@@ -14,7 +14,8 @@ namespace freddy
 enum class expansion
 {
     PD,  // positive Davio
-    S    // Shannon
+    ND,  // negative Davio
+    S,   // Shannon
 };
 
 }  // namespace freddy

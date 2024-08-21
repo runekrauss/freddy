@@ -246,7 +246,7 @@ class manager
     }
 
     template <typename T>
-    requires std::same_as<T, bool>
+        requires std::same_as<T, bool>
     auto subfunc(edge_ptr const& f, T const a)
     {
         assert(f);
@@ -256,7 +256,7 @@ class manager
     }
 
     template <typename T, typename... Ts>
-    requires std::same_as<T, bool>
+        requires std::same_as<T, bool>
     auto subfunc(edge_ptr const& f, T const a, Ts... args)
     {
         assert(f);
@@ -580,6 +580,8 @@ class manager
     std::unordered_map<entry<E, V>, std::pair<std::weak_ptr<edge<E, V>>, double>, typename entry<E, V>::hash> ct;
 
     std::vector<std::int32_t> var2lvl;  // for reordering
+
+    std::vector<variable<E, V>> vl;
   private:
     template <typename T>
     auto ctrl(T& ut) -> void
@@ -832,7 +834,6 @@ class manager
 
     std::unordered_set<node_ptr, hash, comp> nc;  // constants
 
-    std::vector<variable<E, V>> vl;
 };
 
 }  // namespace freddy::detail
