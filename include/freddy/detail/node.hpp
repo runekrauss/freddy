@@ -55,9 +55,9 @@ class node
 
     auto operator()() const
     {
-        return (is_const() ? std::hash<V>()(c())
-                           : std::hash<std::int32_t>()(br().x) ^ std::hash<edge_ptr>()(br().hi) ^
-                                 std::hash<edge_ptr>()(br().lo));
+        return is_const() ? std::hash<V>()(c())
+                          : std::hash<std::int32_t>()(br().x) ^ std::hash<edge_ptr>()(br().hi) ^
+                                std::hash<edge_ptr>()(br().lo);
     }
 
     auto friend operator==(node const& lhs, node const& rhs)

@@ -4,57 +4,60 @@
 // Includes
 // *********************************************************************************************************************
 
+#include "freddy/detail/operation.hpp"  // detail::operation
+
 #include <cassert>     // assert
 #include <functional>  // std::hash
 #include <memory>      // std::shared_ptr
-#include <ostream>     // std::ostream
 #include <utility>     // std::move
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::detail
+namespace freddy::op
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename, typename>
-class node;
-
 template <typename E, typename V>
-struct edge
+class mul : public detail::operation  // multiplication
 {
-    using node_ptr = std::shared_ptr<node<E, V>>;
+  public:
+    using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    edge(E w, node_ptr v) :
-            w{std::move(w)},
-            v{std::move(v)}
+    mul(edge_ptr f, edge_ptr g) :  // for finding a cache result based on factors
+            f{std::move(f)},
+            g{std::move(g)}
     {
-        assert(this->v);
+        assert(this->f);
+        assert(this->g);
     }
 
-    auto operator()() const
+    edge_ptr r;  // product result
+  private:
+    [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<E>()(w) ^ std::hash<node_ptr>()(v);
+        return std::hash<edge_ptr>()(f) ^ std::hash<edge_ptr>()(g);
     }
 
-    auto friend operator==(edge const& lhs, edge const& rhs)
+    [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
     {
-        return lhs.w == rhs.w && lhs.v == rhs.v;
+        auto other = static_cast<mul const&>(op);
+
+        return (f == other.f && g == other.g) || (f == other.g && g == other.f);
     }
 
-    auto friend operator<<(std::ostream& s, edge const& e) -> std::ostream&
+    auto print(std::ostream& s) const -> void override
     {
-        s << '(' << e.w << ',' << e.v << ')';
-        return s;
+        s << '(' << f << ',' << g << ")->" << r;
     }
 
-    E w;  // weight
+    edge_ptr f;  // 1st factor
 
-    node_ptr v;
+    edge_ptr g;  // 2nd factor
 };
 
-}  // namespace freddy::detail
+}  // namespace freddy::op

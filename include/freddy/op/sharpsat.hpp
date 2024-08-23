@@ -4,57 +4,56 @@
 // Includes
 // *********************************************************************************************************************
 
+#include "freddy/detail/operation.hpp"  // detail::operation
+
 #include <cassert>     // assert
 #include <functional>  // std::hash
 #include <memory>      // std::shared_ptr
-#include <ostream>     // std::ostream
 #include <utility>     // std::move
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::detail
+namespace freddy::op
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename, typename>
-class node;
-
 template <typename E, typename V>
-struct edge
+class sharpsat : public detail::operation  // sharp satisfiability problem
 {
-    using node_ptr = std::shared_ptr<node<E, V>>;
+  public:
+    using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    edge(E w, node_ptr v) :
-            w{std::move(w)},
-            v{std::move(v)}
+    explicit sharpsat(edge_ptr f) :  // for finding a cache result based on #SAT input
+            f{std::move(f)}
     {
-        assert(this->v);
+        assert(this->f);
     }
 
-    auto operator()() const
+    double r{};  // #SAT result
+  private:
+    [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<E>()(w) ^ std::hash<node_ptr>()(v);
+        return std::hash<edge_ptr>()(f);
     }
 
-    auto friend operator==(edge const& lhs, edge const& rhs)
+    [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
     {
-        return lhs.w == rhs.w && lhs.v == rhs.v;
+        auto other = static_cast<sharpsat const&>(op);
+
+        return f == other.f;
     }
 
-    auto friend operator<<(std::ostream& s, edge const& e) -> std::ostream&
+    auto print(std::ostream& s) const -> void override
     {
-        s << '(' << e.w << ',' << e.v << ')';
-        return s;
+        s << '(' << f << ")->" << r;
     }
 
-    E w;  // weight
-
-    node_ptr v;
+    edge_ptr f;  // #SAT instance
 };
 
-}  // namespace freddy::detail
+}  // namespace freddy::op
