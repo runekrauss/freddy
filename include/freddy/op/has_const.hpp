@@ -28,7 +28,8 @@ class has_const : public detail::operation  // constant search
   public:
     using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    has_const(edge_ptr f, V c) :  // for finding a cache result based on constant search input
+    has_const(edge_ptr f, V c) :
+            // for finding a cache result based on constant search input
             f{std::move(f)},
             c{std::move(c)}
     {

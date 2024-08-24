@@ -28,7 +28,8 @@ class add : public detail::operation  // addition
   public:
     using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    add(edge_ptr f, edge_ptr g) :  // for finding a cache result based on summands
+    add(edge_ptr f, edge_ptr g) :
+            // for finding a cache result based on summands
             f{std::move(f)},
             g{std::move(g)}
     {

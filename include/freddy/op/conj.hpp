@@ -28,7 +28,8 @@ class conj : public detail::operation  // conjunction
   public:
     using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    conj(edge_ptr f, edge_ptr g) :  // for finding a cache result based on conjuncts
+    conj(edge_ptr f, edge_ptr g) :
+            // for finding a cache result based on conjuncts
             f{std::move(f)},
             g{std::move(g)}
     {

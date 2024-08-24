@@ -29,7 +29,8 @@ class compose : public detail::operation  // function substitution
   public:
     using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    compose(edge_ptr f, std::int32_t const x, edge_ptr g) :  // for finding a cache result based on composition input
+    compose(edge_ptr f, std::int32_t const x, edge_ptr g) :
+            // for finding a cache result based on composition input
             f{std::move(f)},
             x{x},
             g{std::move(g)}

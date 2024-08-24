@@ -28,7 +28,8 @@ class sharpsat : public detail::operation  // sharp satisfiability problem
   public:
     using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    explicit sharpsat(edge_ptr f) :  // for finding a cache result based on #SAT input
+    explicit sharpsat(edge_ptr f) :
+            // for finding a cache result based on #SAT input
             f{std::move(f)}
     {
         assert(this->f);

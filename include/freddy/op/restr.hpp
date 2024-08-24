@@ -29,7 +29,8 @@ class restr : public detail::operation  // variable substitution
   public:
     using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    restr(edge_ptr f, std::int32_t const x, bool const a) :  // for finding a cache result based on substitution input
+    restr(edge_ptr f, std::int32_t const x, bool const a) :
+            // for finding a cache result based on substitution input
             f{std::move(f)},
             x{x},
             a{a}

@@ -28,7 +28,8 @@ class antiv : public detail::operation  // antivalence
   public:
     using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    antiv(edge_ptr f, edge_ptr g) :  // for finding a cache result based on XOR input
+    antiv(edge_ptr f, edge_ptr g) :
+            // for finding a cache result based on XOR input
             f{std::move(f)},
             g{std::move(g)}
     {

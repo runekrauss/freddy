@@ -52,9 +52,10 @@ struct comp
     using is_transparent = void;  // activate searches with a type other than the key
 
     template <typename T1, typename T2>
-        requires(is_shared_ptr<T1> || is_unique_ptr<T1> || std::is_pointer_v<T1>) &&
-                (is_shared_ptr<T2> || is_unique_ptr<T2> || std::is_pointer_v<T2>)  // already stored value
-    auto operator()(T1 const& lhs, T2 const& rhs) const
+    requires(is_shared_ptr<T1> || is_unique_ptr<T1> || std::is_pointer_v<T1>) &&
+        (is_shared_ptr<T2> || is_unique_ptr<T2> || std::is_pointer_v<T2>)  // already stored value
+        auto
+        operator()(T1 const& lhs, T2 const& rhs) const
     {
         assert(lhs);
         assert(rhs);
@@ -68,7 +69,7 @@ struct hash
     using is_transparent = void;
 
     template <typename T>
-        requires is_shared_ptr<T> || is_unique_ptr<T> || std::is_pointer_v<T>
+    requires is_shared_ptr<T> || is_unique_ptr<T> || std::is_pointer_v<T>
     auto operator()(T const& p) const
     {
         assert(p);
@@ -82,7 +83,7 @@ struct hash
 // =====================================================================================================================
 
 template <typename T, typename Callable>
-    requires std::integral<T>
+requires std::integral<T>
 auto inline parallel_for(T const a, T const b, Callable func)
 {
     assert(b >= a);

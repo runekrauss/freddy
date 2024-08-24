@@ -28,7 +28,8 @@ class ite : public detail::operation  // if-then-else
   public:
     using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    ite(edge_ptr f, edge_ptr g, edge_ptr h) :  // for finding a cache result based on ITE input
+    ite(edge_ptr f, edge_ptr g, edge_ptr h) :
+            // for finding a cache result based on ITE input
             f{std::move(f)},
             g{std::move(g)},
             h{std::move(h)}
