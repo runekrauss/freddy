@@ -14,8 +14,9 @@ VLSI CAD.
 * Dynamic cache to speed up DD operations
 * Optimized operations for DD manipulation
 * Manager concept so that instances can coexist
-* Development of own DD types based on the manager
-* Overloaded wrapping of DD handlers to improve usability
+* Development of custom DD types based on the manager
+* Registration of custom operations with the cache
+* Overloaded wrapping of DD handlers to increase usability
 * Parameter configuration for specific problem solving
 * Detailed output for effective debugging
 * And much more
@@ -126,8 +127,8 @@ can be rendered with the corresponding layout engine and looks similar to the fo
 ![BMD](https://github.com/runekrauss/freddy/assets/5829946/4cf0d118-23f6-4157-999f-eb886d97197a)
 
 It is still possible to adjust various [configuration](include/freddy/config.hpp) **parameters** depending on the
-problem. For example, the initial capacity `ct_size` of the cache used for many other
-[operations](include/freddy/operation.hpp) in addition to multiplication can be set as follows:
+problem. For example, the initial capacity `ct_size` of the cache used for many other [operations](include/freddy/op) in
+addition to multiplication can be set as follows:
 
 ```cpp
 /* includes */
@@ -161,8 +162,11 @@ $ cd build/Release
 $ ctest -C Release
 ```
 
-For debugging purposes, type `Debug` instead of `Release`. Note that this may have a negative effect on the performance
-of FrEDDY. Additionally, you can add `-j k` to build on `k` cores or `-v` to show in detail the commands used to build.
+For debugging purposes, type `Debug` instead of `Release`.
+
+> :warning: Compiling using debug mode may have a negative effect on the performance of FrEDDY.
+
+Additionally, you can add `-j k` to build on `k` cores or `-v` to show in detail the commands used to build.
 
 ## :+1: Contribute
 
@@ -183,13 +187,36 @@ implemented within the `freddy::dd` namespace in the [dd](include/freddy/dd) dir
 | `mul`         | Multiplicative combination of DDs   |
 | `regw`        | Regular weight of an edge           |
 
-Analogous to the methods listed, both a contradiction and tautology must be defined using a DD edge weight `E` and node
-value `V`, and passed to the base constructor. Note that if `E` or `V` does not correspond to a built-in type, operators
-must be overloaded for hashing purposes: `==` to compare list nodes and `<<` for outputs. A specialization for
-[std::hash](https://en.cppreference.com/w/cpp/utility/hash) must also be added. Other virtual methods such as garbage
-collection can be overridden if needed. The associated wrapper `<type>` of the derived class `<type>_manager` is
-implemented by calling the class operations through a DD pointer member. Examples can be found in
-[bdd.hpp](include/freddy/dd/bdd.hpp) and [bmd.hpp](include/freddy/dd/bmd.hpp).
+While virtual methods such as garbage collection can be overridden if needed, both a **contradiction** and **tautology**
+must be defined using a DD edge weight `E` and node value `V`, and passed to the base constructor.
+
+> :information_source: If `E` or `V` does not correspond to a built-in type, operators must be overloaded for hashing
+purposes: `==` to compare list nodes and `<<` for outputs. A specialization for
+[std::hash](https://en.cppreference.com/w/cpp/utility/hash) must also be added.
+
+Further operations can be implemented on this basis. A cache is available for so-called **first-class operations** that
+are time-sensitive and called frequently. If operations to be cached are not yet available in the
+[op](include/freddy/op) directory, they can be implemented in a similar way to the manager concept. First-class
+operations are within the `freddy::op` namespace and inherit from the **polymorphic** class `operation` contained in
+[operation.hpp](include/freddy/detail/operation.hpp) by overriding the following methods:
+
+| Method           | Description             |
+| ---------------- | ----------------------- |
+| `hash`           | Hash code computation   |
+| `has_same_input` | Comparing operands      |
+| `print`          | Output of the operation |
+
+> :information_source: The operation name is already hashed and output by default.
+
+First-class operations are **automatically registered** with the cache, where results are written using the manager
+method `cache` and read by `cached` if they exist. Corresponding code snippets can be found in
+[manager methods](include/freddy/detail/manager.hpp) of the **same name** as first-class operations:
+[compose](include/freddy/op/compose.hpp), [restr](include/freddy/op/restr.hpp), etc.
+
+While operations are provided by the derived manager class `<type>_manager`, an associated wrapper `<type>` finally
+increases usability. It is implemented by simply calling operations through a DD pointer member. Complete examples can
+be found in [bdd.hpp](include/freddy/dd/bdd.hpp), [bhd.hpp](include/freddy/dd/bhd.hpp)
+and [bmd.hpp](include/freddy/dd/bmd.hpp).
 
 To check the functionality, I use [Catch2](https://github.com/catchorg/Catch2). Already existing tests are located in
 the [test](test) directory and should be used as orientation for your own DD types, where an executable is created

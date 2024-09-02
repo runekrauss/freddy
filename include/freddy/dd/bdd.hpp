@@ -5,19 +5,21 @@
 // *********************************************************************************************************************
 
 #include "freddy/detail/manager.hpp"  // detail::manager
+#include "freddy/op/antiv.hpp"        // op::antiv
+#include "freddy/op/conj.hpp"         // op::conj
+#include "freddy/op/ite.hpp"          // op::ite
+#include "freddy/op/sharpsat.hpp"     // op::sharpsat
 
 #include <algorithm>    // std::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::pow
-#include <cstdint>      // std::int32_t
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
-#include <memory>       // std::shared_ptr
 #include <ostream>      // std::ostream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
-#include <utility>      // std::make_pair
+#include <utility>      // std::move
 #include <vector>       // std::vector
 
 // *********************************************************************************************************************
@@ -28,16 +30,12 @@ namespace freddy::dd
 {
 
 // =====================================================================================================================
-// Declarations
+// Types
 // =====================================================================================================================
 
 class bdd_manager;
 
-// =====================================================================================================================
-// Types
-// =====================================================================================================================
-
-class bdd
+class bdd  // binary decision diagram
 {
   public:
     bdd() = default;  // so that BDDs initially work with standard containers
@@ -72,7 +70,7 @@ class bdd
     {
         assert(lhs.mgr == rhs.mgr);  // check for the same BDD manager
 
-        return (lhs.f == rhs.f);
+        return lhs.f == rhs.f;
     }
 
     auto friend operator!=(bdd const& lhs, bdd const& rhs) noexcept
@@ -91,7 +89,7 @@ class bdd
     {
         assert(f);
 
-        return (f->v == g.f->v);
+        return f->v == g.f->v;
     }
 
     [[nodiscard]] auto is_complemented() const noexcept
@@ -148,7 +146,7 @@ class bdd
 
     [[nodiscard]] auto forall(std::int32_t) const;
 
-    [[nodiscard]] auto satcount() const;
+    [[nodiscard]] auto sharpsat() const;
 
     auto print() const;
 
@@ -175,7 +173,7 @@ class bdd_manager : public detail::manager<bool, bool>
     friend bdd;
 
     bdd_manager() :
-            manager(tmls())
+            manager{tmls()}
     {}
 
     auto var(std::string_view l = {})
@@ -226,30 +224,29 @@ class bdd_manager : public detail::manager<bool, bool>
 
     using bool_node = detail::node<bool, bool>;
 
-    auto satcount(edge_ptr const& f) -> double
+    auto sharpsat(edge_ptr const& f) -> double
     {
         assert(f);
 
         if (f->v->is_const())
         {
-            return (f == consts[0]) ? 0 : std::pow(2, var_count());
+            return f == consts[0] ? 0 : std::pow(2, var_count());
         }
 
-        auto const cr = ct.find({operation::SAT, f});
-        if (cr != ct.end())
+        op::sharpsat op{f};
+        if (auto const* const ent = cached(op))
         {
-            return cr->second.second;
+            return ent->r;
         }
 
-        auto count = (satcount(f->v->br().hi) + satcount(f->v->br().lo)) / 2;
+        auto count = (sharpsat(f->v->br().hi) + sharpsat(f->v->br().lo)) / 2;
         if (f->w)
         {  // complemented edge
             count = std::pow(2, var_count()) - count;
         }
 
-        ct.insert_or_assign({operation::SAT, f}, std::make_pair(edge_ptr{}, count));
-
-        return count;
+        op.r = count;
+        return cache(std::move(op))->r;
     }
 
     auto simplify(edge_ptr const& f, edge_ptr& g, edge_ptr& h) const noexcept
@@ -363,19 +360,17 @@ class bdd_manager : public detail::manager<bool, bool>
             std_triple(ret, f, g, h);
         }
 
-        auto const cr = ct.find({operation::ITE, f, g, h});
-        if (cr != ct.end())
+        op::ite op{f, g, h};
+        if (auto const* const ent = cached(op))
         {
-            return cr->second.first.lock();
+            return ent->r;
         }
 
-        auto const x = (f->v->br().x == top_var(f, g)) ? top_var(f, h) : top_var(g, h);
-        auto r = make_branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
-                             ite(cof(f, x, false), cof(g, x, false), cof(h, x, false)));
+        auto const x = f->v->br().x == top_var(f, g) ? top_var(f, h) : top_var(g, h);
 
-        ct.insert_or_assign({operation::ITE, f, g, h}, std::make_pair(r, 0.0));
-
-        return r;
+        op.r = make_branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
+                           ite(cof(f, x, false), cof(g, x, false), cof(h, x, false)));
+        return cache(std::move(op))->r;
     }
 
     auto antiv(edge_ptr const& f, edge_ptr const& g)
@@ -408,18 +403,16 @@ class bdd_manager : public detail::manager<bool, bool>
             return consts[1];
         }
 
-        auto const cr = ct.find({operation::XOR, f, g});
-        if (cr != ct.end())
+        op::antiv op{f, g};
+        if (auto const* const ent = cached(op))
         {
-            return cr->second.first.lock();
+            return ent->r;
         }
 
         auto const x = top_var(f, g);
-        auto r = make_branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false)));
 
-        ct.insert_or_assign({operation::XOR, f, g}, std::make_pair(r, 0.0));
-
-        return r;
+        op.r = make_branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false)));
+        return cache(std::move(op))->r;
     }
 
     auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -444,7 +437,7 @@ class bdd_manager : public detail::manager<bool, bool>
     {
         assert(f);
 
-        return (!f->w ? foa(std::make_shared<bool_edge>(true, f->v)) : foa(std::make_shared<bool_edge>(false, f->v)));
+        return !f->w ? foa(std::make_shared<bool_edge>(true, f->v)) : foa(std::make_shared<bool_edge>(false, f->v));
     }
 
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -462,21 +455,19 @@ class bdd_manager : public detail::manager<bool, bool>
         }
         if (f->v == g->v)
         {  // check for complement
-            return ((f->w == g->w) ? f : consts[0]);
+            return f->w == g->w ? f : consts[0];
         }
 
-        auto const cr = ct.find({operation::AND, f, g});
-        if (cr != ct.end())
+        op::conj op{f, g};
+        if (auto const* const ent = cached(op))
         {
-            return cr->second.first.lock();
+            return ent->r;
         }
 
         auto const x = top_var(f, g);
-        auto r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
 
-        ct.insert_or_assign({operation::AND, f, g}, std::make_pair(r, 0.0));
-
-        return r;
+        op.r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
+        return cache(std::move(op))->r;
     }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -579,14 +570,14 @@ auto inline bdd::is_zero() const noexcept
 {
     assert(mgr);
 
-    return (*this == mgr->zero());
+    return *this == mgr->zero();
 }
 
 auto inline bdd::is_one() const noexcept
 {
     assert(mgr);
 
-    return (*this == mgr->one());
+    return *this == mgr->one();
 }
 
 auto inline bdd::high(bool const weighting) const
@@ -692,11 +683,11 @@ auto inline bdd::forall(std::int32_t const x) const
     return bdd{mgr->forall(f, x), mgr};
 }
 
-auto inline bdd::satcount() const
+auto inline bdd::sharpsat() const
 {
     assert(mgr);
 
-    return mgr->satcount(f);
+    return mgr->sharpsat(f);
 }
 
 auto inline bdd::print() const

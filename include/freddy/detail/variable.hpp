@@ -56,7 +56,7 @@ struct variable
         }
 
         auto print = [&s](auto const& ut) {
-            for (auto i = 0; i < static_cast<std::int32_t>(ut.bucket_count()); ++i)
+            for (auto i = 0uz; i < ut.bucket_count(); ++i)
             {
                 if (ut.bucket_size(i) > 0)
                 {

@@ -5,24 +5,23 @@
 // *********************************************************************************************************************
 
 #include "freddy/detail/manager.hpp"  // detail::manager
+#include "freddy/op/conj.hpp"         // op::conj
+#include "freddy/op/repl.hpp"         // op::repl
 
 #include <algorithm>    // std::transform
 #include <array>        // std::array
 #include <cassert>      // assert
-#include <cmath>        // std::pow
-#include <cstdint>      // std::int32_t
+#include <cmath>        // NAN
+#include <functional>   // std::function
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
-#include <memory>       // std::shared_ptr
+#include <optional>     // std::optional
 #include <ostream>      // std::ostream
+#include <sstream>      // std::ostringstream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
-#include <utility>      // std::make_pair
+#include <utility>      // std::move
 #include <vector>       // std::vector
-
-#include <fstream>
-#include <random>
-#include <filesystem>
 
 // *********************************************************************************************************************
 // Namespaces
@@ -32,16 +31,12 @@ namespace freddy::dd
 {
 
 // =====================================================================================================================
-// Declarations
+// Types
 // =====================================================================================================================
 
 class bhd_manager;
 
-// =====================================================================================================================
-// Types
-// =====================================================================================================================
-
-class bhd
+class bhd  // binary hybrid diagram
 {
   public:
     bhd() = default;  // so that BHDs initially work with standard containers
@@ -51,6 +46,8 @@ class bhd
     auto operator&=(bhd const&) -> bhd&;
 
     auto operator|=(bhd const&) -> bhd&;
+
+    auto operator^=(bhd const&) -> bhd&;
 
     auto friend operator&(bhd lhs, bhd const& rhs)
     {
@@ -64,11 +61,17 @@ class bhd
         return lhs;
     }
 
+    auto friend operator^(bhd lhs, bhd const& rhs)
+    {
+        lhs ^= rhs;
+        return lhs;
+    }
+
     auto friend operator==(bhd const& lhs, bhd const& rhs) noexcept
     {
         assert(lhs.mgr == rhs.mgr);  // check for the same BHD manager
 
-        return (lhs.f == rhs.f);
+        return lhs.f == rhs.f;
     }
 
     auto friend operator!=(bhd const& lhs, bhd const& rhs) noexcept
@@ -87,7 +90,7 @@ class bhd
     {
         assert(f);
 
-        return (f->v == g.f->v);
+        return f->v == g.f->v;
     }
 
     [[nodiscard]] auto is_complemented() const noexcept
@@ -108,7 +111,7 @@ class bhd
 
     [[nodiscard]] auto is_one() const noexcept;
 
-    [[nodiscard]] auto is_exp() const noexcept;
+    [[nodiscard]] auto is_exp() const noexcept;  // Is there an expansion node (EXP) for SAT solving?
 
     [[nodiscard]] auto var() const
     {
@@ -136,9 +139,21 @@ class bhd
 
     [[nodiscard]] auto is_essential(std::int32_t) const;
 
-    auto print() const;
+    [[nodiscard]] auto ite(bhd const&, bhd const&) const;
 
-    auto createExpansionFiles() const;
+    [[nodiscard]] auto compose(std::int32_t, bhd const&) const;
+
+    [[nodiscard]] auto restr(std::int32_t, bool) const;
+
+    [[nodiscard]] auto exist(std::int32_t) const;
+
+    [[nodiscard]] auto forall(std::int32_t) const;
+
+    [[nodiscard]] auto sat() const;  // one existing solution per path
+
+    auto gen_uclauses(std::ostream& = std::cout) const;  // unit clauses per EXP for DIMACS CNF separated by "c"
+
+    auto print() const;
 
   private:
     friend bhd_manager;
@@ -152,9 +167,16 @@ class bhd
         assert(mgr);
     }
 
-    std::shared_ptr<detail::edge<bool, bool>> f;  // DD handle
+    std::shared_ptr<detail::edge<bool, bool>> f;
 
-    bhd_manager* mgr{};  // must be destroyed after this wrapper
+    bhd_manager* mgr{};
+};
+
+enum struct bhd_heuristic  // to determine when EXPs are made
+{
+    LVL,  // BDD level
+    MEM,  // peak BDD size in KB
+    RAND  // probability (random)
 };
 
 class bhd_manager : public detail::manager<bool, bool>
@@ -162,34 +184,37 @@ class bhd_manager : public detail::manager<bool, bool>
   public:
     friend bhd;
 
-    bhd_manager(int h1, int h2) :
-            manager(tmls())
+    bhd_manager() :
+            manager{tmls()}
     {
-        consts.push_back(make_const(false, true)); // tmls[2] == Exp weight 0
-        consts.push_back(make_const(true, true));  // tmls[3] == Exp weight 1
-
-        heuristicAtt = h2;
-		switch(h1)
-        {
-            case 0: heur = [this](edge_ptr f, edge_ptr g, std::int32_t x){
-          		return heuristicNoExp(f, g, x);
-        		}; break;
-            case 1: heur = [this](edge_ptr f, edge_ptr g, std::int32_t x){
-            	return heuristicMemory(f, g, x);
-        		}; break;
-            case 2: heur = [this](edge_ptr f, edge_ptr g, std::int32_t x){
-            	return heuristicNodePathCount(f, g, x);
-        		}; break;
-            case 3: heur = [this](edge_ptr f, edge_ptr g, std::int32_t x){
-            	return heuristicLayer(f, g, x);
-        		}; break;
-            case 4: heur = [this](edge_ptr f, edge_ptr g, std::int32_t x){
-            	return heuristicRandom(f, g, x);
-        		}; break;
-        }
+        consts.push_back(make_const(false, true));  // EXP
+        consts.push_back(make_const(true, true));   // for reasons of consistency
     }
 
+    bhd_manager(bhd_heuristic const heur, float const cost) :
+            bhd_manager{}
+    {
+        switch (heur)
+        {
+            case bhd_heuristic::LVL:
+                assert(cost >= 0.0f);
 
+                this->heur = [this](auto const& f, auto const& g, auto const x) { return lvl_heur(f, g, x); };
+                break;
+            case bhd_heuristic::MEM:
+                assert(cost > 0.0f);
+
+                this->heur = [this](auto const& f, auto const& g, auto const x) { return mem_heur(f, g, x); };
+                break;
+            case bhd_heuristic::RAND:
+                assert(std::clamp(cost, 0.0f, 1.0f));
+
+                this->heur = [this](auto const& f, auto const& g, auto const x) { return rand_heur(f, g, x); };
+                break;
+            default: assert(false);
+        }
+        this->cost = cost;
+    }
 
     auto var(std::string_view l = {})
     {
@@ -214,11 +239,8 @@ class bhd_manager : public detail::manager<bool, bool>
         return bhd{consts[1], this};
     }
 
-    auto expZero(){
-        return bhd{consts[2], this};
-    }
-
-    auto expOne(){
+    auto exp() noexcept
+    {
         return bhd{consts[2], this};
     }
 
@@ -239,136 +261,252 @@ class bhd_manager : public detail::manager<bool, bool>
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        to_dot(transform(fs), outputs, s);
+        std::ostringstream buf;  // for highlighting EXP
+        to_dot(transform(fs), outputs, buf);
+
+        auto dot = buf.str();
+        detail::replace_all(dot, "[shape=box,style=filled,color=brown,fontcolor=white,label=\"1\"]",
+                            "[shape=triangle,style=filled,color=darkviolet,fontcolor=white,label=\"EXP\"]");
+        s << dot;
     }
-
-
 
   private:
-
-    int heuristicAtt;
-    std::function<edge_ptr(edge_ptr,edge_ptr,std::int32_t)> heur;
-
-    int expCount = 0;
-
-    void createExpansionFiles(edge_ptr const& f){
-        for (const auto& entry : std::filesystem::directory_iterator("ExpansionNodes")) {
-            if (std::filesystem::is_regular_file(entry)) {
-                std::filesystem::remove(entry);
-            }
-        }
-
-        std::vector<std::pair<std::int32_t, bool>> v;
-        searchExpansionNodes(f, v, false);
-    }
-
-    void searchExpansionNodes(edge_ptr const& f, std::vector<std::pair<std::int32_t, bool>> path, bool goingTrue){
-
-        if (f == consts[1]){
-            if (!goingTrue){
-                newTruePath(path);
-            }
-            return;
-        }
-
-        if (f == consts[0]){
-            if (goingTrue){
-                newTruePath(path);
-            }
-            return;
-        }
-
-        if (f == consts[2] || f == consts[3]){
-            newExpansionFile(path);
-        } else{
-
-            if (f->w == 1){
-                goingTrue = !goingTrue;
-            }
-
-            path.push_back(std::pair<std::int32_t,bool> (f->v->br().x, true));
-            searchExpansionNodes(f->v->br().hi, path, goingTrue);
-
-            path.pop_back();
-            path.push_back(std::pair<std::int32_t,bool> (f->v->br().x, false));
-            searchExpansionNodes(f->v->br().lo, path, goingTrue);
-        }
-    }
-
-    void newExpansionFile(std::vector<std::pair<std::int32_t, bool>> path){
-        std::string s = "ExpansionNodes/e" + std::to_string(expCount);
-        s += ".txt";
-
-        std::ofstream outFile(s);
-        expCount++;
-
-        for (auto e : path){
-            if (e.second == 0){
-                outFile << "-";
-            }
-            outFile << e.first + 1 << " 0\n";
-        }
-    }
-
-    void newTruePath(std::vector<std::pair<std::int32_t, bool>> path){
-        for (auto e : path){
-            std::cout << e.first << ":" << e.second << "--";
-        }
-        std::cout << "\n";
-    }
-
-
     using bool_edge = detail::edge<bool, bool>;
 
     using bool_node = detail::node<bool, bool>;
+
+    [[nodiscard]] auto is_exp(edge_ptr const& f) const noexcept
+    {
+        return f == consts[2] || f == consts[3];
+    }
+
+    auto sat(edge_ptr const& f, std::vector<bool>& path, bool const m, std::vector<std::vector<bool>>& sols) const
+    {
+        assert(f);
+        assert(!path.empty());
+
+        if (is_exp(f))
+        {
+            return;
+        }
+
+        if (f->v->is_const())
+        {
+            if (m)
+            {  // complement bit is odd => satisfying solution
+                sols.push_back(path);
+            }
+            return;
+        }
+
+        path[f->v->br().x] = false;  // truth value is independent of complemented edges
+        sat(f->v->br().lo, path, comb(m, f->v->br().lo->w), sols);
+
+        path[f->v->br().x] = true;
+        sat(f->v->br().hi, path, comb(m, f->v->br().hi->w), sols);
+    }
+
+    [[nodiscard]] auto sat(edge_ptr const& f) const
+    {
+        assert(f);
+
+        std::vector<std::vector<bool>> sols;  // initial variable ordering applies
+
+        if (f == consts[1])
+        {
+            sols.emplace_back(var_count());  // assignment consisting of only "false" is one solution
+        }
+        else if (f != consts[0] && !is_exp(f))
+        {                                         // collect solutions
+            std::vector<bool> path(var_count());  // maximum depth
+            sat(f, path, f->w, sols);
+        }
+
+        return sols;
+    }
+
+    auto gen_uclauses(edge_ptr const& f, std::vector<std::optional<bool>>& path, std::ostream& s)
+    {
+        assert(f);
+        assert(!path.empty());
+
+        if (f->v->is_const())
+        {
+            return;
+        }
+
+        if (is_exp(f))
+        {
+            for (auto i = 0uz; i < path.size(); ++i)
+            {
+                if (path[i].has_value())
+                {                                                          // output literal
+                    s << (*path[i] ? i + 1 : -i - 1) << ' ' << 0 << '\n';  // end of clause
+                }
+            }
+
+            s << "c\n";  // empty comment means the clauses relating to the next EXP if one still exists
+            return;
+        }
+
+        path[f->v->br().x] = false;
+        gen_uclauses(f->v->br().lo, path, s);
+
+        path[f->v->br().x] = true;
+        gen_uclauses(f->v->br().hi, path, s);
+
+        path[f->v->br().x].reset();
+    }
+
+    auto gen_uclauses(edge_ptr const& f, std::ostream& s)
+    {
+        assert(f);
+
+        if (f->v->is_const() || !has_const(f, true))
+        {  // there are no EXPs
+            return;
+        }
+
+        std::vector<std::optional<bool>> path(var_count());  // not every variable must be on the path
+        gen_uclauses(f, path, s);
+    }
+
+    auto repl(edge_ptr const& f, edge_ptr const& exp, bool const m = false)  // works with AND
+    {  // redirect 1-paths in f to exp for compacting reasons
+        assert(f);
+        assert(is_exp(exp));
+
+        if (is_exp(f))
+        {  // 2~2 == 0 which is commutative
+            return (f == consts[2] && exp == consts[3]) || (f == consts[3] && exp == consts[2]) ? consts[0] : f;
+        }
+
+        if (f->v->is_const())
+        {
+            if (m)
+            {  // negation => decision is up to EXP
+                return f == consts[0] ? (exp == consts[2] ? consts[3] : consts[2]) : f;
+            }
+
+            // overwriting => complement bit disappears automatically
+            return f == consts[0] ? f : exp;
+        }
+
+        op::repl op{f, m};
+        if (auto const* const ent = cached(op))
+        {
+            return ent->r;
+        }
+
+        auto hi = f->w ? repl(f->v->br().hi, exp, !m) : repl(f->v->br().hi, exp, m);
+        auto lo = f->w ? repl(f->v->br().lo, exp, !m) : repl(f->v->br().lo, exp, m);
+
+        // normalize if needed
+        auto w = lo->w;
+        if (w)
+        {
+            hi = complement(hi);
+            lo = complement(lo);
+        }
+        w = f->w ? !w : w;  // due to bit flipping
+
+        op.r = foa(std::make_shared<bool_edge>(
+            w, foa(std::make_shared<bool_node>(f->v->br().x, std::move(hi), std::move(lo)))));
+        return cache(std::move(op))->r;
+    }
+
+    auto compr(edge_ptr const& f, edge_ptr const& g, std::int32_t const x, bool const a)
+    {  // EXPs remain at the same level for validation reasons
+        assert(f);
+        assert(g);
+        assert(x == top_var(f, g));
+
+        auto gx = cof(g, x, a);
+        if (is_exp(gx) && !f->v->is_const() && f->v->br().x != x)
+        {  // f is below g => hide in EXP
+            return gx;
+        }
+
+        auto fx = cof(f, x, a);
+        if (is_exp(fx) && !g->v->is_const() && g->v->br().x != x)
+        {
+            return fx;
+        }
+
+        return conj(fx, gx);
+    }
+
+    auto no_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
+    {  // conjunction without making EXPs
+        assert(f);
+        assert(g);
+        assert(x == top_var(f, g));
+
+        return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
+    }
+
+    auto lvl_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
+    {  // heuristic that makes EXPs from a predetermined BDD level
+        assert(f);
+        assert(g);
+        assert(x == top_var(f, g));
+
+        if (f->v->is_const() || static_cast<float>(f->v->br().x) < cost)
+        {
+            return g->v->is_const() || static_cast<float>(g->v->br().x) < cost
+                       ? make_branch(x, compr(f, g, x, true), compr(f, g, x, false))
+                       : repl(f, consts[2]);
+        }
+        return g->v->is_const() || static_cast<float>(g->v->br().x) < cost ? repl(g, consts[2]) : consts[2];
+    }
+
+    auto mem_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
+    {  // heuristic that makes EXPs when a peak BDD size (nodes and edges) in KB is reached
+        assert(f);
+        assert(g);
+        assert(x == top_var(f, g));
+
+        if (((static_cast<float>(node_count()) * sizeof(bool_node) +
+              static_cast<float>(edge_count()) * sizeof(bool_edge)) /
+             1e3f) >= cost)
+        {
+            return repl(f, consts[2]);
+        }
+        return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
+    }
+
+    auto rand_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
+    {  // heuristic that makes EXPs based on a predetermined probability
+        assert(f);
+        assert(g);
+        assert(x == top_var(f, g));
+
+        auto const z = detail::rand(0.0f, 1.0f);
+        auto const p = 1.0f - cost;  // probability that no EXPs are made
+
+        if (z <= p)
+        {
+            return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
+        }
+        if (z <= p + cost / 2.0f)
+        {  // low child becomes an EXP
+            return make_branch(x, compr(f, g, x, true), consts[2]);
+        }
+        return make_branch(x, consts[2], compr(f, g, x, false));
+    }
 
     auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         assert(f);
         assert(g);
 
-        if (f == consts[0])
-        {
-            return g;
-        }
-        if (g == consts[0])
-        {
-            return f;
-        }
-        if (f == consts[1])
-        {
-            return complement(g);
-        }
-        if (g == consts[1])
-        {
-            return complement(f);
-        }
-        if (f == g)
-        {
-            return consts[0];
-        }
-        if (f == complement(g))
-        {
-            return consts[1];
-        }
-
-        auto const cr = ct.find({operation::XOR, f, g});
-        if (cr != ct.end())
-        {
-            return cr->second.first.lock();
-        }
-
-        auto const x = top_var(f, g);
-        auto r = make_branch(x, add(cof(f, x, true), cof(g, x, true)), add(cof(f, x, false), cof(g, x, false)));
-
-        ct.insert_or_assign({operation::XOR, f, g}, std::make_pair(r, 0.0));
-
-        return r;
+        auto const fg = complement(conj(f, g));
+        return complement(conj(complement(conj(f, fg)), complement(conj(g, fg))));  // stands for XOR
     }
 
     [[nodiscard]] auto agg(bool const& w, bool const& val) const noexcept -> bool override
     {
-        return !(w == val);  // XOR
+        return !(w == val);
     }
 
     [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
@@ -380,7 +518,7 @@ class bhd_manager : public detail::manager<bool, bool>
     {
         assert(f);
 
-        return (!f->w ? foa(std::make_shared<bool_edge>(true, f->v)) : foa(std::make_shared<bool_edge>(false, f->v)));
+        return !f->w ? foa(std::make_shared<bool_edge>(true, f->v)) : foa(std::make_shared<bool_edge>(false, f->v));
     }
 
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -388,236 +526,51 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
 
-        if ((f == consts[2] || f == consts[3]) && (g == consts[2] || g == consts[3])){
+        // EXP terminal cases
+        if (is_exp(f) && is_exp(g))
+        {
             return consts[2];
         }
-
-        if (f == consts[2] || f == consts[3]){
-
-            return replaceOnesWithExp(g, false, f);
+        if (is_exp(f))
+        {
+            return repl(g, f);
         }
-        if (g == consts[2] || g == consts[3]){
-            return replaceOnesWithExp(f, false, g);
+        if (is_exp(g))
+        {
+            return repl(f, g);
         }
 
+        // constant terminal cases
         if (f == consts[1])
-        {  // 1g == g
+        {
             return g;
         }
         if (g == consts[1])
-        {  // f1 == f
+        {
             return f;
         }
         if (f->v == g->v)
-        {  // check for complement
-            if (f->w == g->w){
+        {
+            if (f->w == g->w)
+            {
                 return f;
             }
-
-            if (has_const(f, true)){
+            if (has_const(f, true))
+            {
                 return consts[2];
             }
             return consts[0];
-
-            //return ((f->w == g->w) ? f : consts[0]);
         }
 
-        auto const cr = ct.find({operation::AND, f, g});
-        if (cr != ct.end())
+        op::conj op{f, g};
+        if (auto const* const ent = cached(op))
         {
-            return cr->second.first.lock();
+            return ent->r;
         }
 
-        auto const x = top_var(f, g);
-
-        auto r = heur(f, g, x);
-
-        ct.insert_or_assign({operation::AND, f, g}, std::make_pair(r, 0.0));
-
-        return r;
+        op.r = heur(f, g, top_var(f, g));
+        return cache(std::move(op))->r;
     }
-
-    edge_ptr heuristicNoExp(edge_ptr f, edge_ptr g, std::int32_t x)
-    {
-        return make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
-    }
-
-    edge_ptr heuristicMemory(edge_ptr f, edge_ptr g, std::int32_t x)
-    {
-        std::ifstream statm("/proc/self/statm");
-        if (statm.is_open()) {
-            long size, resident, shared, text, lib, data, dt;
-            statm >> size >> resident >> shared >> text >> lib >> data >> dt;
-            statm.close();
-
-            long pageSize = sysconf(_SC_PAGESIZE); // get the page size in bytes
-            long rss = resident * pageSize; // resident set size in bytes
-
-            //std::cout << "Physical memory used by process: " << rss / 1024 << " KB" << std::endl;
-
-
-            if ((rss / 1024) > heuristicAtt){
-
-                return replaceOnesWithExp(f, false, consts[2]);
-            } else {
-                edge_ptr conj2 = skipLowerVarsConj(f, g, x, false);
-                edge_ptr conj1 = skipLowerVarsConj(f, g, x, true);
-
-                return make_branch(x, conj1, conj2);
-            }
-
-        } else {
-            std::cerr << "Failed to open /proc/self/statm." << std::endl;
-            return 0;
-        }
-    }
-
-    edge_ptr heuristicNodePathCount(edge_ptr f, edge_ptr g, std::int32_t x)
-    {
-        int amount = node_count() + edge_count();
-        //std::cout << amount << "\n";
-
-        if (amount >= heuristicAtt){
-            return replaceOnesWithExp(f, false, consts[2]);
-        }
-        else {
-            edge_ptr conj2 = skipLowerVarsConj(f, g, x, false);
-            edge_ptr conj1 = skipLowerVarsConj(f, g, x, true);
-
-            return make_branch(x, conj1, conj2);
-        }
-    }
-
-    edge_ptr heuristicLayer(edge_ptr f, edge_ptr g, std::int32_t x)
-    {
-        if (f->v->is_const() || f->v->br().x < heuristicAtt){
-            if (g->v->is_const() || g->v->br().x < heuristicAtt){
-                edge_ptr conj2 = skipLowerVarsConj(f, g, x, false);
-                edge_ptr conj1 = skipLowerVarsConj(f, g, x, true);
-
-                return make_branch(x, conj1, conj2);
-            }
-            else {
-                return replaceOnesWithExp(f, false, consts[2]);
-            }
-        }
-        else {
-            if (g->v->is_const() || g->v->br().x < heuristicAtt){
-                return replaceOnesWithExp(g, false, consts[2]);
-            }
-            else {
-                return consts[2];
-            }
-        }
-    }
-
-    edge_ptr heuristicRandom(edge_ptr f, edge_ptr g, std::int32_t x)
-    {
-        std::random_device rd;
-        std::mt19937 gen(rd());
-        std::uniform_int_distribution<> dist(1, 1000000);
-        int randomNumber = dist(gen);
-
-        if (randomNumber <= 1000000 - heuristicAtt) {
-            edge_ptr conj2 = skipLowerVarsConj(f, g, x, false);
-            edge_ptr conj1 = skipLowerVarsConj(f, g, x, true);
-
-            return make_branch(x, conj1, conj2);
-        }
-
-        //lo becomes extension
-        else if (randomNumber <= 1000000 - (heuristicAtt/2)){
-            edge_ptr conj = skipLowerVarsConj(f, g, x, true);
-            return make_branch(x, conj, consts[2]);
-
-        // hi becomes extension
-        } else {
-            edge_ptr conj = skipLowerVarsConj(f, g, x, false);
-            return make_branch(x, consts[2], conj);
-        }
-    }
-
-
-    edge_ptr skipLowerVarsConj(edge_ptr f, edge_ptr g, std::int32_t x, bool varA)
-    {
-        auto cofR = cof(g, x, varA);
-        if (cofR->w < 0 && (!f->v || f->v->br().x != x)){
-            return cofR;
-        } else {
-            auto  cofL = cof(f, x, varA);
-
-            if (cofL->w < 0 && (!g->v || g->v->br().x != x)){
-                return cofL;
-            } else {
-                return conj(cofL, cofR);
-            }
-        }
-    }
-
-    edge_ptr replaceOnesWithExp(edge_ptr const& f, bool goesTrue, edge_ptr const& ex) {
-        assert(f);
-        assert(ex);
-
-        if (f == consts[2] || f == consts[3]){
-            return f;
-        }
-
-        if (goesTrue){
-            if (f == consts[0]){
-                if (ex == consts[2]){
-                    return consts[3];
-                }
-                if (ex == consts[3]){
-                    return consts[2];
-                }
-            }
-            if (f == consts[1]){
-                return f;
-            }
-        } else {
-            if (f == consts[0]){
-                return f;
-            }
-            if (f == consts[1]){
-                return ex;
-            }
-        }
-
-        auto const cr = ct.find({operation::MISC, f, goesTrue});
-        if (cr != ct.end())
-        {
-            return cr->second.first.lock();
-        }
-
-		edge_ptr hi;
-		edge_ptr lo;
-        edge_ptr r;
-        if (f->w == false) {
-            hi = replaceOnesWithExp(f->v->br().hi, goesTrue, ex);
-            lo = replaceOnesWithExp(f->v->br().lo, goesTrue, ex);
-        }
-        else{
-            hi = replaceOnesWithExp(f->v->br().hi, !goesTrue, ex);
-            lo = replaceOnesWithExp(f->v->br().lo, !goesTrue, ex);
-        }
-
-		auto w = lo->w;
-        if (w == 1){
-            hi = complement(hi);
-            lo = complement(lo);
-        }
-
-        if (f->w == 1){
-            (w == 0) ? w = 1 : w = 0;
-        }
-
-        r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(f->v->br().x, hi, lo))));
-
-        ct.insert_or_assign({operation::MISC, f, goesTrue}, std::make_pair(r, 0.0));
-
-        return r;
-    }
-
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
@@ -633,9 +586,9 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(hi);
         assert(lo);
 
-        if (hi == lo)  // redundancy rule
+        if (hi == lo)
         {
-            return hi;  // without limitation of generality
+            return hi;
         }
 
         auto const w = lo->w;
@@ -659,7 +612,7 @@ class bhd_manager : public detail::manager<bool, bool>
 
     [[nodiscard]] auto regw() const noexcept -> bool override
     {
-        return false;  // means a regular (non-complemented) edge
+        return false;
     }
 
     auto static transform(std::vector<bhd> const& fs) -> std::vector<edge_ptr>
@@ -673,12 +626,16 @@ class bhd_manager : public detail::manager<bool, bool>
 
     auto static tmls() -> std::array<edge_ptr, 2>
     {
-        // choose the 0-leaf due to complemented edges in order to ensure canonicity
         auto const leaf = std::make_shared<bool_node>(false);
-
         return std::array<edge_ptr, 2>{std::make_shared<bool_edge>(false, leaf),
                                        std::make_shared<bool_edge>(true, leaf)};
     }
+
+    // heuristic conjunction used to decrease BDDs
+    std::function<edge_ptr(edge_ptr const&, edge_ptr const&, std::int32_t)> heur{
+        [this](auto const& f, auto const& g, auto const x) { return no_heur(f, g, x); }};
+
+    float cost{NAN};  // determine when EXPs are made depending on the heuristic
 };
 
 auto inline bhd::operator~() const
@@ -706,27 +663,35 @@ auto inline bhd::operator|=(bhd const& rhs) -> bhd&
     return *this;
 }
 
+auto inline bhd::operator^=(bhd const& rhs) -> bhd&
+{
+    assert(mgr);
+    assert(mgr == rhs.mgr);
+
+    f = mgr->add(f, rhs.f);
+    return *this;
+}
+
 auto inline bhd::is_zero() const noexcept
 {
     assert(mgr);
 
-    return (*this == mgr->zero());
+    return *this == mgr->zero();
 }
 
 auto inline bhd::is_one() const noexcept
 {
     assert(mgr);
 
-    return (*this == mgr->one());
+    return *this == mgr->one();
 }
 
 auto inline bhd::is_exp() const noexcept
 {
     assert(mgr);
 
-    return (*this == mgr->expZero() || *this == mgr->expOne());
+    return mgr->is_exp(f);
 }
-
 
 auto inline bhd::high(bool const weighting) const
 {
@@ -793,21 +758,63 @@ auto inline bhd::is_essential(std::int32_t const x) const
     return mgr->is_essential(f, x);
 }
 
+auto inline bhd::ite(bhd const& g, bhd const& h) const
+{
+    assert(mgr);
+    assert(mgr == g.mgr);
+    assert(g.mgr == h.mgr);
+
+    return bhd{mgr->ite(f, g.f, h.f), mgr};
+}
+
+auto inline bhd::compose(std::int32_t const x, bhd const& g) const
+{
+    assert(mgr);
+    assert(mgr == g.mgr);
+
+    return bhd{mgr->compose(f, x, g.f), mgr};
+}
+
+auto inline bhd::restr(std::int32_t const x, bool const a) const
+{
+    assert(mgr);
+
+    return bhd{mgr->restr(f, x, a), mgr};
+}
+
+auto inline bhd::exist(std::int32_t const x) const
+{
+    assert(mgr);
+
+    return bhd{mgr->exist(f, x), mgr};
+}
+
+auto inline bhd::forall(std::int32_t const x) const
+{
+    assert(mgr);
+
+    return bhd{mgr->forall(f, x), mgr};
+}
+
+auto inline bhd::sat() const
+{
+    assert(mgr);
+
+    return mgr->sat(f);
+}
+
+auto inline bhd::gen_uclauses(std::ostream& s) const
+{
+    assert(mgr);
+
+    mgr->gen_uclauses(f, s);
+}
+
 auto inline bhd::print() const
 {
     assert(mgr);
 
     mgr->print({*this});
-}
-
-auto inline bhd::createExpansionFiles() const{
-    assert(mgr);
-
-    for (const auto& entry : std::filesystem::directory_iterator("ExpansionNodes")) {
-        std::filesystem::remove_all(entry.path());
-    }
-
-    mgr->createExpansionFiles(f);
 }
 
 }  // namespace freddy::dd
