@@ -215,7 +215,7 @@ method `cache` and read by `cached` if they exist. Corresponding code snippets c
 
 While operations are provided by the derived manager class `<type>_manager`, an associated wrapper `<type>` finally
 increases usability. It is implemented by simply calling operations through a DD pointer member. Complete examples can
-be found in [bdd.hpp](include/freddy/dd/bdd.hpp), [bhd.hpp](include/freddy/dd/bhd.hpp)
+be found in [bdd.hpp](include/freddy/dd/bdd.hpp), [bhd.hpp](include/freddy/dd/bhd.hpp),
 and [bmd.hpp](include/freddy/dd/bmd.hpp).
 
 To check the functionality, I use [Catch2](https://github.com/catchorg/Catch2). Already existing tests are located in
