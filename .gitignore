@@ -2,7 +2,6 @@
 
 !*/
 build
-_deps
 
 !.github/workflows/*.yml
 !include/freddy/**/*.hpp
@@ -12,7 +11,3 @@ _deps
 !/.gitignore
 !/CMakeLists.txt
 !/README.md
-
-!BHybridD/CMakeLists.txt
-!BHybridD/hybridTest.cpp
-!BHybridD/ExpansionNodes/*
