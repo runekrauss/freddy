@@ -445,6 +445,10 @@ class bdd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
 
+        if (f == consts[0] || g == consts[0])
+        {  // something conjugated with 0 is 0
+            return consts[0];
+        }
         if (f == consts[1])
         {  // 1g == g
             return g;

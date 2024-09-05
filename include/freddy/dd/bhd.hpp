@@ -377,8 +377,8 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(is_exp(exp));
 
         if (is_exp(f))
-        {  // 2~2 == 0 which is commutative
-            return (f == consts[2] && exp == consts[3]) || (f == consts[3] && exp == consts[2]) ? consts[0] : f;
+        {
+            return f == exp ? f : consts[0];
         }
 
         if (f->v->is_const())
@@ -388,8 +388,7 @@ class bhd_manager : public detail::manager<bool, bool>
                 return f == consts[0] ? (exp == consts[2] ? consts[3] : consts[2]) : f;
             }
 
-            // overwriting => complement bit disappears automatically
-            return f == consts[0] ? f : exp;
+            return f == consts[0] ? f : exp;  // overwriting => complement bit disappears automatically
         }
 
         op::repl op{f, m};
@@ -470,7 +469,7 @@ class bhd_manager : public detail::manager<bool, bool>
               static_cast<float>(edge_count()) * sizeof(bool_edge)) /
              1e3f) >= cost)
         {
-            return repl(f, consts[2]);
+            return repl(f, consts[2]);  // to ensure canonicity and because f is usually larger than g
         }
         return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
     }
@@ -481,14 +480,12 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(g);
         assert(x == top_var(f, g));
 
-        auto const z = detail::rand(0.0f, 1.0f);
-        auto const p = 1.0f - cost;  // probability that no EXPs are made
-
-        if (z <= p)
+        auto const p = detail::rand(0.0f, 1.0f);
+        if (p > cost)
         {
             return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
         }
-        if (z <= p + cost / 2.0f)
+        if (p < cost / 2.0f)
         {  // low child becomes an EXP
             return make_branch(x, compr(f, g, x, true), consts[2]);
         }
@@ -526,21 +523,11 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
 
-        // EXP terminal cases
-        if (is_exp(f) && is_exp(g))
-        {
-            return consts[2];
-        }
-        if (is_exp(f))
-        {
-            return repl(g, f);
-        }
-        if (is_exp(g))
-        {
-            return repl(f, g);
-        }
-
         // constant terminal cases
+        if (f == consts[0] || g == consts[0])
+        {
+            return consts[0];
+        }
         if (f == consts[1])
         {
             return g;
@@ -560,6 +547,20 @@ class bhd_manager : public detail::manager<bool, bool>
                 return consts[2];
             }
             return consts[0];
+        }
+
+        // EXP terminal cases
+        if (is_exp(f) && is_exp(g))
+        {
+            return f == g ? f : consts[0];
+        }
+        if (is_exp(f))
+        {
+            return repl(g, f);
+        }
+        if (is_exp(g))
+        {
+            return repl(f, g);
         }
 
         op::conj op{f, g};
