@@ -59,32 +59,97 @@ TEST_CASE("sphdd_addition", "[phdd, addition]")
 
     SECTION("Add up constants")
     {
-        std::ofstream fs1("../phdd_add_const+consts.dot");
+        std::ofstream fs("../phdd_add_const+consts.dot");
         mgr.print({mgr.constant(18), mgr.constant(14),
                    mgr.constant(18) + mgr.constant(14)},
-                  {"18", "14", "18+14"},
-                  fs1);
-        fs1.close();
+                  {"18", "14", "18+14"}, fs);
+        fs.close();
         REQUIRE(true);
     }
 
     SECTION("Add up var and constants")
     {
-        std::ofstream fs2("../phdd_add_var+consts.dot");
+        std::ofstream fs("../phdd_add_var+consts.dot");
         mgr.print({mgr.zero() + x, mgr.one() + x, mgr.two() + x},
-                  {"0+x", "1+x", "2+x"},
-                  fs2);
-        fs2.close();
+                  {"0+x", "1+x", "2+x"}, fs);
+        fs.close();
         REQUIRE(true);
     }
 
     SECTION("Add up vars")
     {
-        std::ofstream fs3("../phdd_add_var+var.dot");
-        mgr.print({x + x, y + x, y + y}, {"x+x", "y+x", "y+y"}, fs3);
-        fs3.close();
+        std::ofstream fs("../phdd_add_var+var.dot");
+        mgr.print({x + x, y + x, y + y}, {"x+x", "y+x", "y+y"}, fs);
+        fs.close();
         REQUIRE(true);
     }
+
+    SECTION("Add linear function 3x+5y+5")
+    {
+        auto f = x + x + x + y + y + y + y + y + mgr.constant(5);
+
+        std::ofstream fs("../phdd_add_lin.dot");
+        mgr.print({f}, {"3x+5y+5"}, fs);
+        fs.close();
+        REQUIRE(true);
+    }
+}
+
+TEST_CASE("sphdd_multiplication", "[phdd, multiplication]")
+{
+    dd::phdd_manager mgr;
+    auto x = mgr.var("x");
+    auto y = mgr.var("y");
+
+    SECTION("Multiply constants")
+    {
+        std::ofstream fs("../phdd_mult_const*consts.dot");
+        mgr.print({ mgr.constant(6) * mgr.constant(3),
+                    mgr.constant(8) * mgr.constant(8),
+                    mgr.constant(3) * mgr.constant(3)},
+                  {"6*3", "8*8", "3*3"}, fs);
+        fs.close();
+        REQUIRE(true);
+    }
+
+    SECTION("Multiply constants with vars")
+    {
+        std::ofstream fs("../phdd_mult_const*vars.dot");
+        mgr.print({mgr.constant(6) * x,
+                   mgr.constant(16) * x,
+                   mgr.constant(3) * x},
+                  {"6x", "16x", "3x"}, fs);
+        fs.close();
+        REQUIRE(true);
+    }
+
+    SECTION("Multiply vars with vars")
+    {
+        std::ofstream fs("../phdd_mult_vars*vars.dot");
+        mgr.print({x * x,
+                   y * x,
+                   y * y},
+                  {"xx", "xy", "yy"}, fs);
+        fs.close();
+        REQUIRE(true);
+    }
+
+    SECTION("Multiply polynomials")
+    {
+        auto f1 = (mgr.two() * x) + (mgr.one() * y) + mgr.two();
+
+        auto f2 = (mgr.two() * x) + (mgr.two() * y) + mgr.two();
+
+        std::ofstream fs("../phdd_mult_poly.dot");
+        mgr.print({f1,
+                   f2,
+                   f1 * f2},
+                  {"2x+y+2", "2x+2y+2",
+                   "4xx + 6xy + 8x + 2yy + 6y + 4\n 12x 6xy 8y 4"}, fs);
+        fs.close();
+        REQUIRE(true);
+    }
+
 }
 
 TEST_CASE("playground", "")

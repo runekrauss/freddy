@@ -350,15 +350,15 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
                 g = foa(std::make_shared<int_edge>(g->w - w, g->v));
                 break;
             case operation::MUL:
-                w = f->w * g->w;
+                w = f->w + g->w;
 
                 if (f->v->operator()() <= g->v->operator()())
                 {
                     std::swap(f, g);
                 }
 
-                f = foa(std::make_shared<int_edge>(1, f->v));
-                g = foa(std::make_shared<int_edge>(1, g->v));
+                f = foa(std::make_shared<int_edge>(0, f->v));
+                g = foa(std::make_shared<int_edge>(0, g->v));
                 break;
             default: assert(false);
         }
@@ -373,10 +373,7 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         {
             return f;
         }
-//        if (w == 0 || f->w == 0)
-//        {
-//            return consts[0];
-//        }
+
         return foa(std::make_shared<int_edge>(comb(w, f->w), f->v));
     }
 
@@ -395,15 +392,11 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         }
         if (f->v->is_const() && g->v->is_const())
         {
+            // TODO mind negative edge weights
             auto val = agg(f->w,f->v->c()) + agg(g->w,g->v->c());
             auto factors = factorize_by_pow2(val);
             return make_const(factors.first, factors.second);
         }
-
-//        if (f->v == g->v && f->w + g->w == 0)
-//        {
-//            return ((f->w + g->w == 0) ? consts[0] : foa(std::make_shared<int_edge>(f->w + g->w, f->v)));
-//        }
 
         auto const w = rearrange(operation::ADD, f, g);
 
@@ -426,6 +419,7 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         return ((1 << w) * val);
     }
 
+    // TODO only used in apply!!
     [[deprecated,nodiscard]] auto comb(std::int32_t const& w1, std::int32_t const& w2) const noexcept -> std::int32_t override
     {
         return (w1 + w2);
@@ -502,17 +496,24 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         assert(f);
         assert(g);
 
+        // TODO switch for decomposition types
+
         if (f == consts[0] || g == consts[0])
         {
             return consts[0];
         }
-        if (f->v->is_const())
+        if (f->v == consts[1]->v)
         {
             return apply(f->w, g);
         }
-        if (g->v->is_const())
+        if (f->v == consts[1]->v)
         {
             return apply(g->w, f);
+        }
+        if (f->v->is_const() && g->v->is_const())
+        {
+            // TODO negative edge weights
+            return this->constant(agg(f->w,f->v->c()) * agg(g->w, g->v->c())).f;
         }
 
         auto const w = rearrange(operation::MUL, f, g);
@@ -526,8 +527,7 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         auto const x = top_var(f, g);
         auto const r =
             make_branch(x,
-                        add(mul(cof(f, x, true), cof(g, x, true)),
-                            add(mul(cof(f, x, true), cof(g, x, false)), mul(cof(f, x, false), cof(g, x, true)))),
+                        mul(cof(f, x, true), cof(g, x, true)),
                         mul(cof(f, x, false), cof(g, x, false)));
 
         ct.insert_or_assign({operation::MUL, f, g}, std::make_pair(r, 0.0));
