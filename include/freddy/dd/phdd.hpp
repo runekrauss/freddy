@@ -39,6 +39,10 @@ class phdd_manager;
 // Types
 // =====================================================================================================================
 
+using edge_weight = std::pair<bool ,int32_t>;
+using phdd_edge = detail::edge<edge_weight, float>;
+using phdd_node = detail::node<edge_weight, float>;
+
 class phdd
 {
   public:
@@ -184,7 +188,7 @@ class phdd
     friend phdd_manager;
 
     // wrapper is controlled by its phdd manager
-    phdd(std::shared_ptr<detail::edge<std::int32_t, std::int32_t>> f, phdd_manager* const mgr) :
+    phdd(std::shared_ptr<phdd_edge> f, phdd_manager* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
@@ -192,7 +196,7 @@ class phdd
         assert(mgr);
     }
 
-    std::shared_ptr<detail::edge<std::int32_t, std::int32_t>> f;
+    std::shared_ptr<phdd_edge> f;
 
     phdd_manager* mgr{};
 };
@@ -300,9 +304,6 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
     }
 
   private:
-    using int_edge = detail::edge<std::int32_t, std::int32_t>;
-
-    using int_node = detail::node<std::int32_t, std::int32_t>;
 
     [[deprecated]] auto neg(edge_ptr const& f)
     {
@@ -346,8 +347,8 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
                     w = normw(g, f);
                 }
 
-                f = foa(std::make_shared<int_edge>(f->w - w, f->v));
-                g = foa(std::make_shared<int_edge>(g->w - w, g->v));
+                f = foa(std::make_shared<phdd_edge>(f->w - w, f->v));
+                g = foa(std::make_shared<phdd_edge>(g->w - w, g->v));
                 break;
             case operation::MUL:
                 w = f->w + g->w;
@@ -357,8 +358,8 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
                     std::swap(f, g);
                 }
 
-                f = foa(std::make_shared<int_edge>(0, f->v));
-                g = foa(std::make_shared<int_edge>(0, g->v));
+                f = foa(std::make_shared<phdd_edge>(0, f->v));
+                g = foa(std::make_shared<phdd_edge>(0, g->v));
                 break;
             default: assert(false);
         }
@@ -373,8 +374,12 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         {
             return f;
         }
+        if (f == consts[0])
+        {
+            return consts[0];
+        }
 
-        return foa(std::make_shared<int_edge>(comb(w, f->w), f->v));
+        return foa(std::make_shared<phdd_edge>(comb(w, f->w), f->v));
     }
 
     auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -393,9 +398,15 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         if (f->v->is_const() && g->v->is_const())
         {
             // TODO mind negative edge weights
+            assert(f->v != consts[0]->v);
             auto val = agg(f->w,f->v->c()) + agg(g->w,g->v->c());
             auto factors = factorize_by_pow2(val);
             return make_const(factors.first, factors.second);
+        }
+
+        if (f->v == g->v)
+        {
+            return apply(1, f);
         }
 
         auto const w = rearrange(operation::ADD, f, g);
@@ -416,6 +427,7 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
 
     [[deprecated,nodiscard]] auto agg(std::int32_t const& w, std::int32_t const& val) const noexcept -> std::int32_t override
     {
+        //TODO neg edge weights
         return ((1 << w) * val);
     }
 
@@ -461,29 +473,29 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         assert(x < var_count());
         assert(hi);
         assert(lo);
-        assert(hi->v != lo->v);
+//        assert(hi->v != lo->v);
 
         // TODO if-condition x is Shannon decomposed elif PD else
 
         if(hi == consts[0])
         {
-            return foa(std::make_shared<int_edge>(
+            return foa(std::make_shared<phdd_edge>(
                 lo->w,
-                foa(std::make_shared<int_node>(x, hi, foa(std::make_shared<int_edge>(0, lo->v))))));
+                foa(std::make_shared<phdd_node>(x, hi, foa(std::make_shared<phdd_edge>(0, lo->v))))));
         }
         if(lo == consts[0])
         {
-            return foa(std::make_shared<int_edge>(
+            return foa(std::make_shared<phdd_edge>(
                 hi->w,
-                foa(std::make_shared<int_node>(x, foa(std::make_shared<int_edge>(0, hi->v)), lo))));
+                foa(std::make_shared<phdd_node>(x, foa(std::make_shared<phdd_edge>(0, hi->v)), lo))));
         }
         auto const w = normw(hi, lo);
 
-        return foa(std::make_shared<int_edge>(
+        return foa(std::make_shared<phdd_edge>(
             w,
-            foa(std::make_shared<int_node>(x,
-                                           foa(std::make_shared<int_edge>(hi->w - w, hi->v)),
-                                           foa(std::make_shared<int_edge>(lo->w - w, lo->v))))));
+            foa(std::make_shared<phdd_node>(x,
+                                           foa(std::make_shared<phdd_edge>(hi->w - w, hi->v)),
+                                           foa(std::make_shared<phdd_edge>(lo->w - w, lo->v))))));
     }
 
     [[deprecated, nodiscard]] auto merge(std::int32_t const& val1, std::int32_t const& val2) const noexcept -> std::int32_t override
@@ -549,10 +561,8 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
 
     [[deprecated]] auto static transform(std::vector<phdd> const& fs) -> std::vector<edge_ptr>
     {
-        std::vector<edge_ptr> gs;
-        gs.reserve(fs.size());
+        std::vector<edge_ptr> gs(fs.size());
         std::transform(fs.begin(), fs.end(), std::back_inserter(gs), [](auto const& g) { return g.f; });
-
         return gs;
     }
 };
