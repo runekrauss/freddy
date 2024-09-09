@@ -40,7 +40,6 @@ class phdd_manager;
 // Types
 // =====================================================================================================================
 
-using edge_weight = std::pair<bool ,int32_t>;
 using phdd_edge = detail::edge<edge_weight, float>;
 using phdd_node = detail::node<edge_weight, float>;
 
@@ -569,10 +568,10 @@ class phdd_manager : public detail::manager<edge_weight, float>
         return {f->w.first ^ g->w.first, std::min(f->w.second, g->w.second)};
     }
 
-    [[deprecated]] auto static transform(std::vector<phdd> const& fs) -> std::vector<edge_ptr>
+    [[nodiscard]] auto static transform(std::vector<phdd> const& fs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> gs(fs.size());
-        std::transform(fs.begin(), fs.end(), std::back_inserter(gs), [](auto const& g) { return g.f; });
+        std::transform(fs.begin(), fs.end(), gs.begin(), [](auto const& g) { return g.f; });
         return gs;
     }
 };
