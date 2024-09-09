@@ -166,6 +166,7 @@ TEST_CASE("sphdd_integer", "[phdd, int, addition]")
 
     auto sum = x+y;
     auto prod = x*y;
+    auto diff = x-y;
 
     auto int_to_bool_vec5 = [](int n) -> std::vector<bool>
     {
@@ -193,6 +194,7 @@ TEST_CASE("sphdd_integer", "[phdd, int, addition]")
             REQUIRE(y.eval(assignment) == j);
             REQUIRE(sum.eval(assignment) == i+j);
             REQUIRE(prod.eval(assignment) == i*j);
+            REQUIRE(diff.eval(assignment) == i-j);
         }
     }
 }
