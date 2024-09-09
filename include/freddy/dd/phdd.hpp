@@ -4,12 +4,14 @@
 // Includes
 // *********************************************************************************************************************
 
+#include "freddy/dd/phdd_edge_weight.hpp"
 #include "freddy/detail/manager.hpp"  // detail::manager
 
 #include <algorithm>    // std::transform
 #include <array>        // std::array
+#include <bit>          // std::bit_width
 #include <cassert>      // assert
-#include <cmath>        // std::pow
+#include <cmath>        // std::pow, std::signbit
 #include <cstdint>      // std::int32_t
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
@@ -20,7 +22,6 @@
 #include <string_view>  // std::string_view
 #include <utility>      // std::make_pair
 #include <vector>       // std::vector
-#include <bit>          // std::bit_width
 
 // *********************************************************************************************************************
 // Namespaces
@@ -201,7 +202,7 @@ class phdd
     phdd_manager* mgr{};
 };
 
-class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
+class phdd_manager : public detail::manager<edge_weight, float>
 {
   public:
     friend phdd;
@@ -209,16 +210,16 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
     phdd_manager() :
             manager(tmls())
     {
-        consts.push_back(make_const(1, 1));
+        consts.push_back(make_const({false,1}, 1));
+        consts.push_back(make_const({true, 0}, 1));
     }
 
     auto static tmls() -> std::array<edge_ptr, 2>
     {
-        auto const zero_leaf = std::make_shared<int_node>(0);
-        auto const one_leaf = std::make_shared<int_node>(1);
-
-        return std::array<edge_ptr, 2>{std::make_shared<int_edge>(0, zero_leaf),
-                                       std::make_shared<int_edge>(0, one_leaf)};
+        auto const zero_leaf = std::make_shared<phdd_node>(0.0);
+        auto const one_leaf = std::make_shared<phdd_node>(1.0);
+        return std::array<edge_ptr, 2>{std::make_shared<phdd_edge>(std::make_pair(false, 0), zero_leaf),
+                                       std::make_shared<phdd_edge>(std::make_pair(false, 0), one_leaf)};
     }
 
     auto var(std::string_view l = {})
@@ -249,19 +250,37 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         return phdd{consts[2], this};
     }
 
-    auto static factorize_by_pow2(int w) -> std::pair<int,int>
+    auto static factorize_pow2(int w) -> std::pair<int,int>
     {
         const unsigned int pow = w & (-w);
         auto exp = std::bit_width(pow) - 1;
         return {exp, w / pow};
     }
 
-    auto constant(std::int32_t const w)
+    auto static decompose_float(float x) -> std::tuple<bool, int32_t ,int32_t>
     {
-        if(w == 0) { return zero();}
+        assert(!isnanf(x) && !isinff(x) && std::isnormal(x));
+        if(x == 0)
+        {
+            return {0,0,0};
+        }
+        bool const sign = std::signbit(x);
+        int32_t const bits = *reinterpret_cast<int32_t*>(&x);
+        int32_t const exponent = ((bits >> 23) & 0xFF) - 127 - 23; // bias 127, sig_size 23
+        int32_t const significant = (bits & 0x7FFFFF) | (1 << 23); // leading zero
+        auto factors = factorize_pow2(significant);
 
-        auto factors = factorize_by_pow2(w);
-        return phdd{make_const(factors.first, factors.second), this};
+        return {sign, exponent + factors.first, factors.second};
+    }
+
+    auto constant(float const w)
+    {
+        if(w == 0)
+        {
+            return zero();
+        }
+        auto d = decompose_float(w);
+        return phdd{make_const({std::get<0>(d),std::get<1>(d)}, static_cast<float>(std::get<2>(d))), this};
     }
 
     [[nodiscard]] auto size(std::vector<phdd> const& fs) const
@@ -281,18 +300,9 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         auto r = consts[0];
         for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
         {  // LSB ... MSB
-            r = add(r, mul(make_const(static_cast<std::int32_t>(std::pow(2, i)), 1), fs[i].f));
+            r = add(r, mul(make_const({0, i}, 1), fs[i].f));
         }
         return phdd{r, this};
-    }
-
-    auto twos_complement(std::vector<phdd> const& fs)
-    {
-        assert(!fs.empty());
-
-        return phdd{add(apply(static_cast<std::int32_t>(-std::pow(2, fs.size() - 1)), fs.back().f),
-                       weighted_sum({fs.begin(), fs.end() - 1}).f),
-                   this};
     }
 
     auto print(std::vector<phdd> const& fs, std::vector<std::string> const& outputs = {},
@@ -333,11 +343,11 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         assert(f);
         assert(g);
 
-        std::int32_t w = 0;
+        edge_weight w = {0,0};
         switch (op)
         {
             case operation::ADD:
-                if (std::abs(f->w) <= std::abs(g->w))
+                if (std::abs(f->w.second) <= std::abs(g->w.second))
                 {
                     std::swap(f, g);
                     w = normw(f, g);
@@ -347,30 +357,30 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
                     w = normw(g, f);
                 }
 
-                f = foa(std::make_shared<phdd_edge>(f->w - w, f->v));
-                g = foa(std::make_shared<phdd_edge>(g->w - w, g->v));
+                f = foa(std::make_shared<phdd_edge>(std::make_pair(0, f->w.second - w.second), f->v));
+                g = foa(std::make_shared<phdd_edge>(std::make_pair(0, g->w.second - w.second), g->v));
                 break;
             case operation::MUL:
-                w = f->w + g->w;
+                w = {f->w.first ^ g->w.first, f->w.second + g->w.second};
 
                 if (f->v->operator()() <= g->v->operator()())
                 {
                     std::swap(f, g);
                 }
 
-                f = foa(std::make_shared<phdd_edge>(0, f->v));
-                g = foa(std::make_shared<phdd_edge>(0, g->v));
+                f = foa(std::make_shared<phdd_edge>(std::make_pair(0,0), f->v));
+                g = foa(std::make_shared<phdd_edge>(std::make_pair(0,0), g->v));
                 break;
             default: assert(false);
         }
         return w;
     }
 
-    [[deprecated]] auto apply(std::int32_t const& w, edge_ptr const& f) -> edge_ptr override
+    [[deprecated]] auto apply(edge_weight const& w, edge_ptr const& f) -> edge_ptr override
     {
         assert(f);
 
-        if (w == 0)
+        if (w.second == 0)
         {
             return f;
         }
@@ -400,13 +410,13 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
             // TODO mind negative edge weights
             assert(f->v != consts[0]->v);
             auto val = agg(f->w,f->v->c()) + agg(g->w,g->v->c());
-            auto factors = factorize_by_pow2(val);
-            return make_const(factors.first, factors.second);
+            auto factors = factorize_pow2(val);
+            return make_const({false, factors.first}, factors.second);
         }
 
         if (f->v == g->v)
         {
-            return apply(1, f);
+            return apply({false ,1}, f);
         }
 
         auto const w = rearrange(operation::ADD, f, g);
@@ -425,16 +435,16 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         return apply(w, r);
     }
 
-    [[deprecated,nodiscard]] auto agg(std::int32_t const& w, std::int32_t const& val) const noexcept -> std::int32_t override
+    [[deprecated,nodiscard]] auto agg(edge_weight const& w, float const& val) const noexcept -> float override
     {
         //TODO neg edge weights
-        return ((1 << w) * val);
+        return w.first ? -pow(2, w.second) * val : pow(2, w.second) * val;
     }
 
     // TODO only used in apply!!
-    [[deprecated,nodiscard]] auto comb(std::int32_t const& w1, std::int32_t const& w2) const noexcept -> std::int32_t override
+    [[deprecated,nodiscard]] auto comb(edge_weight const& w1, edge_weight const& w2) const noexcept -> edge_weight override
     {
-        return (w1 + w2);
+        return {w1.first ^ w2.first, w1.second + w2.second};
     }
 
     [[deprecated]] auto complement(edge_ptr const& f) -> edge_ptr override
@@ -481,24 +491,24 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         {
             return foa(std::make_shared<phdd_edge>(
                 lo->w,
-                foa(std::make_shared<phdd_node>(x, hi, foa(std::make_shared<phdd_edge>(0, lo->v))))));
+                foa(std::make_shared<phdd_node>(x, hi, foa(std::make_shared<phdd_edge>(std::make_pair(false, 0), lo->v))))));
         }
         if(lo == consts[0])
         {
             return foa(std::make_shared<phdd_edge>(
                 hi->w,
-                foa(std::make_shared<phdd_node>(x, foa(std::make_shared<phdd_edge>(0, hi->v)), lo))));
+                foa(std::make_shared<phdd_node>(x, foa(std::make_shared<phdd_edge>(std::make_pair(false, 0), hi->v)), lo))));
         }
         auto const w = normw(hi, lo);
 
         return foa(std::make_shared<phdd_edge>(
             w,
             foa(std::make_shared<phdd_node>(x,
-                                           foa(std::make_shared<phdd_edge>(hi->w - w, hi->v)),
-                                           foa(std::make_shared<phdd_edge>(lo->w - w, lo->v))))));
+               foa(std::make_shared<phdd_edge>(std::make_pair(false, hi->w.second - w.second), hi->v)),
+               foa(std::make_shared<phdd_edge>(std::make_pair(false, lo->w.second - w.second), lo->v))))));
     }
 
-    [[deprecated, nodiscard]] auto merge(std::int32_t const& val1, std::int32_t const& val2) const noexcept -> std::int32_t override
+    [[deprecated, nodiscard]] auto merge(float const& val1, float const& val2) const noexcept -> float override
     {
         return (val1 + val2);
     }
@@ -547,16 +557,16 @@ class phdd_manager : public detail::manager<std::int32_t, std::int32_t>
         return apply(w, r);
     }
 
-    [[nodiscard]] auto regw() const noexcept -> std::int32_t override
+    [[nodiscard]] auto regw() const noexcept -> edge_weight override
     {
-        return 0;
+        return {0,0};
     }
 
-    [[deprecated]] auto normw(edge_ptr const& f, edge_ptr const& g) noexcept -> std::int32_t
+    [[deprecated]] auto normw(edge_ptr const& f, edge_ptr const& g) noexcept -> edge_weight
     {
         assert(f);
         assert(g);
-        return std::min(f->w, g->w);
+        return {f->w.first ^ g->w.first, std::min(f->w.second, g->w.second)};
     }
 
     [[deprecated]] auto static transform(std::vector<phdd> const& fs) -> std::vector<edge_ptr>
