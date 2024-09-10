@@ -205,27 +205,51 @@ class phdd
 
 class phdd_manager : public detail::manager<edge_weight, float>
 {
+  private:
+    auto static factorize_pow2(int w) -> std::pair<int,int>
+    {
+        const unsigned int pow = w & (-w);
+        auto exp = std::bit_width(pow) - 1;
+        return {exp, w / pow};
+    }
+
+    auto static decompose_float(float x) -> std::tuple<bool, int32_t ,int32_t>
+    {
+        assert(!isnanf(x) && !isinff(x) && std::isnormal(x));
+        if(x == 0)
+        {
+            return {0,0,0};
+        }
+        bool const sign = std::signbit(x);
+        int32_t const bits = *reinterpret_cast<int32_t*>(&x);
+        int32_t const exponent = ((bits >> 23) & 0xFF) - 127 - 23; // bias 127, sig_size 23
+        int32_t const significant = (bits & 0x7FFFFF) | (1 << 23); // leading zero
+        auto factors = factorize_pow2(significant);
+
+        return {sign, exponent + factors.first, factors.second};
+    }
+
   public:
     friend phdd;
 
     phdd_manager() :
             manager(tmls())
     {
-        consts.push_back(make_const({false,1}, 1));
-        consts.push_back(make_const({true, 0}, 1));
+        consts.push_back(make_const({false,1}, 1)); // two
+        consts.push_back(make_const({true, 0}, 1)); // negative one
     }
 
     auto static tmls() -> std::array<edge_ptr, 2>
     {
         auto const zero_leaf = std::make_shared<phdd_node>(0.0);
         auto const one_leaf = std::make_shared<phdd_node>(1.0);
-        return std::array<edge_ptr, 2>{std::make_shared<phdd_edge>(std::make_pair(false, 0), zero_leaf),
-                                       std::make_shared<phdd_edge>(std::make_pair(false, 0), one_leaf)};
+        return std::array<edge_ptr, 2>{std::make_shared<phdd_edge>(std::make_pair(false, 0), zero_leaf), // zero
+                                       std::make_shared<phdd_edge>(std::make_pair(false, 0), one_leaf)}; // one
     }
 
-    auto var(std::string_view l = {})
+    auto var(expansion const d, std::string_view l = {})
     {
-        return phdd{make_var(expansion::S, l), this};
+        return phdd{make_var(d, l), this};
     }
 
     auto var(std::int32_t const i) noexcept
@@ -249,29 +273,6 @@ class phdd_manager : public detail::manager<edge_weight, float>
     auto two() noexcept
     {
         return phdd{consts[2], this};
-    }
-
-    auto static factorize_pow2(int w) -> std::pair<int,int>
-    {
-        const unsigned int pow = w & (-w);
-        auto exp = std::bit_width(pow) - 1;
-        return {exp, w / pow};
-    }
-
-    auto static decompose_float(float x) -> std::tuple<bool, int32_t ,int32_t>
-    {
-        assert(!isnanf(x) && !isinff(x) && std::isnormal(x));
-        if(x == 0)
-        {
-            return {0,0,0};
-        }
-        bool const sign = std::signbit(x);
-        int32_t const bits = *reinterpret_cast<int32_t*>(&x);
-        int32_t const exponent = ((bits >> 23) & 0xFF) - 127 - 23; // bias 127, sig_size 23
-        int32_t const significant = (bits & 0x7FFFFF) | (1 << 23); // leading zero
-        auto factors = factorize_pow2(significant);
-
-        return {sign, exponent + factors.first, factors.second};
     }
 
     auto constant(float const w)
@@ -316,14 +317,14 @@ class phdd_manager : public detail::manager<edge_weight, float>
 
   private:
 
-    [[deprecated]] auto neg(edge_ptr const& f)
+    auto neg(edge_ptr const& f)
     {
         assert(f);
 
         return ((f == consts[0]) ? f : mul(consts[3], f));
     }
 
-    [[deprecated]] auto sub(edge_ptr const& f, edge_ptr const& g)
+    auto sub(edge_ptr const& f, edge_ptr const& g)
     {
         assert(f);
         assert(g);
@@ -331,7 +332,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
         return add(f, neg(g));
     }
 
-    [[deprecated]] auto antiv(edge_ptr const& f, edge_ptr const& g)
+    auto antiv(edge_ptr const& f, edge_ptr const& g)
     {
         assert(f);
         assert(g);
@@ -339,7 +340,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
         return sub(add(f, g), mul(consts[2], mul(f, g)));
     }
 
-    [[nodiscard]] auto apply(edge_weight const& w, edge_ptr const& f) -> edge_ptr override
+    auto apply(edge_weight const& w, edge_ptr const& f) -> edge_ptr override
     {
         assert(f);
 
@@ -347,7 +348,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
         {
             return consts[0];
         }
-        if (!w.first && w.second == 0)
+        if (!w.first and w.second == 0)
         {
             return f;
         }
@@ -374,9 +375,11 @@ class phdd_manager : public detail::manager<edge_weight, float>
             return this->constant(val).f;
         }
 
-        if (f->v == g->v)
+        if (f->v == g->v and
+            f->w.first != g->w.first and
+            f->w.second == g->w.second)
         {
-            return f->w.first == g->w.first ? apply({false ,1}, f) : consts[0];
+            return consts[0];
         }
 
         if (std::abs(f->w.second) <= std::abs(g->w.second))
@@ -420,7 +423,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
         return sub(consts[1], f);
     }
 
-    [[deprecated]] auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
+    auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
         assert(g);
@@ -428,7 +431,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
         return mul(f, g);
     }
 
-    [[deprecated]] auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
+    auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
         assert(g);
@@ -450,21 +453,29 @@ class phdd_manager : public detail::manager<edge_weight, float>
         assert(hi);
         assert(lo);
 
-//          TODO if-condition x is Shannon decomposed elif PD else
-//        if(hi == consts[0])
-//        {
-//            return foa(std::make_shared<phdd_edge>(
-//                lo->w,
-//                foa(std::make_shared<phdd_node>(x, hi, foa(std::make_shared<phdd_edge>(std::make_pair(false, 0), lo->v))))));
-//        }
-//        if(lo == consts[0])
-//        {
-//            return foa(std::make_shared<phdd_edge>(
-//                hi->w,
-//                foa(std::make_shared<phdd_node>(x, foa(std::make_shared<phdd_edge>(std::make_pair(false, 0), hi->v)), lo))));
-//        }
+        if(vl[x].t == expansion::S and hi == consts[0])
+        {
+            return foa(std::make_shared<phdd_edge>(
+                lo->w,
+                foa(std::make_shared<phdd_node>(x, hi, foa(std::make_shared<phdd_edge>(std::make_pair(false, 0), lo->v))))));
+        }
+        if(vl[x].t == expansion::PD and hi == consts[0])
+        {
+            return lo;
+        }
+        if(lo == consts[0])
+        {
+            return foa(std::make_shared<phdd_edge>(
+                hi->w,
+                foa(std::make_shared<phdd_node>(x, foa(std::make_shared<phdd_edge>(std::make_pair(false, 0), hi->v)), lo))));
+        }
 
         auto const w = normw(hi, lo);
+
+        if(vl[x].t == expansion::S and hi == lo)
+        {
+            return apply(w,hi);
+        }
 
         return foa(std::make_shared<phdd_edge>(
             w,
@@ -517,10 +528,25 @@ class phdd_manager : public detail::manager<edge_weight, float>
         }
 
         auto const x = top_var(f, g);
-        auto const r =
-            make_branch(x,
-                        mul(cof(f, x, true), cof(g, x, true)),
-                        mul(cof(f, x, false), cof(g, x, false)));
+
+        edge_ptr r;
+        if(vl[x].t == expansion::S)
+        {
+            r = make_branch(x,
+                            mul(cof(f, x, true), cof(g, x, true)),
+                            mul(cof(f, x, false), cof(g, x, false)));
+        }
+        else if(vl[x].t == expansion::PD)
+        {
+            r = make_branch(x, add(add(mul(cof(f, x, true),  cof(g, x, true)),
+                                       mul(cof(f, x, true),  cof(g, x, false))),
+                                       mul(cof(f, x, false), cof(g, x, true))),
+                               mul(cof(f, x, false), cof(g, x, false)));
+        }
+        else
+        {
+            assert(false);
+        }
 
         op.r = r;
         cache(std::move(op));
@@ -537,7 +563,15 @@ class phdd_manager : public detail::manager<edge_weight, float>
     {
         assert(f);
         assert(g);
-        return {f->w.first && g->w.first,
+        if(f == consts[0])
+        {
+            return g->w;
+        }
+        if(g == consts[0])
+        {
+            return f->w;
+        }
+        return {f->w.first,
                 std::min(f->w.second, g->w.second)};
     }
 
