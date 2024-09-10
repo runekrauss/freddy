@@ -6,6 +6,8 @@
 
 #include "freddy/dd/phdd_edge_weight.hpp"
 #include "freddy/detail/manager.hpp"  // detail::manager
+#include "freddy/op/add.hpp"          // op::add
+#include "freddy/op/mul.hpp"          // op::mul
 
 #include <algorithm>    // std::transform
 #include <array>        // std::array
@@ -337,40 +339,6 @@ class phdd_manager : public detail::manager<edge_weight, float>
         return sub(add(f, g), mul(consts[2], mul(f, g)));
     }
 
-    auto rearrange(operation const op, edge_ptr& f, edge_ptr& g)
-    {  // increase the probability of reusing previously computed results
-        assert(f);
-        assert(g);
-
-        edge_weight w;
-        switch (op)
-        {
-            case operation::ADD:
-                if (std::abs(f->w.second) <= std::abs(g->w.second))
-                {
-                    std::swap(f, g);
-                }
-                w = normw(f, g);
-
-                f = foa(std::make_shared<phdd_edge>(std::make_pair(f->w.first ^ w.first, f->w.second - w.second), f->v));
-                g = foa(std::make_shared<phdd_edge>(std::make_pair(g->w.first ^ w.first, g->w.second - w.second), g->v));
-                break;
-            case operation::MUL:
-                w = {f->w.first ^ g->w.first, f->w.second + g->w.second};
-
-                if (f->v->operator()() <= g->v->operator()())
-                {
-                    std::swap(f, g);
-                }
-
-                f = foa(std::make_shared<phdd_edge>(std::make_pair(0,0), f->v));
-                g = foa(std::make_shared<phdd_edge>(std::make_pair(0,0), g->v));
-                break;
-            default: assert(false);
-        }
-        return w;
-    }
-
     [[nodiscard]] auto apply(edge_weight const& w, edge_ptr const& f) -> edge_ptr override
     {
         assert(f);
@@ -411,19 +379,26 @@ class phdd_manager : public detail::manager<edge_weight, float>
             return f->w.first == g->w.first ? apply({false ,1}, f) : consts[0];
         }
 
-        auto const w = rearrange(operation::ADD, f, g);
-
-        auto const cr = ct.find({operation::ADD, f, g});
-        if (cr != ct.end())
+        if (std::abs(f->w.second) <= std::abs(g->w.second))
         {
-            return apply(w, cr->second.first.lock());
+            std::swap(f, g);
+        }
+        auto const w = normw(f, g);
+        f = foa(std::make_shared<phdd_edge>(std::make_pair(f->w.first ^ w.first, f->w.second - w.second), f->v));
+        g = foa(std::make_shared<phdd_edge>(std::make_pair(g->w.first ^ w.first, g->w.second - w.second), g->v));
+
+        op::add op{f, g};
+        if (auto const* const ent = cached(op))
+        {
+            return apply(w, ent->r);
         }
 
         auto const x = top_var(f, g);
         auto const r = make_branch(x, add(cof(f, x, true), cof(g, x, true)),
                                       add(cof(f, x, false), cof(g, x, false)));
 
-        ct.insert_or_assign({operation::ADD, f, g}, std::make_pair(r, 0.0));
+        op.r = r;
+        cache(std::move(op));
 
         return apply(w, r);
     }
@@ -527,12 +502,18 @@ class phdd_manager : public detail::manager<edge_weight, float>
                                f->v->c() * g->v->c());
         }
 
-        auto const w = rearrange(operation::MUL, f, g);
-
-        auto const cr = ct.find({operation::MUL, f, g});
-        if (cr != ct.end())
+        edge_weight const w = {f->w.first ^ g->w.first, f->w.second + g->w.second};
+        if (f->v->operator()() <= g->v->operator()())
         {
-            return apply(w, cr->second.first.lock());
+            std::swap(f, g);
+        }
+        f = foa(std::make_shared<phdd_edge>(std::make_pair(0,0), f->v));
+        g = foa(std::make_shared<phdd_edge>(std::make_pair(0,0), g->v));
+
+        op::mul op{f, g};
+        if (auto const* const ent = cached(op))
+        {
+            return apply(w, ent->r);
         }
 
         auto const x = top_var(f, g);
@@ -541,7 +522,8 @@ class phdd_manager : public detail::manager<edge_weight, float>
                         mul(cof(f, x, true), cof(g, x, true)),
                         mul(cof(f, x, false), cof(g, x, false)));
 
-        ct.insert_or_assign({operation::MUL, f, g}, std::make_pair(r, 0.0));
+        op.r = r;
+        cache(std::move(op));
 
         return apply(w, r);
     }
