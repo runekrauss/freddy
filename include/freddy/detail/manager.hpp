@@ -4,28 +4,29 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "common.hpp"            // parallel_for
-#include "edge.hpp"              // edge
-#include "entry.hpp"             // entry
-#include "freddy/config.hpp"     // config::ct_size
-#include "freddy/expansion.hpp"  // expansion
-#include "freddy/operation.hpp"  // operation
-#include "node.hpp"              // node
-#include "variable.hpp"          // variable
+#include "common.hpp"               // parallel_for
+#include "edge.hpp"                 // edge
+#include "freddy/config.hpp"        // config::ct_size
+#include "freddy/expansion.hpp"     // expansion
+#include "freddy/op/compose.hpp"    // op::compose
+#include "freddy/op/has_const.hpp"  // op::has_const
+#include "freddy/op/restr.hpp"      // op::restr
+#include "node.hpp"                 // node
+#include "operation.hpp"            // operation
+#include "variable.hpp"             // variable
 
 #include <algorithm>      // std::max_element
 #include <array>          // std::array
 #include <cassert>        // assert
 #include <concepts>       // std::same_as
 #include <cstdint>        // std::int32_t
-#include <memory>         // std::shared_ptr
+#include <memory>         // std::unique_ptr
 #include <numeric>        // std::accumulate
 #include <ostream>        // std::ostream
 #include <string>         // std::string
 #include <string_view>    // std::string_view
-#include <unordered_map>  // std::unordered_map
 #include <unordered_set>  // std::unordered_set
-#include <utility>        // std::pair
+#include <utility>        // std::move
 #include <vector>         // std::vector
 
 // *********************************************************************************************************************
@@ -39,35 +40,6 @@ template <typename E, typename V>  // edge weight, node value
 class manager
 {
   public:  // methods that do not need to be wrapped
-    using edge_ptr = std::shared_ptr<edge<E, V>>;
-
-    explicit manager(std::array<edge_ptr, 2> tmls)  // contradiction, tautology
-    {
-        ec.reserve(config::ut_size);
-        lvl2var.reserve(config::vl_size);
-        nc.reserve(config::ut_size);
-        vl.reserve(config::vl_size);
-
-        vars.reserve(config::vl_size);
-        consts.reserve(tmls.size());
-        ct.reserve(config::ct_size);
-        var2lvl.reserve(config::vl_size);
-
-        for (edge_ptr& tml : tmls)
-        {
-            nc.insert(tml->v);
-            consts.push_back(*ec.insert(std::move(tml)).first);
-        }
-    }
-
-    manager(manager const&) = default;
-
-    manager(manager&&) noexcept = default;
-
-    auto operator=(manager const&) -> manager& = default;
-
-    auto operator=(manager&&) noexcept -> manager& = default;
-
     auto friend operator<<(std::ostream& s, manager const& mgr) -> std::ostream&
     {
         for (auto const& var : mgr.vl)
@@ -108,24 +80,23 @@ class manager
 
         s << "\nNC:\n";
         print(mgr.nc);
-        s << "#Nodes = " << mgr.nc.size();
+        s << "#Constants = " << mgr.nc.size();
         s << "\nOccupancy = " << mgr.nc.load_factor();
 
         s << "\nCT:\n";
-        for (auto const& [key, val] : mgr.ct)
+        for (auto i = 0; i < static_cast<std::int32_t>(mgr.ct.bucket_count()); ++i)
         {
-            s << key << " -> ";
-            if (val.first.lock())
+            if (mgr.ct.bucket_size(i) > 0)
             {
-                s << val.first.lock();
+                s << "| " << i << " | ";
+                for (auto it = mgr.ct.begin(i); it != mgr.ct.end(i); ++it)
+                {
+                    s << *(*it) << ' ';
+                }
+                s << "|\n";
             }
-            else
-            {
-                s << val.second;
-            }
-            s << '\n';
         }
-        s << "#Entries = " << mgr.ct.size();
+        s << "#Operations = " << mgr.ct.size();
         s << "\nOccupancy = " << mgr.ct.load_factor();
 
         return s;
@@ -145,18 +116,18 @@ class manager
 
     [[nodiscard]] auto node_count() const noexcept
     {
-        return (std::accumulate(
-                    vl.begin(), vl.end(), 0,
-                    [](auto const sum, auto const& var) { return (sum + static_cast<std::int32_t>(var.nt.size())); }) +
-                static_cast<std::int32_t>(nc.size()));
+        return std::accumulate(
+                   vl.begin(), vl.end(), 0,
+                   [](auto const sum, auto const& var) { return sum + static_cast<std::int32_t>(var.nt.size()); }) +
+               static_cast<std::int32_t>(nc.size());
     }
 
     [[nodiscard]] auto edge_count() const noexcept
     {
-        return (std::accumulate(
-                    vl.begin(), vl.end(), 0,
-                    [](auto const sum, auto const& var) { return (sum + static_cast<std::int32_t>(var.et.size())); }) +
-                ec.size());
+        return std::accumulate(
+                   vl.begin(), vl.end(), 0,
+                   [](auto const sum, auto const& var) { return sum + static_cast<std::int32_t>(var.et.size()); }) +
+               ec.size();
     }
 
     // NOLINTBEGIN
@@ -166,7 +137,7 @@ class manager
         assert(lvl_y < var_count());
 
         sift(lvl_x, lvl_y);
-        sift((lvl_x < lvl_y) ? lvl_y - 1 : lvl_y + 1, lvl_x);
+        sift(lvl_x < lvl_y ? lvl_y - 1 : lvl_y + 1, lvl_x);
     }
     // NOLINTEND
 
@@ -209,7 +180,36 @@ class manager
     }
 
   protected:  // generally intended for overriding and wrapping methods
+    using edge_ptr = std::shared_ptr<edge<E, V>>;
+
     using node_ptr = std::shared_ptr<node<E, V>>;
+
+    explicit manager(std::array<edge_ptr, 2> tmls)  // contradiction, tautology
+    {
+        ct.reserve(config::ct_size);
+        ec.reserve(config::ut_size);
+        lvl2var.reserve(config::vl_size);
+        nc.reserve(config::ut_size);
+        vl.reserve(config::vl_size);
+
+        vars.reserve(config::vl_size);
+        consts.reserve(tmls.size());
+        var2lvl.reserve(config::vl_size);
+
+        for (edge_ptr& tml : tmls)
+        {
+            nc.insert(tml->v);
+            consts.push_back(*ec.insert(std::move(tml)).first);
+        }
+    }
+
+    manager(manager const&) = default;
+
+    manager(manager&&) noexcept = default;
+
+    auto operator=(manager const&) -> manager& = default;
+
+    auto operator=(manager&&) noexcept -> manager& = default;
 
     auto make_var(expansion const t, std::string_view l)
     {
@@ -234,7 +234,7 @@ class manager
         assert(f);
         assert(!f->v->is_const());
 
-        return (weighting ? apply(f->w, f->v->br().hi) : f->v->br().hi);
+        return weighting ? apply(f->w, f->v->br().hi) : f->v->br().hi;
     }
 
     auto low(edge_ptr const& f, bool const weighting)
@@ -242,7 +242,7 @@ class manager
         assert(f);
         assert(!f->v->is_const());
 
-        return (weighting ? apply(f->w, f->v->br().lo) : f->v->br().lo);
+        return weighting ? apply(f->w, f->v->br().lo) : f->v->br().lo;
     }
 
     template <typename T>
@@ -252,7 +252,7 @@ class manager
         assert(f);
         assert(!f->v->is_const());
 
-        return (a ? high(f, true) : low(f, true));
+        return a ? high(f, true) : low(f, true);
     }
 
     template <typename T, typename... Ts>
@@ -262,7 +262,7 @@ class manager
         assert(f);
         assert(!f->v->is_const());
 
-        return (a ? subfunc(high(f, true), args...) : subfunc(low(f, true), args...));
+        return a ? subfunc(high(f, true), args...) : subfunc(low(f, true), args...);
     }
 
     [[nodiscard]] auto node_count(std::vector<edge_ptr> const& fs) const
@@ -281,7 +281,7 @@ class manager
     {
         assert(f);
 
-        return (f->v->is_const() ? 1 : path_count(f->v->br().hi) + path_count(f->v->br().lo));  // DFS
+        return f->v->is_const() ? 1 : path_count(f->v->br().hi) + path_count(f->v->br().lo);  // DFS
     }
 
     [[nodiscard]] auto longest_path(std::vector<edge_ptr> const& fs) const
@@ -295,7 +295,7 @@ class manager
             ds[i] = longest_path_rec(fs[i]);
         });
 
-        return (*std::max_element(ds.begin(), ds.end()) - 1);  // due to the root edge
+        return *std::max_element(ds.begin(), ds.end()) - 1;  // due to the root edge
     }
 
     [[nodiscard]] auto eval(edge_ptr const& f, std::vector<bool> const& as) const
@@ -306,11 +306,23 @@ class manager
         return agg(f->w, eval(f->v, as));
     }
 
-    [[nodiscard]] auto has_const(edge_ptr const& f, V const& c) const -> bool
+    [[nodiscard]] auto has_const(edge_ptr const& f, V const& c) -> bool
     {
         assert(f);
 
-        return (f->v->is_const() ? f->v->c() == c : has_const(f->v->br().hi, c) || has_const(f->v->br().lo, c));
+        if (f->v->is_const())
+        {
+            return f->v->c() == c;
+        }
+
+        op::has_const op{f, c};
+        if (auto const* const ent = cached(op))
+        {
+            return ent->r;
+        }
+
+        op.r = has_const(f->v->br().hi, c) || has_const(f->v->br().lo, c);
+        return cache(std::move(op))->r;
     }
 
     [[nodiscard]] auto is_essential(edge_ptr const& f, std::int32_t const x) const -> bool
@@ -318,9 +330,9 @@ class manager
         assert(f);
         assert(x < var_count());
 
-        return ((f->v->is_const() || var2lvl[f->v->br().x] > var2lvl[x])
-                    ? false
-                    : f->v->br().x == x || is_essential(f->v->br().hi, x) || is_essential(f->v->br().lo, x));
+        return f->v->is_const() || var2lvl[f->v->br().x] > var2lvl[x]
+                   ? false
+                   : f->v->br().x == x || is_essential(f->v->br().hi, x) || is_essential(f->v->br().lo, x);
     }
 
     auto compose(edge_ptr const& f, std::int32_t const x, edge_ptr const& g)
@@ -334,13 +346,12 @@ class manager
             return f;
         }
 
-        auto const cr = ct.find({operation::COMPOSE, f, x, g});
-        if (cr != ct.end())
+        op::compose op{f, x, g};
+        if (auto const* const ent = cached(op))
         {
-            return cr->second.first.lock();
+            return ent->r;
         }
 
-        edge_ptr r;
         edge_ptr hi;
         edge_ptr lo;
         if (f->v->br().x == x)
@@ -373,11 +384,9 @@ class manager
                 default: assert(false);
             }
         }
-        r = apply(f->w, add(hi, lo));
 
-        ct.insert_or_assign({operation::COMPOSE, f, x, g}, std::make_pair(r, 0.0));  // overwrite in case of a collision
-
-        return r;
+        op.r = apply(f->w, add(hi, lo));
+        return cache(std::move(op))->r;
     }
 
     auto cof(edge_ptr const& f, std::int32_t const x, bool const a)
@@ -394,7 +403,7 @@ class manager
             }
             return f;
         }
-        return (a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo));
+        return a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo);
     }
 
     auto restr(edge_ptr const& f, std::int32_t const x, bool const a)
@@ -411,17 +420,14 @@ class manager
             return cof(f, x, a);
         }
 
-        auto const cr = ct.find({operation::RESTR, f, x, a});
-        if (cr != ct.end())
+        op::restr op{f, x, a};
+        if (auto const* const ent = cached(op))
         {
-            return cr->second.first.lock();
+            return ent->r;
         }
 
-        auto r = apply(f->w, make_branch(f->v->br().x, restr(f->v->br().hi, x, a), restr(f->v->br().lo, x, a)));
-
-        ct.insert_or_assign({operation::RESTR, f, x, a}, std::make_pair(r, 0.0));
-
-        return r;
+        op.r = apply(f->w, make_branch(f->v->br().x, restr(f->v->br().hi, x, a), restr(f->v->br().lo, x, a)));
+        return cache(std::move(op))->r;
     }
 
     auto exist(edge_ptr const& f, std::int32_t const x)
@@ -454,7 +460,7 @@ class manager
         {
             return f->v->br().x;
         }
-        return ((var2lvl[f->v->br().x] <= var2lvl[g->v->br().x]) ? f->v->br().x : g->v->br().x);
+        return var2lvl[f->v->br().x] <= var2lvl[g->v->br().x] ? f->v->br().x : g->v->br().x;
     }
 
     auto foa(node_ptr v) -> node_ptr
@@ -481,6 +487,19 @@ class manager
         }
         ctrl(vl[e->v->br().x].et);
         return *vl[e->v->br().x].et.insert(std::move(e)).first;
+    }
+
+    template <typename T>
+    auto cache(T op) -> T const*
+    {
+        return static_cast<T const*>((*ct.insert(std::make_unique<T>(std::move(op))).first).get());
+    }
+
+    template <typename T>
+    [[nodiscard]] auto cached(T const& op) const noexcept -> T const*
+    {
+        auto const cr = ct.find(&op);
+        return cr == ct.end() ? nullptr : static_cast<T const*>((*cr).get());
     }
 
     // many optimizations are possible depending on the DD type
@@ -576,9 +595,6 @@ class manager
 
     std::vector<edge_ptr> consts;  // DD constants that are never cleared
 
-    // to cache operation results
-    std::unordered_map<entry<E, V>, std::pair<std::weak_ptr<edge<E, V>>, double>, typename entry<E, V>::hash> ct;
-
     std::vector<std::int32_t> var2lvl;  // for reordering
   private:
     template <typename T>
@@ -648,9 +664,9 @@ class manager
             }
             if (hi->v->is_const() || lo->v->is_const())
             {
-                return (hi->v->is_const() ? lo->v->br().x == y : hi->v->br().x == y);
+                return hi->v->is_const() ? lo->v->br().x == y : hi->v->br().x == y;
             }
-            return (hi->v->br().x == y || lo->v->br().x == y);
+            return hi->v->br().x == y || lo->v->br().x == y;
         };
 
         for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
@@ -704,8 +720,7 @@ class manager
     {
         assert(f);
 
-        return (f->v->is_const() ? 1
-                                 : (std::max(longest_path_rec(f->v->br().hi), longest_path_rec(f->v->br().lo)) + 1));
+        return f->v->is_const() ? 1 : std::max(longest_path_rec(f->v->br().hi), longest_path_rec(f->v->br().lo)) + 1;
     }
 
     auto node_count(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks) const -> void
@@ -736,9 +751,9 @@ class manager
             return;
         }
 
-        auto const start = (lvl_x < lvl_y) ? lvl_x : lvl_x - 1;
-        auto const stop = (lvl_x < lvl_y) ? lvl_y : lvl_y - 1;
-        auto const step = (lvl_x < lvl_y) ? 1 : -1;
+        auto const start = lvl_x < lvl_y ? lvl_x : lvl_x - 1;
+        auto const stop = lvl_x < lvl_y ? lvl_y : lvl_y - 1;
+        auto const step = lvl_x < lvl_y ? 1 : -1;
 
         for (auto lvl = start; lvl != stop; lvl += step)
         {
@@ -825,6 +840,8 @@ class manager
         to_dot(f->v->br().hi, marks, s);
         to_dot(f->v->br().lo, marks, s);
     }
+
+    std::unordered_set<std::unique_ptr<operation>, hash, comp> ct;  // to cache operations
 
     std::unordered_set<edge_ptr, hash, comp> ec;
 

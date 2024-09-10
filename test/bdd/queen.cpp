@@ -279,5 +279,5 @@ TEST_CASE("BDD SAT analysis is performed", "[queen]")
 {
     dd::bdd_manager mgr;
 
-    CHECK(enc(mgr).satcount() == 2);
+    CHECK(enc(mgr).sharpsat() == 2);
 }
