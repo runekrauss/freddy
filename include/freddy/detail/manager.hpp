@@ -180,6 +180,8 @@ class manager
     }
 
   protected:  // generally intended for overriding and wrapping methods
+    std::vector<variable<E, V>> vl;
+
     using edge_ptr = std::shared_ptr<edge<E, V>>;
 
     using node_ptr = std::shared_ptr<node<E, V>>;
@@ -539,7 +541,21 @@ class manager
                 s << "f -> x" << lvl2var[i] << " [style=invis];\n";
             }
 
-            s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")" << lvl2var[i] << "\"];\n";
+            std::string decomposition;
+            switch (vl[lvl2var[i]].t)
+            {
+                case expansion::S:
+                    decomposition = "S";
+                    break;
+                case expansion::PD:
+                    decomposition = "PD";
+                    break;
+                default:
+                    assert(false);
+            }
+
+            s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")"
+              << lvl2var[i] << " " << decomposition << "\"];\n";
 
             if (i + 1 < var_count())
             {
@@ -848,8 +864,6 @@ class manager
     std::vector<std::int32_t> lvl2var;
 
     std::unordered_set<node_ptr, hash, comp> nc;  // constants
-
-    std::vector<variable<E, V>> vl;
 };
 
 }  // namespace freddy::detail
