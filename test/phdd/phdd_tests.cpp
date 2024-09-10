@@ -75,21 +75,21 @@ TEST_CASE("sphdd_integer", "[phdd, integer]")
 }
 
 
-TEST_CASE("sphdd_minifloat", "[phdd, mini-float]")
+TEST_CASE("sphdd_minifloat_representation", "[phdd, mini-float]")
 {
     // representing a 8bit mini float:
     // 1 sign bit, 4 exponent bits, 3 significant bits
     // no hidden bit, bias = 7
 
     dd::phdd_manager mgr;
-    auto x_sg = mgr.var("x_sg"); //auto y_sg = mgr.var("y_sg");
-    auto x_e0 = mgr.var("x_e0"); //auto y_e0 = mgr.var("y_e0");
-    auto x_e1 = mgr.var("x_e1"); //auto y_e1 = mgr.var("y_e1");
-    auto x_e2 = mgr.var("x_e2"); //auto y_e2 = mgr.var("y_e2");
-    auto x_e3 = mgr.var("x_e3"); //auto y_e3 = mgr.var("y_e3");
-    auto x_m0 = mgr.var("x_m0"); //auto y_m0 = mgr.var("y_m0");
-    auto x_m1 = mgr.var("x_m1"); //auto y_m1 = mgr.var("y_m1");
-    auto x_m2 = mgr.var("x_m2"); //auto y_m2 = mgr.var("y_m2");
+    auto x_sg = mgr.var("x_sg");
+    auto x_e0 = mgr.var("x_e0");
+    auto x_e1 = mgr.var("x_e1");
+    auto x_e2 = mgr.var("x_e2");
+    auto x_e3 = mgr.var("x_e3");
+    auto x_m0 = mgr.var("x_m0");
+    auto x_m1 = mgr.var("x_m1");
+    auto x_m2 = mgr.var("x_m2");
 
     auto x_s = (-mgr.two() * x_sg) + mgr.one();
     auto x_m = (mgr.constant(4) * x_m2) +
@@ -102,9 +102,9 @@ TEST_CASE("sphdd_minifloat", "[phdd, mini-float]")
                (mgr.constant(0.0078125)); // 2^(-7)
     auto x = x_s * x_m * x_e;
 
-        std::ofstream fs1("../phdd_minifloat.dot");
-        mgr.print({x,x_s,x_e,x_m}, {"x","s","e","m"}, fs1);
-        fs1.close();
+    std::ofstream fs1("../phdd_minifloat.dot");
+    mgr.print({x,x_s,x_e,x_m}, {"x","s","e","m"}, fs1);
+    fs1.close();
 
 
     for(int const s : {0,1})
@@ -127,6 +127,94 @@ TEST_CASE("sphdd_minifloat", "[phdd, mini-float]")
     }
 }
 
+
+TEST_CASE("sphdd_minifloat_operations", "[phdd, mini-float]")
+{
+    // addition, subtraction, multiplication for 8bit mini float
+    
+    dd::phdd_manager mgr;
+    auto x_sg = mgr.var("x_sg"); auto y_sg = mgr.var("y_sg");
+    auto x_e0 = mgr.var("x_e0"); auto y_e0 = mgr.var("y_e0");
+    auto x_e1 = mgr.var("x_e1"); auto y_e1 = mgr.var("y_e1");
+    auto x_e2 = mgr.var("x_e2"); auto y_e2 = mgr.var("y_e2");
+    auto x_e3 = mgr.var("x_e3"); auto y_e3 = mgr.var("y_e3");
+    auto x_m0 = mgr.var("x_m0"); auto y_m0 = mgr.var("y_m0");
+    auto x_m1 = mgr.var("x_m1"); auto y_m1 = mgr.var("y_m1");
+    auto x_m2 = mgr.var("x_m2"); auto y_m2 = mgr.var("y_m2");
+
+    auto x_s = (-mgr.two() * x_sg) + mgr.one();
+    auto x_m = (mgr.constant(4) * x_m2) +
+               (mgr.constant(2) * x_m1) +
+               (mgr.constant(1) * x_m0);
+    auto x_e = (mgr.constant(255) * x_e3 + mgr.one()) *
+               (mgr.constant( 15) * x_e2 + mgr.one()) *
+               (mgr.constant(  3) * x_e1 + mgr.one()) *
+               (mgr.constant(  1) * x_e0 + mgr.one()) *
+               (mgr.constant(0.0078125)); // 2^(-7)
+    auto x = x_s * x_m * x_e;
+
+    
+    auto y_s = (-mgr.two() * y_sg) + mgr.one();
+    auto y_m = (mgr.constant(4) * y_m2) +
+               (mgr.constant(2) * y_m1) +
+               (mgr.constant(1) * y_m0);
+    auto y_e = (mgr.constant(255) * y_e3 + mgr.one()) *
+               (mgr.constant( 15) * y_e2 + mgr.one()) *
+               (mgr.constant(  3) * y_e1 + mgr.one()) *
+               (mgr.constant(  1) * y_e0 + mgr.one()) *
+               (mgr.constant(0.0078125)); // 2^(-7)
+    auto y = y_s * y_m * y_e;
+
+    auto sum = x+y;
+    auto diff = x-y;
+    auto prod = x*y;
+
+    //    std::ofstream fs1("../phdd_minifloat_sum.dot");
+    //    mgr.print({sum}, {"x+y"}, fs1);
+    //    fs1.close();
+    //    std::ofstream fs2("../phdd_minifloat_diff.dot");
+    //    mgr.print({diff}, {"x-y"}, fs2);
+    //    fs2.close();
+    //    std::ofstream fs3("../phdd_minifloat_prod.dot");
+    //    mgr.print({prod}, {"x*y"}, fs3);
+    //    fs3.close();
+
+    std::vector<std::pair<std::vector<bool>,float>> minifloat_table;
+    for(int const s : {0,1})
+    {
+        for(int e = 0; e < 16; e++)
+        {
+            for(int m  = 0; m < 8; m++)
+            {
+                auto assignment = std::vector<bool>{static_cast<bool>(s)};
+                auto e_assignment = int_to_bool_vec(e,4);
+                auto m_assignment = int_to_bool_vec(m,3);
+                assignment.insert(assignment.end(), e_assignment.begin(), e_assignment.end());
+                assignment.insert(assignment.end(), m_assignment.begin(), m_assignment.end());
+                auto spec = pow(-1,s) * m * pow(2, e-7);
+                minifloat_table.emplace_back(assignment,spec);
+            }
+        }
+    }
+
+    for(const auto &x_entry : minifloat_table)
+    {
+        for(const auto &y_entry : minifloat_table)
+        {
+            std::vector<bool> assignment;
+            for(unsigned int i=0; i < x_entry.first.size(); i++)
+            {
+                assignment.push_back(x_entry.first[i]);
+                assignment.push_back(y_entry.first[i]);
+            }
+            assert(x.eval(assignment) == x_entry.second);
+            assert(y.eval(assignment) == y_entry.second);
+            assert(sum.eval(assignment)  == x_entry.second + y_entry.second);
+            assert(diff.eval(assignment) == x_entry.second - y_entry.second);
+            assert(prod.eval(assignment) == x_entry.second * y_entry.second);
+        }
+    }
+}
 
 TEST_CASE("playground", "")
 {
