@@ -111,7 +111,7 @@ class bhd  // binary hybrid diagram
 
     [[nodiscard]] auto is_one() const noexcept;
 
-    [[nodiscard]] auto is_exp() const noexcept;  // Is there an expansion node (EXP) for SAT solving?
+    [[nodiscard]] auto is_exp() const noexcept;  // Is there an expansion path (EXP) for SAT solving?
 
     [[nodiscard]] auto var() const
     {
@@ -187,7 +187,7 @@ class bhd_manager : public detail::manager<bool, bool>
     bhd_manager() :
             manager{tmls()}
     {
-        consts.push_back(make_const(false, true));  // EXP
+        consts.push_back(make_const(false, true));  // last node in EXP is treated as a constant
         consts.push_back(make_const(true, true));   // for reasons of consistency
     }
 
@@ -330,14 +330,9 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(!path.empty());
 
-        if (f->v->is_const())
-        {
-            return;
-        }
-
         if (is_exp(f))
         {
-            for (auto i = 0uz; i < path.size(); ++i)
+            for (auto i = 0; i < static_cast<std::int32_t>(path.size()); ++i)
             {
                 if (path[i].has_value())
                 {                                                          // output literal
@@ -346,6 +341,11 @@ class bhd_manager : public detail::manager<bool, bool>
             }
 
             s << "c\n";  // empty comment means the clauses relating to the next EXP if one still exists
+            return;
+        }
+
+        if (f->v->is_const())
+        {
             return;
         }
 
@@ -362,7 +362,7 @@ class bhd_manager : public detail::manager<bool, bool>
     {
         assert(f);
 
-        if (f->v->is_const() || !has_const(f, true))
+        if (!has_const(f, true))
         {  // there are no EXPs
             return;
         }
