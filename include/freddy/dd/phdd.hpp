@@ -416,7 +416,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
         return {w1.first ^ w2.first, w1.second + w2.second};
     }
 
-    [[deprecated]] auto complement(edge_ptr const& f) -> edge_ptr override
+    auto complement(edge_ptr const& f) -> edge_ptr override
     {
         assert(f);
 
@@ -453,6 +453,10 @@ class phdd_manager : public detail::manager<edge_weight, float>
         assert(hi);
         assert(lo);
 
+        if(vl[x].t == expansion::S and hi == lo)
+        {
+            return hi;
+        }
         if(vl[x].t == expansion::S and hi == consts[0])
         {
             return foa(std::make_shared<phdd_edge>(
@@ -471,11 +475,6 @@ class phdd_manager : public detail::manager<edge_weight, float>
         }
 
         auto const w = normw(hi, lo);
-
-        if(vl[x].t == expansion::S and hi == lo)
-        {
-            return apply(w,hi);
-        }
 
         return foa(std::make_shared<phdd_edge>(
             w,
