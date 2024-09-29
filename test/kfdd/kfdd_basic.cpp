@@ -28,12 +28,10 @@ TEST_CASE("kfdd basic variable tests", "[basic]")
     //test_one.print();
 
     CHECK(test_one.eval({}) == 1);
-    CHECK(test_one.eval({}) == 1);
 
     auto test_zero = mgr_basics.zero();
     //test_zero.print();
 
-    CHECK(test_zero.eval({}) == 0);
     CHECK(test_zero.eval({}) == 0);
 }
 
@@ -42,16 +40,16 @@ TEST_CASE("kfdd basic XOR tests", "[basic]")
     dd::kfdd_manager mgr_xor;
 
     auto xor_v1 = mgr_xor.var(expansion::PD);
-    //std::cout << "xor_v1:" << '\n';
-    //xor_v1.print();
+    std::cout << "xor_v1:" << '\n';
+    xor_v1.print();
 
     auto xor_v2 = mgr_xor.var(expansion::PD);
-    //std::cout << "xor_v2:" << '\n';
-    //xor_v2.print();
+    std::cout << "xor_v2:" << '\n';
+    xor_v2.print();
 
     auto xor_v1_v2 = xor_v1 ^ xor_v2;
-    //std::cout << "xor_v1_v2:" << '\n';
-    //xor_v1_v2.print();
+    std::cout << "xor_v1_v2:" << '\n';
+    xor_v1_v2.print();
 
     CHECK(xor_v1_v2.eval({true, true}) == 0);
     CHECK(xor_v1_v2.eval({true, false}) == 1);
@@ -60,12 +58,12 @@ TEST_CASE("kfdd basic XOR tests", "[basic]")
 
 
     auto xor_v3 = mgr_xor.var(expansion::PD);
-    //std::cout << "xor_v3:" << '\n';
-    //xor_v3.print();
+    std::cout << "xor_v3:" << '\n';
+    xor_v3.print();
 
     auto xor_v1_v2_v3 = xor_v1_v2 ^ xor_v3;
-    //std::cout << "xor_v1_v2_v3:" << '\n';
-    //xor_v1_v2_v3.print();
+    std::cout << "xor_v1_v2_v3:" << '\n';
+    xor_v1_v2_v3.print();
 
     CHECK(xor_v1_v2_v3.eval({false, false, false}) == 0);
     CHECK(xor_v1_v2_v3.eval({false, false, true}) == 1);
@@ -75,6 +73,11 @@ TEST_CASE("kfdd basic XOR tests", "[basic]")
     CHECK(xor_v1_v2_v3.eval({true, false, true}) == 0);
     CHECK(xor_v1_v2_v3.eval({true, true, false}) == 0);
     CHECK(xor_v1_v2_v3.eval({true, true, true}) == 1);
+}
+
+TEST_CASE("kfdd basic OR tests 2", "[basic]")
+{
+
 }
 
 TEST_CASE("kfdd basic OR tests", "[basic]")
@@ -88,14 +91,14 @@ TEST_CASE("kfdd basic OR tests", "[basic]")
     or_v1_v2.print();
 
     CHECK(or_v1_v2.eval({false, false}) == 0);
-    CHECK(or_v1_v2.eval({false, true}) == 1);
-    CHECK(or_v1_v2.eval({true, false}) == 1);
-    CHECK(or_v1_v2.eval({true, true}) == 1);
+    CHECK(or_v1_v2.eval({false, true }) == 1);
+    CHECK(or_v1_v2.eval({true,  false}) == 1);
+    CHECK(or_v1_v2.eval({true,  true }) == 1);
 
     auto or_v3 = mgr_or.var(expansion::PD);
     auto or_v1_v2_v3 = or_v1_v2 | or_v3;
-    //std::cout << "or_v1_v2_v3:" << '\n';
-    //or_v1_v2_v3.print();
+    std::cout << "or_v1_v2_v3:" << '\n';
+    or_v1_v2_v3.print();
 
     CHECK(or_v1_v2_v3.eval({false, false, false}) == 0);
     CHECK(or_v1_v2_v3.eval({false, false, true}) == 1);
@@ -124,8 +127,8 @@ TEST_CASE("kfdd basic AND tests", "[basic]")
 
     auto and_v3 = mgr_and.var(expansion::PD);
     auto and_v1_v2_v3 = and_v1_v2 & and_v3;
-    //std::cout << "and_v1_v2_v3:" << '\n';
-    //and_v1_v2_v3.print();
+    std::cout << "and_v1_v2_v3:" << '\n';
+    and_v1_v2_v3.print();
 
     CHECK(and_v1_v2_v3.eval({false, false, false}) == 0);
     CHECK(and_v1_v2_v3.eval({false, false, true}) == 0);
@@ -141,17 +144,21 @@ TEST_CASE("kfdd basic NEG tests", "[basic]")
 {
     dd::kfdd_manager mgr_neg;
     auto v1 = mgr_neg.var(expansion::PD);
-    //std::cout << "v1:" << '\n';
-    //v1.print();
+    std::cout << "v1:" << '\n';
+    v1.print();
 
     CHECK(v1.eval({false}) == 0);
     CHECK(v1.eval({true}) == 1);
 
     auto negated_v1 = ~v1;
-    //std::cout << "negated_v1:" << '\n';
-    //negated_v1.print();
+    std::cout << "~v1:" << '\n';
+    negated_v1.print();
 
     CHECK(negated_v1.eval({false}) == 1);
     CHECK(negated_v1.eval({true}) == 0);
+
+    auto canon = negated_v1.canonical();
+    std::cout << "canonical ~v1: " << '\n';
+    canon.print();
 }
 }  //namespace

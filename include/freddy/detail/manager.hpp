@@ -385,16 +385,25 @@ class manager
         assert(f);
         assert(x < var_count());
         assert(!consts.empty());
-
-        if (f->v->is_const() || f->v->br().x != x)
+        // if(f->v->is_const())
+        // {
+        //     return f;
+        // }
+        // return (a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo));
+        if(f->v->is_const() || f->v->br().x != x)
         {
-            if (vl[x].t == expansion::PD && a)  // dependent on two subtrees: f ^ f = 0
-            {
-                return consts[0];
-            }
             return f;
         }
-        return (a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo));
+        // if (f->v->is_const() || f->v->br().x != x)
+        // {
+        //     if (vl[x].t == expansion::PD && a)  // dependent on two subtrees: f ^ f = 0
+        //     {
+        //         return consts[0];
+        //     }
+        //     return f;
+        // }
+        //return (a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo));
+        return (a ? f->v->br().hi : f->v->br().lo);
     }
 
     auto restr(edge_ptr const& f, std::int32_t const x, bool const a)
