@@ -117,12 +117,12 @@ class bdd  // binary decision diagram
         return f->v->br().x;
     }
 
-    [[nodiscard]] auto high(bool = false) const;
+    [[nodiscard]] auto high() const;
 
-    [[nodiscard]] auto low(bool = false) const;
+    [[nodiscard]] auto low() const;
 
     template <typename T, typename... Ts>
-    auto cof(T, Ts...) const;
+    auto fn(T, Ts...) const;
 
     [[nodiscard]] auto size() const;
 
@@ -521,7 +521,7 @@ class bdd_manager : public detail::manager<bool, bool>
     {
         std::vector<edge_ptr> gs;
         gs.reserve(fs.size());
-        std::transform(fs.begin(), fs.end(), std::back_inserter(gs), [](auto const& g) { return g.f; });
+        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
 
         return gs;
     }
@@ -584,26 +584,28 @@ auto inline bdd::is_one() const noexcept
     return *this == mgr->one();
 }
 
-auto inline bdd::high(bool const weighting) const
+auto inline bdd::high() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return bdd{mgr->high(f, weighting), mgr};
+    return bdd{f->v->br().hi, mgr};
 }
 
-auto inline bdd::low(bool const weighting) const
+auto inline bdd::low() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return bdd{mgr->low(f, weighting), mgr};
+    return bdd{f->v->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>
-auto inline bdd::cof(T const a, Ts... args) const
+auto inline bdd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
-    return bdd{mgr->subfunc(f, a, std::forward<Ts>(args)...), mgr};
+    return bdd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
 auto inline bdd::size() const

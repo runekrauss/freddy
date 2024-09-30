@@ -11,7 +11,7 @@
 #include <algorithm>    // std::transform
 #include <array>        // std::array
 #include <cassert>      // assert
-#include <cmath>        // NAN
+#include <cstddef>      // std::size_t
 #include <functional>   // std::function
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
@@ -120,12 +120,12 @@ class bhd  // binary hybrid diagram
         return f->v->br().x;
     }
 
-    [[nodiscard]] auto high(bool = false) const;
+    [[nodiscard]] auto high() const;
 
-    [[nodiscard]] auto low(bool = false) const;
+    [[nodiscard]] auto low() const;
 
     template <typename T, typename... Ts>
-    auto cof(T, Ts...) const;
+    auto fn(T, Ts...) const;
 
     [[nodiscard]] auto size() const;
 
@@ -172,11 +172,10 @@ class bhd  // binary hybrid diagram
     bhd_manager* mgr{};
 };
 
-enum struct bhd_heuristic  // to determine when EXPs are made
+enum struct bhd_heuristic : std::uint8_t  // to determine when EXPs are made
 {
     LVL,  // BDD level
-    MEM,  // peak BDD size in KB
-    RAND  // probability (random)
+    MEM   // peak BDD size in KB
 };
 
 class bhd_manager : public detail::manager<bool, bool>
@@ -191,27 +190,16 @@ class bhd_manager : public detail::manager<bool, bool>
         consts.push_back(make_const(true, true));   // for reasons of consistency
     }
 
-    bhd_manager(bhd_heuristic const heur, float const cost) :
+    bhd_manager(bhd_heuristic const heur, std::size_t const cost) :
             bhd_manager{}
     {
-        switch (heur)
+        if (heur == bhd_heuristic::LVL)
         {
-            case bhd_heuristic::LVL:
-                assert(cost >= 0.0f);
-
-                this->heur = [this](auto const& f, auto const& g, auto const x) { return lvl_heur(f, g, x); };
-                break;
-            case bhd_heuristic::MEM:
-                assert(cost > 0.0f);
-
-                this->heur = [this](auto const& f, auto const& g, auto const x) { return mem_heur(f, g, x); };
-                break;
-            case bhd_heuristic::RAND:
-                assert(std::clamp(cost, 0.0f, 1.0f));
-
-                this->heur = [this](auto const& f, auto const& g, auto const x) { return rand_heur(f, g, x); };
-                break;
-            default: assert(false);
+            this->heur = [this](auto const& f, auto const& g, auto const x) { return lvl_heur(f, g, x); };
+        }
+        else
+        {
+            this->heur = [this](auto const& f, auto const& g, auto const x) { return mem_heur(f, g, x); };
         }
         this->cost = cost;
     }
@@ -450,13 +438,13 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(g);
         assert(x == top_var(f, g));
 
-        if (f->v->is_const() || static_cast<float>(f->v->br().x) < cost)
+        if (f->v->is_const() || f->v->br().x < static_cast<std::int32_t>(cost))
         {
-            return g->v->is_const() || static_cast<float>(g->v->br().x) < cost
+            return g->v->is_const() || g->v->br().x < static_cast<std::int32_t>(cost)
                        ? make_branch(x, compr(f, g, x, true), compr(f, g, x, false))
                        : repl(f, consts[2]);
         }
-        return g->v->is_const() || static_cast<float>(g->v->br().x) < cost ? repl(g, consts[2]) : consts[2];
+        return g->v->is_const() || g->v->br().x < static_cast<std::int32_t>(cost) ? repl(g, consts[2]) : consts[2];
     }
 
     auto mem_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
@@ -467,29 +455,11 @@ class bhd_manager : public detail::manager<bool, bool>
 
         if (((static_cast<float>(node_count()) * sizeof(bool_node) +
               static_cast<float>(edge_count()) * sizeof(bool_edge)) /
-             1e3f) >= cost)
+             1e3f) >= static_cast<float>(cost))
         {
             return repl(f, consts[2]);  // to ensure canonicity and because f is usually larger than g
         }
         return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
-    }
-
-    auto rand_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
-    {  // heuristic that makes EXPs based on a predetermined probability
-        assert(f);
-        assert(g);
-        assert(x == top_var(f, g));
-
-        auto const p = detail::rand(0.0f, 1.0f);
-        if (p > cost)
-        {
-            return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
-        }
-        if (p < cost / 2.0f)
-        {  // low child becomes an EXP
-            return make_branch(x, compr(f, g, x, true), consts[2]);
-        }
-        return make_branch(x, consts[2], compr(f, g, x, false));
     }
 
     auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -620,7 +590,7 @@ class bhd_manager : public detail::manager<bool, bool>
     {
         std::vector<edge_ptr> gs;
         gs.reserve(fs.size());
-        std::transform(fs.begin(), fs.end(), std::back_inserter(gs), [](auto const& g) { return g.f; });
+        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
 
         return gs;
     }
@@ -636,7 +606,7 @@ class bhd_manager : public detail::manager<bool, bool>
     std::function<edge_ptr(edge_ptr const&, edge_ptr const&, std::int32_t)> heur{
         [this](auto const& f, auto const& g, auto const x) { return no_heur(f, g, x); }};
 
-    float cost{NAN};  // determine when EXPs are made depending on the heuristic
+    std::size_t cost{};  // determine when EXPs are made depending on the heuristic
 };
 
 auto inline bhd::operator~() const
@@ -694,26 +664,28 @@ auto inline bhd::is_exp() const noexcept
     return mgr->is_exp(f);
 }
 
-auto inline bhd::high(bool const weighting) const
+auto inline bhd::high() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return bhd{mgr->high(f, weighting), mgr};
+    return bhd{f->v->br().hi, mgr};
 }
 
-auto inline bhd::low(bool const weighting) const
+auto inline bhd::low() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return bhd{mgr->low(f, weighting), mgr};
+    return bhd{f->v->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>
-auto inline bhd::cof(T const a, Ts... args) const
+auto inline bhd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
-    return bhd{mgr->subfunc(f, a, std::forward<Ts>(args)...), mgr};
+    return bhd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
 auto inline bhd::size() const
@@ -742,7 +714,26 @@ auto inline bhd::eval(std::vector<bool> const& as) const noexcept
     assert(mgr);
     assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
 
-    return mgr->eval(f, as);
+    // since the last node in EXP is treated as a constant (1)
+    auto exp_is_reached = [&as, this](auto const& f) {
+        auto trv = [&as, this](auto const& self, auto const& f) {
+            assert(f);
+
+            if (mgr->is_exp(f))
+            {
+                return true;
+            }
+            if (f->v->is_const())
+            {
+                return false;
+            }
+            return as[f->v->br().x] ? self(self, f->v->br().hi) : self(self, f->v->br().lo);
+        };
+
+        return trv(trv, f);
+    };
+
+    return exp_is_reached(f) ? std::nullopt : std::make_optional(mgr->eval(f, as));
 }
 
 auto inline bhd::has_const(bool const c) const

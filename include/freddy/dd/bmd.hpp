@@ -144,12 +144,12 @@ class bmd  // binary moment diagram
         return f->v->br().x;
     }
 
-    [[nodiscard]] auto high(bool = false) const;
+    [[nodiscard]] auto high() const;
 
-    [[nodiscard]] auto low(bool = false) const;
+    [[nodiscard]] auto low() const;
 
     template <typename T, typename... Ts>
-    auto cof(T, Ts...) const;
+    auto fn(T, Ts...) const;
 
     [[nodiscard]] auto size() const;
 
@@ -496,7 +496,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     {
         std::vector<edge_ptr> gs;
         gs.reserve(fs.size());
-        std::transform(fs.begin(), fs.end(), std::back_inserter(gs), [](auto const& g) { return g.f; });
+        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
 
         return gs;
     }
@@ -598,26 +598,28 @@ auto inline bmd::is_two() const noexcept
     return *this == mgr->two();
 }
 
-auto inline bmd::high(bool const weighting) const
+auto inline bmd::high() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return bmd{mgr->high(f, weighting), mgr};
+    return bmd{f->v->br().hi, mgr};
 }
 
-auto inline bmd::low(bool const weighting) const
+auto inline bmd::low() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return bmd{mgr->low(f, weighting), mgr};
+    return bmd{f->v->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>
-auto inline bmd::cof(T const a, Ts... args) const
+auto inline bmd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
-    return bmd{mgr->subfunc(f, a, std::forward<Ts>(args)...), mgr};
+    return bmd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
 auto inline bmd::size() const

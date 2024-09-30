@@ -10,7 +10,6 @@
 #include <concepts>     // std::integral
 #include <cstdint>      // std::int32_t
 #include <memory>       // std::shared_ptr
-#include <random>       // std::mt19937
 #include <string>       // std::string
 #include <string_view>  // std::string_view
 #include <thread>       // std::thread
@@ -124,23 +123,6 @@ auto inline parallel_for(T const a, T const b, Callable func)
     {
         thread.join();
     }
-}
-
-auto inline prng() -> std::mt19937&
-{
-    thread_local std::random_device seed;
-    thread_local std::mt19937 r{seed()};
-    return r;
-}
-
-template <typename T>
-    requires std::floating_point<T>
-auto inline rand(T const a, T const b)
-{
-    assert(b >= a);
-
-    std::uniform_real_distribution<T> distr{a, b};
-    return distr(prng());
 }
 
 auto inline replace_all(std::string& str, std::string_view from, std::string_view to)

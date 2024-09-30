@@ -229,40 +229,24 @@ class manager
         return foa(std::make_shared<edge<E, V>>(std::move(w), foa(std::make_shared<node<E, V>>(std::move(c)))));
     }
 
-    auto high(edge_ptr const& f, bool const weighting)
-    {
-        assert(f);
-        assert(!f->v->is_const());
-
-        return weighting ? apply(f->w, f->v->br().hi) : f->v->br().hi;
-    }
-
-    auto low(edge_ptr const& f, bool const weighting)
-    {
-        assert(f);
-        assert(!f->v->is_const());
-
-        return weighting ? apply(f->w, f->v->br().lo) : f->v->br().lo;
-    }
-
     template <typename T>
         requires std::same_as<T, bool>
-    auto subfunc(edge_ptr const& f, T const a)
+    auto fn(edge_ptr const& f, T const a)
     {
         assert(f);
         assert(!f->v->is_const());
 
-        return a ? high(f, true) : low(f, true);
+        return a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo);
     }
 
     template <typename T, typename... Ts>
         requires std::same_as<T, bool>
-    auto subfunc(edge_ptr const& f, T const a, Ts... args)
+    auto fn(edge_ptr const& f, T const a, Ts... args)
     {
         assert(f);
         assert(!f->v->is_const());
 
-        return a ? subfunc(high(f, true), args...) : subfunc(low(f, true), args...);
+        return a ? fn(apply(f->w, f->v->br().hi), args...) : fn(apply(f->w, f->v->br().lo), args...);
     }
 
     [[nodiscard]] auto node_count(std::vector<edge_ptr> const& fs) const
@@ -296,7 +280,7 @@ class manager
             ds[i] = longest_path_rec(fs[i]);
         });
 
-        return *std::max_element(ds.begin(), ds.end()) - 1;  // due to the root edge
+        return *std::ranges::max_element(ds) - 1;  // due to the root edge
     }
 
     [[nodiscard]] auto eval(edge_ptr const& f, std::vector<bool> const& as) const
@@ -511,6 +495,7 @@ class manager
         return foa(std::make_shared<detail::edge<E, V>>(comb(w, f->w), f->v));
     }
 
+    // NOLINTBEGIN
     auto virtual ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr  // as there are different versions
     {
         assert(f);
@@ -519,6 +504,7 @@ class manager
 
         return disj(conj(f, g), conj(complement(f), h));
     }
+    // NOLINTEND
 
     auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
         -> void

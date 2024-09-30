@@ -29,7 +29,6 @@ namespace freddy::detail
 // Types
 // =====================================================================================================================
 
-// NOLINTBEGIN
 template <typename E, typename V>
 struct variable
 {
@@ -91,6 +90,5 @@ struct variable
 
     std::unordered_set<std::shared_ptr<node<E, V>>, hash, comp> nt;
 };
-// NOLINTEND
 
 }  // namespace freddy::detail
