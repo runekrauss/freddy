@@ -153,8 +153,7 @@ can be found in the [decomposition type list](include/freddy/expansion.hpp).
 
 ## :white_check_mark: Tests
 
-[Tests](test) (examples) can be built with CMake using the flag `-DFREDDY_TEST=ON` on the command line and run
-by `ctest`:
+[Tests](test) can be built with CMake using the flag `-DFREDDY_TEST=ON` on the command line and run by `ctest`:
 
 ```console
 $ cmake -DCMAKE_BUILD_TYPE=Release -DFREDDY_TEST=ON -B build/Release
