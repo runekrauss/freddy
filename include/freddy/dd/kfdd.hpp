@@ -382,20 +382,17 @@ class kfdd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
         // terminal cases
+        if(f == consts[0])
+        {
+            return g;
+        }
 
-        if (f == consts[0] && g == consts[0])
+        if(g == consts[0])
         {
-            return consts[0];
+            return f;
         }
-        if (f == consts[0] && g == consts[1])
-        {
-            return consts[1];
-        }
-        if (f == consts[1] && g == consts[0])
-        {
-            return consts[1];
-        }
-        if (f == consts[1] && g == consts[1])
+
+        if(f == g)
         {
             return consts[0];
         }
@@ -418,12 +415,6 @@ class kfdd_manager : public detail::manager<bool, bool>
         auto high = antiv(f_high, g_high);
 
         auto result = make_branch(x, high, low);
-
-        auto w = merge(!f->v->is_const() && f->v->br().x == x ? f->w : false, !g->v->is_const() && g->v->br().x == x ? g->w : false);
-        if (w)
-        {
-            result = complement(result);
-        }
 
         ct.insert_or_assign({operation::XOR, f, g}, std::make_pair(result, 0.0));
         return result;
@@ -458,23 +449,6 @@ class kfdd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
 
-        if (f == consts[0] && g == consts[0])
-        {
-            return consts[0];
-        }
-        if (f == consts[0] && g == consts[1])
-        {
-            return consts[0];
-        }
-        if (f == consts[1] && g == consts[0])
-        {
-            return consts[0];
-        }
-        if (f == consts[1] && g == consts[1])
-        {
-            return consts[1];
-        }
-
         //terminal cases
         // 0 * g = 0, f * 0 = 0
         if (f == consts[0] || g == consts[0])
@@ -502,25 +476,14 @@ class kfdd_manager : public detail::manager<bool, bool>
         //{
         //    return cr->second.first.lock();
         //}
-        auto f_ = f;
-        auto g_ = g;
-        if(!f->v->is_const() && f->w)
-        {
 
-            f_ = foa(std::make_shared<bool_edge>(false, foa(std::make_shared<bool_node>(f->v->br().x, f->v->br().hi, complement(f->v->br().lo)))));
-        }
-        if(!g->v->is_const() && g->w)
-        {
 
-            g_ = foa(std::make_shared<bool_edge>(false, foa(std::make_shared<bool_node>(g->v->br().x, g->v->br().hi, complement(g->v->br().lo)))));
-        }
+        auto const x = top_var(f, g);
+        auto f_low = cof(f, x, false);
+        auto f_high = cof(f, x, true);
 
-        auto const x = top_var(f_, g_);
-        auto f_low = cof(f_, x, false);
-        auto f_high = cof(f_, x, true);
-
-        auto g_low = cof(g_, x, false);
-        auto g_high = cof(g_, x, true);
+        auto g_low = cof(g, x, false);
+        auto g_high = cof(g, x, true);
 
         auto f0_and_g0 = conj(f_low, g_low);
         auto f2_and_g2 = conj(f_high, g_high);

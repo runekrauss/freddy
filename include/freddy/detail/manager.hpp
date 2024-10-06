@@ -385,15 +385,8 @@ class manager
         assert(f);
         assert(x < var_count());
         assert(!consts.empty());
-        if (f->v->is_const())
-        {
-            if(f==consts[1]&&a)
-            {
-                return consts[0];
-            }
-            return f;
-        }
-        if (f->v->br().x != x)
+
+        if (f->v->is_const()||f->v->br().x != x)
         {
             if(a)
             {
@@ -401,11 +394,8 @@ class manager
             }
             return f;
         }
-        //if(!a && f->w && f->v->br().lo->v->is_const())
-        //{
-        //    return complement(f->v->br().lo);
-        //}
-        return a ? f->v->br().hi : f->v->br().lo;
+
+        return a ? f->v->br().hi : apply(f->w,f->v->br().lo);
     }
 
     auto restr(edge_ptr const& f, std::int32_t const x, bool const a)
