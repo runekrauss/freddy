@@ -156,9 +156,5 @@ TEST_CASE("kfdd basic NEG tests", "[basic]")
 
     CHECK(negated_v1.eval({false}) == 1);
     CHECK(negated_v1.eval({true}) == 0);
-
-    auto canon = negated_v1.canonical();
-    std::cout << "canonical ~v1: " << '\n';
-    canon.print();
 }
 }  //namespace

@@ -139,8 +139,6 @@ class kfdd
 
     [[nodiscard]] auto ite(kfdd const&, kfdd const&) const;
 
-    [[nodiscard]] auto canonical() const;
-
     [[nodiscard]] auto compose(std::int32_t, kfdd const&) const;
 
     [[nodiscard]] auto restr(std::int32_t, bool) const;
@@ -151,7 +149,7 @@ class kfdd
 
     [[nodiscard]] auto satcount() const;
 
-    auto print() const;
+    void print() const;
 
   private:
     friend kfdd_manager;
@@ -385,52 +383,22 @@ class kfdd_manager : public detail::manager<bool, bool>
         assert(g);
         // terminal cases
 
-        if(f == consts[0] && g == consts[0])
+        if (f == consts[0] && g == consts[0])
         {
             return consts[0];
         }
-        if(f == consts[0] && g == consts[1])
+        if (f == consts[0] && g == consts[1])
         {
             return consts[1];
         }
-        if(f == consts[1] && g == consts[0])
+        if (f == consts[1] && g == consts[0])
         {
             return consts[1];
         }
-        if(f == consts[1] && g == consts[1])
+        if (f == consts[1] && g == consts[1])
         {
             return consts[0];
         }
-
-        // // f ^ f = 0
-        // if (f == g)
-        // {
-        //     return consts[0];
-        // }
-        //
-        // // 0 ^ g = g
-        // if (f == consts[0])
-        // {
-        //     return g;
-        // }
-        //
-        // // f ^ 0 = f
-        // if (g == consts[0])
-        // {
-        //     return f;
-        // }
-        //
-        // // f ^ 1 = ~f
-        // if(g == consts[1])
-        // {
-        //     return complement(f);
-        // }
-        //
-        // // 1 ^ g = ~g
-        // if(f == consts[1])
-        // {
-        //     return complement(g);
-        // }
 
         auto const cr = ct.find({operation::XOR, f, g});
         if (cr != ct.end())
@@ -440,30 +408,23 @@ class kfdd_manager : public detail::manager<bool, bool>
 
         auto const x = top_var(f, g);
 
-        auto f0 = cof(f,x,false);
-        auto g0 = cof(g, x, false);
-        auto f1 = cof(f,x,true);
-        auto g1 = cof(g, x, true);
-        auto f2 = antiv(f0, f1);
-        auto g2 = antiv(g0, g1);
+        auto f_low = cof(f, x, false);
+        auto f_high = cof(f, x, true);
 
-        auto low = antiv(f0,g0);
-        auto high = antiv(f2,g2);
+        auto g_low = cof(g, x, false);
+        auto g_high = cof(g, x, true);
 
-        //edge_ptr f_high_cof = f;
-        //edge_ptr g_high_cof = g;
-        //if (!f->v->is_const() && x == f->v->br().x)
-        //{
-        //    f_high_cof = cof(f, x, true);
-        //}
-        //if (!g->v->is_const() && x == g->v->br().x)
-        //{
-        //    g_high_cof = cof(g, x, true);
-        //}
-        //high = antiv(f_high_cof, g_high_cof);
-
+        auto low = antiv(f_low, g_low);
+        auto high = antiv(f_high, g_high);
 
         auto result = make_branch(x, high, low);
+
+        auto w = merge(!f->v->is_const() && f->v->br().x == x ? f->w : false, !g->v->is_const() && g->v->br().x == x ? g->w : false);
+        if (w)
+        {
+            result = complement(result);
+        }
+
         ct.insert_or_assign({operation::XOR, f, g}, std::make_pair(result, 0.0));
         return result;
     }
@@ -489,14 +450,6 @@ class kfdd_manager : public detail::manager<bool, bool>
     auto complement(edge_ptr const& f) -> edge_ptr override
     {
         assert(f);
-        if(f==consts[0])
-        {
-            return consts[1];
-        }
-        if(f==consts[1])
-        {
-            return consts[0];
-        }
         return foa(std::make_shared<bool_edge>(merge(f->w, true), f->v));
     }
 
@@ -505,41 +458,39 @@ class kfdd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
 
-        if(f == consts[0] && g == consts[0])
+        if (f == consts[0] && g == consts[0])
         {
             return consts[0];
         }
-        if(f == consts[0] && g == consts[1])
+        if (f == consts[0] && g == consts[1])
         {
             return consts[0];
         }
-        if(f == consts[1] && g == consts[0])
+        if (f == consts[1] && g == consts[0])
         {
             return consts[0];
         }
-        if(f == consts[1] && g == consts[1])
+        if (f == consts[1] && g == consts[1])
         {
             return consts[1];
         }
 
-        // //terminal cases
-        // // 0 * g = 0, f * 0 = 0
-        // if (f == consts[0] || g == consts[0])
-        // {
-        //     return consts[0];
-        // }
-        //
-        // // 1 * g = g
-        // if (f == consts[1])
-        // {
-        //     return g;
-        // }
-        //
-        // //f * 1 = f
-        // if (g == consts[1])
-        // {
-        //     return f;
-        // }
+        //terminal cases
+        // 0 * g = 0, f * 0 = 0
+        if (f == consts[0] || g == consts[0])
+        {
+            return consts[0];
+        }
+        // 1 * g = g
+        if (f == consts[1])
+        {
+            return g;
+        }
+        //f * 1 = f
+        if (g == consts[1])
+        {
+            return f;
+        }
 
         auto cr = ct.find({operation::AND, f, g});
         if (cr != ct.end())
@@ -551,25 +502,34 @@ class kfdd_manager : public detail::manager<bool, bool>
         //{
         //    return cr->second.first.lock();
         //}
+        auto f_ = f;
+        auto g_ = g;
+        if(!f->v->is_const() && f->w)
+        {
 
-        auto const x = top_var(f, g);
-        auto f_0 = cof(f, x, false);
-        auto f_1 = cof(f, x, true);
-        auto f_2 = antiv(f_0, f_1);
+            f_ = foa(std::make_shared<bool_edge>(false, foa(std::make_shared<bool_node>(f->v->br().x, f->v->br().hi, complement(f->v->br().lo)))));
+        }
+        if(!g->v->is_const() && g->w)
+        {
 
-        auto g_0 = cof(g, x, false);
-        auto g_1 = cof(g, x, true);
-        auto g_2 = antiv(g_0, g_1);
+            g_ = foa(std::make_shared<bool_edge>(false, foa(std::make_shared<bool_node>(g->v->br().x, g->v->br().hi, complement(g->v->br().lo)))));
+        }
 
-        auto f0_and_g0 = conj(f_0, g_0);
-        auto f2_and_g2 = conj(f_2, g_2);
-        auto f0_and_g2 = conj(f_0, g_2);
-        auto g0_and_f2 = conj(g_0, f_2);
+        auto const x = top_var(f_, g_);
+        auto f_low = cof(f_, x, false);
+        auto f_high = cof(f_, x, true);
+
+        auto g_low = cof(g_, x, false);
+        auto g_high = cof(g_, x, true);
+
+        auto f0_and_g0 = conj(f_low, g_low);
+        auto f2_and_g2 = conj(f_high, g_high);
+        auto f0_and_g2 = conj(f_low, g_high);
+        auto g0_and_f2 = conj(g_low, f_high);
 
         auto high_child = antiv(f2_and_g2, antiv(f0_and_g2, g0_and_f2));
 
         auto result = make_branch(x, high_child, f0_and_g0);
-
         ct.insert_or_assign({operation::AND, f, g}, std::make_pair(result, 0.0));
         return result;
     }
@@ -578,7 +538,6 @@ class kfdd_manager : public detail::manager<bool, bool>
     {
         assert(f);
         assert(g);
-
         return complement(conj(complement(f), complement(g)));
     }
 
@@ -609,13 +568,55 @@ class kfdd_manager : public detail::manager<bool, bool>
                 break;
             case expansion::PD:
 
-                //if(hi == consts[0])
-                //{
-                //    return lo;
-                //}
+                //std::cout << "lo:" << '\n';
+                //kfdd{lo, this}.print();
+                //std::cout << "hi:" << '\n';
+                //kfdd{hi, this}.print();
 
-                r = foa(
-                    std::make_shared<bool_edge>(lo->w, foa(std::make_shared<bool_node>(x, std::move(hi), lo->w ? complement(lo) : std::move(lo)))));
+                if(hi==consts[0])
+                {
+                    return lo;
+                }
+
+                    if (lo->w)
+                {
+                    w = lo->w;
+                    r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(x, hi, complement(lo)))));
+                }
+                else
+                {
+                    r = foa(std::make_shared<bool_edge>(
+                        false, foa(std::make_shared<bool_node>(x, std::move(hi), std::move(lo)))));
+                }
+                //std::cout << "r:" << '\n';
+                //kfdd{r, this}.print();
+                //std::cout << "hi:" << '\n';
+                //tmp = kfdd{hi, this};
+                //tmp.print();
+                //std::cout << "lo:" << '\n';
+                //kfdd{lo, this}.print();
+                //if (lo->v->is_const())
+                //{
+                //    r = foa(std::make_shared<bool_edge>(
+                //        false, foa(std::make_shared<bool_node>(x, std::move(hi), std::move(lo)))));
+                //}
+                //else
+                // {
+                //     w = lo->w;
+                //     if (!w)
+                //     {
+                //         r = foa(std::make_shared<bool_edge>(
+                //             w, foa(std::make_shared<bool_node>(x, std::move(hi), std::move(lo)))));
+                //     }
+                //     else
+                //     {
+                //     r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(x, hi, complement(lo)))));
+                //     }
+                // }
+                //
+                // std::cout << "r:" << '\n';
+                // kfdd{r, this}.print();
+                // return r;
 
                 //if (!r->v->is_const() && r->v->br().hi == consts[0])
                 //{
@@ -629,36 +630,36 @@ class kfdd_manager : public detail::manager<bool, bool>
         return r;
     }
 
-    auto make_canonical(edge_ptr f) -> edge_ptr
-    {
-        return f;
-        assert(f);
-        //terminals are per definition canonical
-        if (f->v->is_const())
-        {
-            return f;
-        }
-        auto const br = f->v->br();
-        if (!f->w)
-        {
-            return f;
-        }
-        auto comp = br.lo;
-        if(br.lo==consts[0])
-        {
-            comp = consts[1];
-        }
-        else if(br.lo==consts[1])
-        {
-            comp = consts[0];
-        }
-        else
-        {
-            comp = complement(br.lo);
-        }
-        auto canon = foa(std::make_shared<bool_edge>(false, foa(std::make_shared<bool_node>(br.x, br.hi, make_canonical(comp)))));
-        return canon;
-    }
+    // auto make_canonical(edge_ptr f) -> edge_ptr
+    // {
+    //     return f;
+    //     assert(f);
+    //     //terminals are per definition canonical
+    //     if (f->v->is_const())
+    //     {
+    //         return f;
+    //     }
+    //     auto const br = f->v->br();
+    //     if (!f->w)
+    //     {
+    //         return f;
+    //     }
+    //     auto comp = br.lo;
+    //     if(br.lo==consts[0])
+    //     {
+    //         comp = consts[1];
+    //     }
+    //     else if(br.lo==consts[1])
+    //     {
+    //         comp = consts[0];
+    //     }
+    //     else
+    //     {
+    //         comp = complement(br.lo);
+    //     }
+    //     auto canon = foa(std::make_shared<bool_edge>(false, foa(std::make_shared<bool_node>(br.x, br.hi,
+    //     make_canonical(comp))))); return canon;
+    // }
 
     [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
     {
@@ -820,13 +821,6 @@ auto inline kfdd::ite(kfdd const& g, kfdd const& h) const
     return kfdd{mgr->ite(f, g.f, h.f), mgr};
 }
 
-auto inline kfdd::canonical() const
-{
-    assert(mgr);
-    assert(f);
-    return kfdd{mgr->make_canonical(f),mgr};
-}
-
 auto inline kfdd::compose(std::int32_t const x, kfdd const& g) const
 {
     assert(mgr);
@@ -863,7 +857,7 @@ auto inline kfdd::satcount() const
     return mgr->satcount(f);
 }
 
-auto inline kfdd::print() const
+void inline kfdd::print() const
 {
     assert(mgr);
 

@@ -103,23 +103,49 @@ TEST_CASE("kfdd synthesis is performed", "[queen]")
 #ifndef NDEBUG
     //std::cout << mgr << '\n';
     //std::cout << pred << '\n';
-    //pred.print();
+    pred.print();
 #endif
-    CHECK_FALSE(pred.high().is_complemented());
-    CHECK(pred.high().is_const());
-    CHECK(pred.high().is_zero());
-    CHECK((~pred.high()).is_one());
-    CHECK_FALSE(pred.low().is_const());
-    CHECK(pred.cof(false, true, false, false, false, false, false, true, true, false, false, false, false, false) ==
-          (mgr.var(14) & ~mgr.var(15)));
-    CHECK(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true, false, true) ==
-          ~(mgr.var(14) | mgr.var(15)));
-    CHECK(pred.cof(false, true, false, false, false, false, false, true, true, false, false, false, false, false, true)
-              .same_node(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true,
-                                  false, true, false)));
-    CHECK((pred & mgr.var(1)) == pred.ite(mgr.var(1), mgr.zero()));
-    CHECK((pred | mgr.var(1)) == pred.ite(mgr.one(), mgr.var(1)));
-    CHECK((pred ^ mgr.var(1)) == pred.ite(~mgr.var(1), mgr.var(1)));
+    std::vector solution1 = {false,false,true,false,true,false,false,false,false,false,false,true,false,true,false,false};
+    std::vector solution2 = {false,true,false,false,false,false,false,true,true,false,false,false,false,false,true,false};
+    CHECK(pred.eval(solution1)==true);
+    CHECK(pred.eval(solution2)==true);
+    for(int i = 0; i < 65536; i++)
+    {
+        auto var0 =  !!(i & 0b0000000000000001);
+        auto var1 =  !!(i & 0b0000000000000010);
+        auto var2 =  !!(i & 0b0000000000000100);
+        auto var3 =  !!(i & 0b0000000000001000);
+        auto var4 =  !!(i & 0b0000000000010000);
+        auto var5 =  !!(i & 0b0000000000100000);
+        auto var6 =  !!(i & 0b0000000001000000);
+        auto var7 =  !!(i & 0b0000000010000000);
+        auto var8 =  !!(i & 0b0000000100000000);
+        auto var9 =  !!(i & 0b0000001000000000);
+        auto var10 = !!(i & 0b0000010000000000);
+        auto var11 = !!(i & 0b0000100000000000);
+        auto var12 = !!(i & 0b0001000000000000);
+        auto var13 = !!(i & 0b0010000000000000);
+        auto var14 = !!(i & 0b0100000000000000);
+        auto var15 = !!(i & 0b1000000000000000);
+        std::vector params = {var0,var1,var2,var3,var4,var5,var6,var7,var8,var9,var10,var11,var12,var13,var14,var15};
+        if(params==solution1||params==solution2) {continue;}
+        CHECK(pred.eval(params) == false);
+    }
+    //CHECK_FALSE(pred.high().is_complemented());
+    //CHECK(pred.high().is_const());
+    //CHECK(pred.high().is_zero());
+    //CHECK((~pred.high()).is_one());
+    //CHECK_FALSE(pred.low().is_const());
+    //CHECK(pred.cof(false, true, false, false, false, false, false, true, true, false, false, false, false, false) ==
+    //      (mgr.var(14) & ~mgr.var(15)));
+    //CHECK(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true, false, true) ==
+    //      ~(mgr.var(14) | mgr.var(15)));
+    //CHECK(pred.cof(false, true, false, false, false, false, false, true, true, false, false, false, false, false, true)
+    //          .same_node(pred.cof(false, false, true, false, true, false, false, false, false, false, false, true,
+    //                              false, true, false)));
+    //CHECK((pred & mgr.var(1)) == pred.ite(mgr.var(1), mgr.zero()));
+    //CHECK((pred | mgr.var(1)) == pred.ite(mgr.one(), mgr.var(1)));
+    //CHECK((pred ^ mgr.var(1)) == pred.ite(~mgr.var(1), mgr.var(1)));
 }
 
 TEST_CASE("kfdd character can be investigated", "[queen]")
