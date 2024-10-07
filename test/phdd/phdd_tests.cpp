@@ -47,11 +47,6 @@ auto pow2(const int exp, dd::phdd_manager &mgr) -> dd::phdd
     return r;
 }
 
-static auto ite(const dd::phdd &s, const dd::phdd &t, const dd::phdd &f) -> dd::phdd
-{
-    return (~s | t) & (s | f);
-}
-
 // *********************************************************************************************************************
 // Macros
 // *********************************************************************************************************************
@@ -115,11 +110,11 @@ TEST_CASE("sphdd_minifloat", "[phdd, mini-float]")
     auto x_m2 = mgr.var(expansion::PD, "x_m2"); auto y_m2 = mgr.var(expansion::PD, "y_m2");
 
     auto x_is_sbn = (~x_e0 & ~x_e1 & ~x_e2 & ~x_e3);
-    auto x_s = ite(x_sg, -mgr.one(), mgr.one());
+    auto x_s = x_sg.ite(-mgr.one(), mgr.one());
     auto x_m = (pow2(2,mgr)*x_m2) +
                (pow2(1,mgr)*x_m1) +
                (pow2(0,mgr)*x_m0) +
-               ite(x_is_sbn, mgr.zero(), pow2(3, mgr));
+               x_is_sbn.ite(mgr.zero(), pow2(3, mgr));
     auto x_e = (pow2(1<<3, mgr)*x_e3 | ~x_e3) *
                (pow2(1<<2, mgr)*x_e2 | ~x_e2) *
                (pow2(1<<1, mgr)*x_e1 | ~x_e1) *
@@ -128,11 +123,11 @@ TEST_CASE("sphdd_minifloat", "[phdd, mini-float]")
     auto x = x_s * x_m * x_e;
 
     auto y_is_sbn = (~y_e0 & ~y_e1 & ~y_e2 & ~y_e3);
-    auto y_s = ite(y_sg, -mgr.one(), mgr.one());
+    auto y_s = y_sg.ite(-mgr.one(), mgr.one());
     auto y_m = (pow2(2,mgr)*y_m2) +
                (pow2(1,mgr)*y_m1) +
                (pow2(0,mgr)*y_m0) +
-               ite(y_is_sbn, mgr.zero(), pow2(3, mgr));
+               y_is_sbn.ite(mgr.zero(), pow2(3, mgr));
     auto y_e = (pow2(1<<3,mgr)*y_e3 | ~y_e3) *
                (pow2(1<<2,mgr)*y_e2 | ~y_e2) *
                (pow2(1<<1,mgr)*y_e1 | ~y_e1) *
