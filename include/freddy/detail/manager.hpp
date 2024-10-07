@@ -153,6 +153,17 @@ class manager
         }
     }
 
+    auto reorder(std::vector<int32_t> const & order)
+    {
+        for(int32_t i = 0; i < order.size(); i++)
+        {
+            for(int32_t lvl = var2lvl[order[i]]; lvl > i; lvl--)
+            {
+                exchange(lvl-1);
+            }
+        }
+    }
+
     auto virtual gc() noexcept -> void  // performance of many EDA tasks depends on garbage collection
     {
         ct.clear();  // to avoid invalid results
@@ -845,7 +856,15 @@ class manager
             return;
         }
 
-        s << 'v' << f->v << " [shape=circle,style=filled,color=black,fontcolor=white,label=\"" << vl[f->v->br().x].l
+        std::string shape;
+        switch (vl[f->v->br().x].t)
+        {
+            case expansion::PD: shape = "shape=octagon,regular=true"; break;
+            case expansion::S: shape = "shape=circle"; break;
+            default: assert(false);
+        }
+
+        s << 'v' << f->v << " [" << shape << ",style=filled,color=black,fontcolor=white,label=\"" << vl[f->v->br().x].l
           << "\"];\n";
         s << "{ rank=same; x" << f->v->br().x << "; v" << f->v << "; }\n";
         s << 'v' << f->v << " -> v" << f->v->br().hi->v << " [color=blue,dir=none,label=\" " << f->v->br().hi->w

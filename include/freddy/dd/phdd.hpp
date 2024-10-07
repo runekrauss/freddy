@@ -42,8 +42,8 @@ class phdd_manager;
 // Types
 // =====================================================================================================================
 
-using phdd_edge = detail::edge<edge_weight, float>;
-using phdd_node = detail::node<edge_weight, float>;
+using phdd_edge = detail::edge<edge_weight, double>;
+using phdd_node = detail::node<edge_weight, double>;
 
 class phdd
 {
@@ -174,6 +174,8 @@ class phdd
 
     [[nodiscard]] auto is_essential(std::int32_t) const;
 
+    [[nodiscard]] auto support() const;
+
     [[nodiscard]] auto ite(phdd const&, phdd const&) const;
 
     [[nodiscard]] auto compose(std::int32_t, phdd const&) const;
@@ -203,7 +205,7 @@ class phdd
     phdd_manager* mgr{};
 };
 
-class phdd_manager : public detail::manager<edge_weight, float>
+class phdd_manager : public detail::manager<edge_weight, double>
 {
   private:
     auto static factorize_pow2(int w) -> std::pair<int,int>
@@ -282,7 +284,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
             return zero();
         }
         auto d = decompose_float(w);
-        return phdd{make_const({std::get<0>(d),std::get<1>(d)}, static_cast<float>(std::get<2>(d))), this};
+        return phdd{make_const({std::get<0>(d),std::get<1>(d)}, static_cast<double>(std::get<2>(d))), this};
     }
 
     [[nodiscard]] auto size(std::vector<phdd> const& fs) const
@@ -406,7 +408,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
         return apply(w, r);
     }
 
-    [[nodiscard]] auto agg(edge_weight const& w, float const& val) const noexcept -> float override
+    [[nodiscard]] auto agg(edge_weight const& w, double const& val) const noexcept -> double override
     {
         return w.first ? -1 * pow(2, w.second) * val : pow(2, w.second) * val;
     }
@@ -483,7 +485,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
                foa(std::make_shared<phdd_edge>(std::make_pair(lo->w.first ^ w.first, lo->w.second - w.second), lo->v))))));
     }
 
-    [[nodiscard]] auto merge(float const& val1, float const& val2) const noexcept -> float override
+    [[nodiscard]] auto merge(double const& val1, double const& val2) const noexcept -> double override
     {
         return (val1 + val2);
     }
@@ -580,6 +582,47 @@ class phdd_manager : public detail::manager<edge_weight, float>
         std::transform(fs.begin(), fs.end(), gs.begin(), [](auto const& g) { return g.f; });
         return gs;
     }
+
+    auto support(edge_ptr const& f) -> edge_ptr
+    {
+        std::unordered_set<node_ptr, detail::hash, detail::comp> marks;
+        marks.max_load_factor(0.7f);
+        auto sup = support(f, marks);
+        auto r = consts[1];
+        for(auto v : sup)
+        {
+            r = this->conj(r, vars[v]);
+        }
+        return  r;
+    }
+
+    auto support(edge_ptr const& f, std::unordered_set<node_ptr, detail::hash, detail::comp>& marks) const ->
+        std::vector<int32_t >
+    {
+        assert(f);
+        if(f->v->is_const())
+        {
+            return {};
+        }
+        if (marks.find(f->v) != marks.end())
+        {  // node has already been visited
+            return {};
+        }
+
+        marks.insert(f->v);
+
+        std::vector<int32_t > result = {f->v->br().x};
+
+        auto hi_sup = support(f->v->br().hi, marks);
+        auto lo_sup = support(f->v->br().lo, marks);
+
+        result.insert(result.begin(), hi_sup.begin(), hi_sup.end());
+        result.insert(result.begin(), lo_sup.begin(), lo_sup.end());
+
+        return result;
+    }
+
+
 };
 
 auto inline phdd::operator+=(phdd const& rhs) -> phdd&
@@ -734,6 +777,14 @@ auto inline phdd::is_essential(std::int32_t const x) const
     assert(mgr);
 
     return mgr->is_essential(f, x);
+}
+
+
+auto inline phdd::support() const
+{
+    assert(mgr);
+
+    return phdd{mgr->support(f), mgr};
 }
 
 auto inline phdd::ite(phdd const& g, phdd const& h) const
