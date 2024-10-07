@@ -15,7 +15,7 @@
 #include "operation.hpp"            // operation
 #include "variable.hpp"             // variable
 
-#include <algorithm>      // std::max_element
+#include <algorithm>      // std::ranges::max_element
 #include <array>          // std::array
 #include <cassert>        // assert
 #include <concepts>       // std::same_as
@@ -803,7 +803,7 @@ class manager
 
         if (f->v->is_const())
         {
-            s << 'v' << f->v << " [shape=box,style=filled,color=brown,fontcolor=white,label=\"" << f->v->c()
+            s << 'v' << f->v << " [shape=box,style=filled,color=chocolate,fontcolor=white,label=\"" << f->v->c()
               << "\"];\n";
             s << "{ rank=same; c; v" << f->v << "; }\n";
 

@@ -10,7 +10,7 @@
 #include "freddy/op/ite.hpp"          // op::ite
 #include "freddy/op/sharpsat.hpp"     // op::sharpsat
 
-#include <algorithm>    // std::transform
+#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::pow
@@ -148,7 +148,7 @@ class bdd  // binary decision diagram
 
     [[nodiscard]] auto sharpsat() const;
 
-    auto print() const;
+    auto print(std::ostream& = std::cout) const;
 
   private:
     friend bdd_manager;
@@ -223,6 +223,24 @@ class bdd_manager : public detail::manager<bool, bool>
     using bool_edge = detail::edge<bool, bool>;
 
     using bool_node = detail::node<bool, bool>;
+
+    auto static tmls() -> std::array<edge_ptr, 2>
+    {
+        // choose the 0-leaf due to complemented edges in order to ensure canonicity
+        auto const leaf = std::make_shared<bool_node>(false);
+
+        return std::array<edge_ptr, 2>{std::make_shared<bool_edge>(false, leaf),
+                                       std::make_shared<bool_edge>(true, leaf)};
+    }
+
+    auto static transform(std::vector<bdd> const& fs) -> std::vector<edge_ptr>
+    {
+        std::vector<edge_ptr> gs;
+        gs.reserve(fs.size());
+        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
+
+        return gs;
+    }
 
     auto sharpsat(edge_ptr const& f) -> double
     {
@@ -516,24 +534,6 @@ class bdd_manager : public detail::manager<bool, bool>
     {
         return false;  // means a regular (non-complemented) edge
     }
-
-    auto static transform(std::vector<bdd> const& fs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> gs;
-        gs.reserve(fs.size());
-        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
-
-        return gs;
-    }
-
-    auto static tmls() -> std::array<edge_ptr, 2>
-    {
-        // choose the 0-leaf due to complemented edges in order to ensure canonicity
-        auto const leaf = std::make_shared<bool_node>(false);
-
-        return std::array<edge_ptr, 2>{std::make_shared<bool_edge>(false, leaf),
-                                       std::make_shared<bool_edge>(true, leaf)};
-    }
 };
 
 auto inline bdd::operator~() const
@@ -696,11 +696,11 @@ auto inline bdd::sharpsat() const
     return mgr->sharpsat(f);
 }
 
-auto inline bdd::print() const
+auto inline bdd::print(std::ostream& s) const
 {
     assert(mgr);
 
-    mgr->print({*this});
+    mgr->print({*this}, {}, s);
 }
 
 }  // namespace freddy::dd

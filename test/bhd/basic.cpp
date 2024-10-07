@@ -9,7 +9,7 @@
 #ifndef NDEBUG
 #include <iostream>  // std::cout
 #endif
-#include <sstream>  // std::ostringstream
+#include <utility>  // std::pair
 #include <vector>   // std::vector
 
 // *********************************************************************************************************************
@@ -250,10 +250,11 @@ TEST_CASE("BHD SAT is analyzed", "[basic]")
 
     SECTION("Unit clauses are generated")
     {
-        std::ostringstream uclauses;
-        f.gen_uclauses(uclauses);
+        auto const uclauses = f.uc();
 
-        CHECK(uclauses.str() == "-1 0\n-2 0\nc\n1 0\n-2 0\nc\n");
+        REQUIRE(uclauses.size() == 2);
+        CHECK(uclauses[0] == std::vector{std::pair{0, false}, std::pair{1, false}});
+        CHECK(uclauses[1] == std::vector{std::pair{0, true}, std::pair{1, false}});
     }
 }
 

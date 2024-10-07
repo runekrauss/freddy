@@ -8,7 +8,7 @@
 #include "freddy/op/conj.hpp"         // op::conj
 #include "freddy/op/repl.hpp"         // op::repl
 
-#include <algorithm>    // std::transform
+#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cstddef>      // std::size_t
@@ -151,9 +151,9 @@ class bhd  // binary hybrid diagram
 
     [[nodiscard]] auto sat() const;  // one existing solution per path
 
-    auto gen_uclauses(std::ostream& = std::cout) const;  // unit clauses per EXP for DIMACS CNF separated by "c"
+    [[nodiscard]] auto uc() const;  // unit clauses per EXP for solving subfunctions by SAT
 
-    auto print() const;
+    auto print(std::ostream& = std::cout) const;
 
   private:
     friend bhd_manager;
@@ -253,7 +253,7 @@ class bhd_manager : public detail::manager<bool, bool>
         to_dot(transform(fs), outputs, buf);
 
         auto dot = buf.str();
-        detail::replace_all(dot, "[shape=box,style=filled,color=brown,fontcolor=white,label=\"1\"]",
+        detail::replace_all(dot, "[shape=box,style=filled,color=chocolate,fontcolor=white,label=\"1\"]",
                             "[shape=triangle,style=filled,color=darkviolet,fontcolor=white,label=\"EXP\"]");
         s << dot;
     }
@@ -262,6 +262,22 @@ class bhd_manager : public detail::manager<bool, bool>
     using bool_edge = detail::edge<bool, bool>;
 
     using bool_node = detail::node<bool, bool>;
+
+    auto static tmls() -> std::array<edge_ptr, 2>
+    {
+        auto const leaf = std::make_shared<bool_node>(false);
+        return std::array<edge_ptr, 2>{std::make_shared<bool_edge>(false, leaf),
+                                       std::make_shared<bool_edge>(true, leaf)};
+    }
+
+    auto static transform(std::vector<bhd> const& fs) -> std::vector<edge_ptr>
+    {
+        std::vector<edge_ptr> gs;
+        gs.reserve(fs.size());
+        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
+
+        return gs;
+    }
 
     [[nodiscard]] auto is_exp(edge_ptr const& f) const noexcept
     {
@@ -313,22 +329,23 @@ class bhd_manager : public detail::manager<bool, bool>
         return sols;
     }
 
-    auto gen_uclauses(edge_ptr const& f, std::vector<std::optional<bool>>& path, std::ostream& s)
+    auto uc(edge_ptr const& f, std::vector<std::optional<bool>>& path,
+            std::vector<std::vector<std::pair<std::int32_t, bool>>>& uclauses)
     {
         assert(f);
-        assert(!path.empty());
 
         if (is_exp(f))
         {
+            std::vector<std::pair<std::int32_t, bool>> tmp;
             for (auto i = 0; i < static_cast<std::int32_t>(path.size()); ++i)
             {
                 if (path[i].has_value())
-                {                                                          // output literal
-                    s << (*path[i] ? i + 1 : -i - 1) << ' ' << 0 << '\n';  // end of clause
+                {
+                    tmp.emplace_back(i, *path[i]);
                 }
             }
+            uclauses.push_back(std::move(tmp));
 
-            s << "c\n";  // empty comment means the clauses relating to the next EXP if one still exists
             return;
         }
 
@@ -338,25 +355,29 @@ class bhd_manager : public detail::manager<bool, bool>
         }
 
         path[f->v->br().x] = false;
-        gen_uclauses(f->v->br().lo, path, s);
+        uc(f->v->br().lo, path, uclauses);
 
         path[f->v->br().x] = true;
-        gen_uclauses(f->v->br().hi, path, s);
+        uc(f->v->br().hi, path, uclauses);
 
         path[f->v->br().x].reset();
     }
 
-    auto gen_uclauses(edge_ptr const& f, std::ostream& s)
+    auto uc(edge_ptr const& f)
     {
         assert(f);
 
+        std::vector<std::vector<std::pair<std::int32_t, bool>>> uclauses;
+
         if (!has_const(f, true))
         {  // there are no EXPs
-            return;
+            return uclauses;
         }
 
         std::vector<std::optional<bool>> path(var_count());  // not every variable must be on the path
-        gen_uclauses(f, path, s);
+        uc(f, path, uclauses);
+
+        return uclauses;
     }
 
     auto repl(edge_ptr const& f, edge_ptr const& exp, bool const m = false)  // works with AND
@@ -586,22 +607,6 @@ class bhd_manager : public detail::manager<bool, bool>
         return false;
     }
 
-    auto static transform(std::vector<bhd> const& fs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> gs;
-        gs.reserve(fs.size());
-        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
-
-        return gs;
-    }
-
-    auto static tmls() -> std::array<edge_ptr, 2>
-    {
-        auto const leaf = std::make_shared<bool_node>(false);
-        return std::array<edge_ptr, 2>{std::make_shared<bool_edge>(false, leaf),
-                                       std::make_shared<bool_edge>(true, leaf)};
-    }
-
     // heuristic conjunction used to decrease BDDs
     std::function<edge_ptr(edge_ptr const&, edge_ptr const&, std::int32_t)> heur{
         [this](auto const& f, auto const& g, auto const x) { return no_heur(f, g, x); }};
@@ -795,18 +800,18 @@ auto inline bhd::sat() const
     return mgr->sat(f);
 }
 
-auto inline bhd::gen_uclauses(std::ostream& s) const
+auto inline bhd::uc() const
 {
     assert(mgr);
 
-    mgr->gen_uclauses(f, s);
+    return mgr->uc(f);
 }
 
-auto inline bhd::print() const
+auto inline bhd::print(std::ostream& s) const
 {
     assert(mgr);
 
-    mgr->print({*this});
+    mgr->print({*this}, {}, s);
 }
 
 }  // namespace freddy::dd

@@ -8,6 +8,7 @@ Checks: |
   -bugprone-unchecked-optional-access,
   cert-*,
   cppcoreguidelines-*,
+  -cppcoreguidelines-avoid-do-while,
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cppcoreguidelines-non-private-member-variables-in-classes,
@@ -28,6 +29,7 @@ Checks: |
   -readability-identifier-length,
   -readability-isolate-declaration,
   -readability-magic-numbers,
+  -readability-math-missing-parentheses,
   -readability-named-parameter,
   -readability-uppercase-literal-suffix
 CheckOptions:

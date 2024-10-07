@@ -8,7 +8,7 @@
 #include "freddy/op/add.hpp"          // op::add
 #include "freddy/op/mul.hpp"          // op::mul
 
-#include <algorithm>    // std::transform
+#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::pow
@@ -173,7 +173,7 @@ class bmd  // binary moment diagram
 
     [[nodiscard]] auto forall(std::int32_t) const;
 
-    auto print() const;
+    auto print(std::ostream& = std::cout) const;
 
   private:
     friend bmd_manager;
@@ -280,6 +280,30 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     using int_edge = detail::edge<std::int32_t, std::int32_t>;
 
     using int_node = detail::node<std::int32_t, std::int32_t>;
+
+    auto static normw(edge_ptr const& f, edge_ptr const& g) noexcept
+    {
+        assert(f);
+        assert(g);
+
+        return g->w < 0 || (f->w < 0 && g->w == 0) ? -std::gcd(f->w, g->w) : std::gcd(f->w, g->w);
+    }
+
+    auto static tmls() -> std::array<edge_ptr, 2>
+    {
+        auto const leaf = std::make_shared<int_node>(1);
+
+        return std::array<edge_ptr, 2>{std::make_shared<int_edge>(0, leaf), std::make_shared<int_edge>(1, leaf)};
+    }
+
+    auto static transform(std::vector<bmd> const& fs) -> std::vector<edge_ptr>
+    {
+        std::vector<edge_ptr> gs;
+        gs.reserve(fs.size());
+        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
+
+        return gs;
+    }
 
     auto neg(edge_ptr const& f)
     {
@@ -483,30 +507,6 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     {
         return 1;
     }
-
-    auto static normw(edge_ptr const& f, edge_ptr const& g) noexcept -> std::int32_t
-    {
-        assert(f);
-        assert(g);
-
-        return g->w < 0 || (f->w < 0 && g->w == 0) ? -std::gcd(f->w, g->w) : std::gcd(f->w, g->w);
-    }
-
-    auto static transform(std::vector<bmd> const& fs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> gs;
-        gs.reserve(fs.size());
-        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
-
-        return gs;
-    }
-
-    auto static tmls() -> std::array<edge_ptr, 2>
-    {
-        auto const leaf = std::make_shared<int_node>(1);
-
-        return std::array<edge_ptr, 2>{std::make_shared<int_edge>(0, leaf), std::make_shared<int_edge>(1, leaf)};
-    }
 };
 
 auto inline bmd::operator+=(bmd const& rhs) -> bmd&
@@ -703,11 +703,11 @@ auto inline bmd::forall(std::int32_t const x) const
     return bmd{mgr->forall(f, x), mgr};
 }
 
-auto inline bmd::print() const
+auto inline bmd::print(std::ostream& s) const
 {
     assert(mgr);
 
-    mgr->print({*this});
+    mgr->print({*this}, {}, s);
 }
 
 }  // namespace freddy::dd
