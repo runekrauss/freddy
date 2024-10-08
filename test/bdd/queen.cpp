@@ -6,6 +6,7 @@
 
 #include <freddy/dd/bdd.hpp>  // dd::bdd
 
+#include <cassert>  // assert
 #include <cstdint>  // std::uint8_t
 #include <vector>   // std::vector
 
@@ -24,6 +25,8 @@ namespace
 
 auto enc(std::uint8_t const n, dd::bdd_manager& mgr)
 {
+    assert(n > 0);
+
     std::vector<std::vector<dd::bdd>> x(n, std::vector<dd::bdd>(n));
     for (auto i = 0; i < n; ++i)
     {

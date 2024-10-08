@@ -6,17 +6,20 @@
 
 #include <freddy/dd/bhd.hpp>  // dd::bhd_heuristic::LVL
 
-#include <algorithm>  // std::ranges::max_element
-#include <cstddef>    // std::size_t
-#include <cstdint>    // std::int32_t
-#include <ios>        // std::ios_base::app
-#include <istream>    // std::istream
-#include <iterator>   // std::distance
-#include <optional>   // std::optional
-#include <sstream>    // std::stringstream
-#include <string>     // std::to_string
-#include <utility>    // std::pair
-#include <vector>     // std::vector
+#include <algorithm>      // std::ranges::max_element
+#include <cassert>        // assert
+#include <cstddef>        // std::size_t
+#include <cstdint>        // std::int32_t
+#include <ios>            // std::ios_base::app
+#include <istream>        // std::istream
+#include <iterator>       // std::distance
+#include <optional>       // std::optional
+#include <set>            // std::set
+#include <sstream>        // std::stringstream
+#include <string>         // std::to_string
+#include <unordered_map>  // std::unordered_map
+#include <utility>        // std::pair
+#include <vector>         // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -71,6 +74,8 @@ class sat
                 dimacs >> lit;
                 if (lit < 0)  // negative polarity
                 {
+                    assert(-lit <= static_cast<std::int32_t>(p.vars.size()));
+
                     auto const x = -lit - 1;
                     ++p.lits[x];
                     --p.pols[x];
@@ -78,6 +83,8 @@ class sat
                 }
                 else if (lit > 0)  // positive polarity
                 {
+                    assert(lit <= static_cast<std::int32_t>(p.vars.size()));
+
                     auto const x = lit - 1;
                     ++p.lits[x];
                     ++p.pols[x];
@@ -97,6 +104,8 @@ class sat
 
         if (dpll(p) == stat::KN)
         {
+            assert(p.clauses.empty());
+
             sol.resize(p.vars.size());
 
             for (auto i = 0uz; i < p.vars.size(); ++i)
@@ -133,6 +142,8 @@ class sat
 
     auto static simplify(formula& q, std::int32_t const x)
     {
+        assert(x < static_cast<std::int32_t>(q.lits.size()));
+
         q.lits[x] = 0;  // as all these literals are removed
 
         for (auto i = 0; i < static_cast<std::int32_t>(q.clauses.size()); ++i)
@@ -215,8 +226,11 @@ class sat
             return r;
         }
 
-        // conditioning
         auto const x = std::distance(q.lits.begin(), std::ranges::max_element(q.lits));
+
+        assert(q.lits[x] > 0);
+
+        // conditioning
         for (auto a = 0; a < 2; ++a)
         {
             auto u = q;
@@ -284,17 +298,67 @@ auto mux_sat(std::vector<std::vector<std::pair<std::int32_t, bool>>> const& ucla
     return sols;
 }
 
+auto mux_sim(std::vector<std::vector<bool>> const& t)  // stuck-at fault simulation
+{
+    assert(!t.empty());
+
+    // sab pattern -> detectable faults
+    std::unordered_map<std::vector<bool>, std::set<std::string>> static const t2f{
+        {{false, false, false}, {"b/1", "f/1"}},       {{false, false, true}, {"s/1", "b/0", "f/0"}},
+        {{false, true, false}, {"s/1", "b/1", "f/1"}}, {{false, true, true}, {"b/0", "f/0"}},
+        {{true, false, false}, {"a/1", "f/1"}},        {{true, false, true}, {"s/0", "a/1", "f/1"}},
+        {{true, true, false}, {"s/0", "a/0", "f/0"}},  {{true, true, true}, {"a/0", "f/0"}}};
+
+    // fault localization
+    std::set<std::string> f{t2f.at(t[0])};
+    for (auto i = 1uz; i < t.size(); ++i)
+    {
+        std::set<std::string> tmp;
+        std::set_intersection(f.begin(), f.end(), t2f.at(t[i]).begin(), t2f.at(t[i]).end(),
+                              std::inserter(tmp, tmp.begin()));
+        f.swap(tmp);  // since intersection does not work in-place
+
+        if (f.size() == 1)
+        {
+            break;
+        }
+    }
+    return f;
+}
+
 }  // namespace
 
 // *********************************************************************************************************************
 // Macros
 // *********************************************************************************************************************
 
+TEST_CASE("MUX s/0 is debugged", "[debug]")
+{
+    auto mgr = mux_mgr();
+    auto const m = mgr.var(2) ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));  // miter
+
+    // test patterns
+    auto t = m.sat();
+    t.append_range(mux_sat(m.uc()));
+
+    auto const f = mux_sim(t);  // fault location
+
+    CHECK(t.size() == 2);
+    REQUIRE(f.size() == 1);
+    CHECK(*f.begin() == "s/0");
+}
+
 TEST_CASE("MUX f/1 is debugged", "[debug]")
 {
     auto mgr = mux_mgr();
     auto const m = mgr.one() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));
 
-    auto const t1 = m.sat();
-    auto const t2 = mux_sat(m.uc());
+    auto t = m.sat();
+    t.append_range(mux_sat(m.uc()));
+
+    auto const f = mux_sim(t);
+
+    CHECK(t.size() == 2);
+    REQUIRE(f.size() == 1);
+    CHECK(*f.begin() == "f/1");
 }
