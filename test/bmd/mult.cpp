@@ -27,7 +27,7 @@ TEST_CASE("1-bit multiplier is verified", "[mult]")
 
     auto const word_lvl_spec = mgr.weighted_sum({a}) * mgr.weighted_sum({b});
 
-    std::vector const bit_lvl_impl{a & b};
+    std::vector const bit_lvl_impl{a & b, mgr.zero()};  // B^2n -> B^2n
 
     CHECK(mgr.weighted_sum(bit_lvl_impl) == word_lvl_spec);
 }
@@ -50,8 +50,8 @@ TEST_CASE("2-bit multiplier is verified", "[mult]")
     s[3] = a1 & b1;
     s[4] = s[1] ^ s[2];  // p1
     s[5] = s[1] & s[2];
-    s[6] = s[3] ^ s[5];  // p2
-    s[7] = s[3] & s[5];  // p3
+    s[6] = s[3] ^ s[5];                                      // p2
+    s[7] = s[3] & s[5];                                      // p3
     std::vector const bit_lvl_impl{s[0], s[4], s[6], s[7]};  // LSB...MSB
 
     CHECK(mgr.weighted_sum(bit_lvl_impl) == word_lvl_spec);
