@@ -253,7 +253,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     {
         auto r = consts[0];
         for (auto i = 0uz; i < fs.size(); ++i)
-        {  // LSB ... MSB
+        {  // LSB...MSB
             r = add(r, mul(make_const(static_cast<std::int32_t>(std::pow(2, i)), 1), fs[i].f));
         }
         return bmd{r, this};
