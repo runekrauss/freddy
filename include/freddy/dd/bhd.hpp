@@ -488,8 +488,7 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
 
-        auto const fg = complement(conj(f, g));
-        return complement(conj(complement(conj(f, fg)), complement(conj(g, fg))));  // stands for XOR
+        return disj(conj(complement(f), g), conj(f, complement(g)));  // stands for XOR
     }
 
     [[nodiscard]] auto agg(bool const& w, bool const& val) const noexcept -> bool override

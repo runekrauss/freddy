@@ -272,21 +272,30 @@ auto mux_mgr()
     return mgr;
 }
 
-auto mux_sat(std::vector<std::vector<std::pair<std::int32_t, bool>>> const& uclauses)
+auto mux_sat(std::vector<std::vector<std::pair<std::int32_t, bool>>> const& cnf,
+             std::vector<std::vector<std::pair<std::int32_t, bool>>> const& uclauses)
 {
     std::vector<std::vector<bool>> sols;
 
     for (auto const& exp : uclauses)
     {
-        // prepare CNF instance
-        std::stringstream dimacs{"c MUX formula\np cnf 3 " + std::to_string(2 + exp.size()) + "\n-1 2 0\n1 3 0\n",
-                                 std::ios_base::app | std::ios_base::in | std::ios_base::out};
-        for (auto const& [x, a] : exp)
+        // prepare DIMACS CNF instance
+        std::stringstream dimacs{"c MUX formula\np cnf 3 " + std::to_string(cnf.size() + exp.size()) + '\n',
+                                 std::ios_base::app | std::ios_base::in | std::ios_base::out};  // header
+        for (auto const& clause : cnf)
+        {
+            for (auto const& [x, a] : clause)  // base clause
+            {
+                dimacs << (a ? x + 1 : -x - 1) << ' ';
+            }
+            dimacs << 0 << '\n';
+        }
+        for (auto const& [x, a] : exp)  // unit clauses
         {
             dimacs << (a ? x + 1 : -x - 1) << ' ' << 0 << '\n';
         }
 
-        // solve CNF instance
+        // solve DIMACS CNF instance
         sat p{dimacs};
         auto sol = p.solve();
         if (!sol.empty())
@@ -332,20 +341,20 @@ auto mux_sim(std::vector<std::vector<bool>> const& t)  // stuck-at fault simulat
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("MUX s/0 is debugged", "[debug]")
+TEST_CASE("MUX f/0 is debugged", "[debug]")
 {
     auto mgr = mux_mgr();
-    auto const m = mgr.var(2) ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));  // miter
+    auto const m = mgr.zero() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));  // miter
 
     // test patterns
-    auto t = m.sat();
-    t.append_range(mux_sat(m.uc()));
+    auto t = m.sat();                                                                    // BHD
+    t.append_range(mux_sat({{{0, false}, {1, true}}, {{0, true}, {2, true}}}, m.uc()));  // SAT solver
 
     auto const f = mux_sim(t);  // fault location
 
     CHECK(t.size() == 2);
-    REQUIRE(f.size() == 1);
-    CHECK(*f.begin() == "s/0");
+    CHECK(f.size() == 1);
+    CHECK(f.find("f/0") != f.end());
 }
 
 TEST_CASE("MUX f/1 is debugged", "[debug]")
@@ -354,11 +363,11 @@ TEST_CASE("MUX f/1 is debugged", "[debug]")
     auto const m = mgr.one() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));
 
     auto t = m.sat();
-    t.append_range(mux_sat(m.uc()));
+    t.append_range(mux_sat({{{0, false}, {1, false}}, {{0, true}, {2, false}}}, m.uc()));
 
     auto const f = mux_sim(t);
 
     CHECK(t.size() == 2);
-    REQUIRE(f.size() == 1);
-    CHECK(*f.begin() == "f/1");
+    CHECK(f.size() == 1);
+    CHECK(f.find("f/1") != f.end());
 }
