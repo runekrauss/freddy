@@ -532,10 +532,6 @@ class bhd_manager : public detail::manager<bool, bool>
             {
                 return f;
             }
-            if (has_const(f, true))
-            {
-                return consts[2];
-            }
             return consts[0];
         }
 
