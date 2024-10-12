@@ -79,7 +79,7 @@ TEST_CASE("BDD is constructed", "[basic]")
 TEST_CASE("BDD can be characterized", "[basic]")
 {
     dd::bdd_manager mgr;
-    auto const f = mgr.var() & mgr.var() | ~mgr.var();
+    auto const f = (mgr.var() & mgr.var()) | ~mgr.var();
 
     SECTION("Variables are supported")
     {
@@ -172,7 +172,7 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
     auto const x3 = mgr.var("x3");
     auto const x0 = mgr.var("x0");
     auto const x2 = mgr.var("x2");
-    auto const f = x0 & x1 | x2 & x3;
+    auto const f = (x0 & x1) | (x2 & x3);
 
     SECTION("Levels can be swapped")
     {
@@ -208,5 +208,5 @@ TEST_CASE("BDD solves #SAT", "[basic]")
 {
     dd::bdd_manager mgr;
 
-    CHECK((mgr.var() & mgr.var() | ~mgr.var()).sharpsat() == 5);
+    CHECK(((mgr.var() & mgr.var()) | ~mgr.var()).sharpsat() == 5);
 }
