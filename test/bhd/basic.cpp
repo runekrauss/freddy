@@ -104,7 +104,10 @@ TEST_CASE("BHD is constructed", "[basic]")
 TEST_CASE("BHD can be characterized", "[basic]")
 {
     dd::bhd_manager mgr;
-    auto const f = (mgr.var() | mgr.var()) & (mgr.var() | mgr.exp());
+    auto const x0 = mgr.var();
+    auto const x1 = mgr.var();
+    auto const x2 = mgr.var();
+    auto const f = (x0 | x1) & (x2 | mgr.exp());
 
     SECTION("Variables are supported")
     {
@@ -157,7 +160,10 @@ TEST_CASE("BHD can be characterized", "[basic]")
 TEST_CASE("BHD is substituted", "[basic]")
 {
     dd::bhd_manager mgr;
-    auto const f = (mgr.var() & mgr.var()) | ~(mgr.var() ^ mgr.exp());
+    auto const x0 = mgr.var();
+    auto const x1 = mgr.var();
+    auto const x2 = mgr.var();
+    auto const f = (x0 & x1) | ~(x2 ^ mgr.exp());
 
     SECTION("Variable is replaced by function")
     {

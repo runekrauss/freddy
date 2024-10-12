@@ -134,7 +134,10 @@ TEST_CASE("BDD can be characterized", "[basic]")
 TEST_CASE("BDD is substituted", "[basic]")
 {
     dd::bdd_manager mgr;
-    auto const f = ~(mgr.var() | mgr.var()) & mgr.var();
+    auto const x0 = mgr.var();
+    auto const x1 = mgr.var();
+    auto const x2 = mgr.var();
+    auto const f = ~(x0 | x1) & x2;
 
     SECTION("Variable is replaced by function")
     {
