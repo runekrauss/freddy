@@ -52,7 +52,7 @@ class manager
         {
             s << mgr.vl[mgr.lvl2var[lvl]].l;
 
-            if (lvl + 1 < mgr.lvl2var.size())
+            if (lvl + 1 < static_cast<std::int32_t>(mgr.lvl2var.size()))
             {  // there is at least one more iteration
                 s << " < ";
             }
