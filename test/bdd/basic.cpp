@@ -23,8 +23,7 @@ using namespace freddy;
 TEST_CASE("BDD is constructed", "[basic]")
 {
     dd::bdd_manager mgr;
-    auto const x0 = mgr.var();
-    auto const x1 = mgr.var();
+    auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation uses complemented edges")
     {
@@ -79,9 +78,7 @@ TEST_CASE("BDD is constructed", "[basic]")
 TEST_CASE("BDD can be characterized", "[basic]")
 {
     dd::bdd_manager mgr;
-    auto const x0 = mgr.var();
-    auto const x1 = mgr.var();
-    auto const x2 = mgr.var();
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 & x1) | ~x2;
 
     SECTION("Variables are supported")
@@ -134,9 +131,7 @@ TEST_CASE("BDD can be characterized", "[basic]")
 TEST_CASE("BDD is substituted", "[basic]")
 {
     dd::bdd_manager mgr;
-    auto const x0 = mgr.var();
-    auto const x1 = mgr.var();
-    auto const x2 = mgr.var();
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = ~(x0 | x1) & x2;
 
     SECTION("Variable is replaced by function")
@@ -174,10 +169,7 @@ TEST_CASE("BDD is substituted", "[basic]")
 TEST_CASE("BDD variable order is changeable", "[basic]")
 {
     dd::bdd_manager mgr;
-    auto const x1 = mgr.var("x1");
-    auto const x3 = mgr.var("x3");
-    auto const x0 = mgr.var("x0");
-    auto const x2 = mgr.var("x2");
+    auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
     auto const f = (x0 & x1) | (x2 & x3);
 
     SECTION("Levels can be swapped")

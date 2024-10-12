@@ -25,8 +25,7 @@ using namespace freddy;
 TEST_CASE("BHD is constructed", "[basic]")
 {
     dd::bhd_manager mgr;
-    auto const x0 = mgr.var();
-    auto const x1 = mgr.var();
+    auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation uses complemented edges")
     {
@@ -104,9 +103,7 @@ TEST_CASE("BHD is constructed", "[basic]")
 TEST_CASE("BHD can be characterized", "[basic]")
 {
     dd::bhd_manager mgr;
-    auto const x0 = mgr.var();
-    auto const x1 = mgr.var();
-    auto const x2 = mgr.var();
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 | x1) & (x2 | mgr.exp());
 
     SECTION("Variables are supported")
@@ -160,9 +157,7 @@ TEST_CASE("BHD can be characterized", "[basic]")
 TEST_CASE("BHD is substituted", "[basic]")
 {
     dd::bhd_manager mgr;
-    auto const x0 = mgr.var();
-    auto const x1 = mgr.var();
-    auto const x2 = mgr.var();
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 & x1) | ~(x2 ^ mgr.exp());
 
     SECTION("Variable is replaced by function")
@@ -201,10 +196,7 @@ TEST_CASE("BHD is substituted", "[basic]")
 TEST_CASE("BHD variable order is changeable", "[basic]")
 {
     dd::bhd_manager mgr;
-    auto const x1 = mgr.var("x1");
-    auto const x3 = mgr.var("x3");
-    auto const x0 = mgr.var("x0");
-    auto const x2 = mgr.var("x2");
+    auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
     auto const f = (x0 & x1) | (x2 & x3) | mgr.exp();
 
     SECTION("Levels can be swapped")
@@ -240,9 +232,7 @@ TEST_CASE("BHD variable order is changeable", "[basic]")
 TEST_CASE("BHD SAT is analyzed", "[basic]")
 {
     dd::bhd_manager mgr;
-    auto const x0 = mgr.var();
-    auto const x1 = mgr.var();
-    auto const x2 = mgr.var();
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 | x2) & (x1 | mgr.exp());
 
     SECTION("Solutions are generated symbolically")
@@ -269,7 +259,8 @@ TEST_CASE("BHD heuristics restrict solution space", "[basic]")
     SECTION("Level heuristic introduces EXP")
     {
         dd::bhd_manager mgr{dd::bhd_heuristic::LVL, 2};
-        auto const f = mgr.var() & mgr.var() & mgr.var() & mgr.var();
+        auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var();
+        auto const f = x0 & x1 & x2 & x3;
 
         CHECK(f.depth() == 2);
         CHECK(f.has_const(true));
@@ -279,7 +270,8 @@ TEST_CASE("BHD heuristics restrict solution space", "[basic]")
     SECTION("Memory heuristic introduces EXP")
     {
         dd::bhd_manager mgr{dd::bhd_heuristic::MEM, 1};
-        auto const f = mgr.var() & mgr.var() & mgr.var() & mgr.var() & mgr.var() & mgr.var();
+        auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var(), x4 = mgr.var(), x5 = mgr.var();
+        auto const f = x0 & x1 & x2 & x3 & x4 & x5;
 
         CHECK(f.depth() == 5);
         CHECK(f.has_const(true));
