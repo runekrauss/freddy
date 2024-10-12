@@ -252,7 +252,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     auto weighted_sum(std::vector<bmd> const& fs)
     {
         auto r = consts[0];
-        for (auto i = 0uz; i < fs.size(); ++i)
+        for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
         {  // LSB...MSB
             r = add(r, mul(make_const(static_cast<std::int32_t>(std::pow(2, i)), 1), fs[i].f));
         }

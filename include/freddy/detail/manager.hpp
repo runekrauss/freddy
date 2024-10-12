@@ -48,7 +48,7 @@ class manager
         }
 
         s << "Ordering: ";
-        for (auto lvl = 0uz; lvl < mgr.lvl2var.size(); ++lvl)
+        for (auto lvl = 0; lvl < static_cast<std::int32_t>(mgr.lvl2var.size()); ++lvl)
         {
             s << mgr.vl[mgr.lvl2var[lvl]].l;
 
@@ -59,7 +59,7 @@ class manager
         }
 
         auto print = [&s](auto const& uc) {
-            for (auto i = 0uz; i < uc.bucket_count(); ++i)
+            for (auto i = 0; i < static_cast<std::int32_t>(uc.bucket_count()); ++i)
             {
                 if (uc.bucket_size(i) > 0)
                 {
@@ -84,7 +84,7 @@ class manager
         s << "\nOccupancy = " << mgr.nc.load_factor();
 
         s << "\nCT:\n";
-        for (auto i = 0uz; i < mgr.ct.bucket_count(); ++i)
+        for (auto i = 0; i < static_cast<std::int32_t>(mgr.ct.bucket_count()); ++i)
         {
             if (mgr.ct.bucket_size(i) > 0)
             {
@@ -275,7 +275,7 @@ class manager
 
         std::vector<std::int32_t> ds(fs.size());
 
-        parallel_for(0uz, ds.size(), [&ds, &fs, this](auto const i) {
+        parallel_for(0, static_cast<std::int32_t>(ds.size()), [&ds, &fs, this](auto const i) {
             //std::cout << std::this_thread::get_id() << std::endl;
             ds[i] = longest_path_rec(fs[i]);
         });
@@ -541,7 +541,7 @@ class manager
         std::unordered_set<node_ptr, hash, comp> marks;
         marks.max_load_factor(0.7f);
 
-        for (auto i = 0uz; i < fs.size(); ++i)
+        for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
         {
             assert(fs[i]);
 

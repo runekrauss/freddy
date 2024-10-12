@@ -108,7 +108,7 @@ class sat
 
             sol.resize(p.vars.size());
 
-            for (auto i = 0uz; i < p.vars.size(); ++i)
+            for (auto i = 0; i < static_cast<std::int32_t>(p.vars.size()); ++i)
             {
                 if (p.vars[i].has_value())  // variables that are not set can take any truth value
                 {
@@ -320,7 +320,7 @@ auto mux_sim(std::vector<std::vector<bool>> const& t)  // stuck-at fault simulat
 
     // fault localization
     std::set<std::string> f{t2f.at(t[0])};
-    for (auto i = 1uz; i < t.size(); ++i)
+    for (auto i = 1; i < static_cast<std::int32_t>(t.size()); ++i)
     {
         std::set<std::string> tmp;
         std::set_intersection(f.begin(), f.end(), t2f.at(t[i]).begin(), t2f.at(t[i]).end(),
@@ -347,7 +347,7 @@ TEST_CASE("MUX f/0 is debugged", "[debug]")
     auto const m = mgr.zero() ^ ((mgr.var(0) & mgr.var(1)) | (~mgr.var(0) & mgr.var(2)));  // miter
 
     // test patterns
-    auto t = m.sat();                                                                    // BHD
+    auto t = m.sat();                                                              // BHD
     auto t2 = mux_sat({{{0, false}, {1, true}}, {{0, true}, {2, true}}}, m.uc());  // SAT solver
     t.insert(t.end(), std::make_move_iterator(t2.begin()), std::make_move_iterator(t2.end()));
 

@@ -8,6 +8,7 @@
 #include <cassert>      // assert
 #include <cmath>        // std::ceil
 #include <concepts>     // std::integral
+#include <cstddef>      // std::size_t
 #include <cstdint>      // std::int32_t
 #include <memory>       // std::shared_ptr
 #include <string>       // std::string
@@ -107,7 +108,7 @@ auto inline parallel_for(T const a, T const b, Callable func)
     pool.reserve(n);
     auto a2 = a;
     auto b2 = std::min(a + slice, b);
-    for (auto i = 0uz; i + 1 < n && a2 < b; ++i)
+    for (auto i = 0; i + 1 < static_cast<std::int32_t>(n) && a2 < b; ++i)
     {
         pool.emplace_back(run, a2, b2);
 
@@ -129,7 +130,7 @@ auto inline replace_all(std::string& str, std::string_view from, std::string_vie
 {
     assert(!from.empty());
 
-    auto pos = 0uz;
+    std::size_t pos{0};
     while ((pos = str.find(from, pos)) != std::string::npos)
     {
         str.replace(pos, from.length(), to);
