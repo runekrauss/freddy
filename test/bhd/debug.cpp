@@ -344,11 +344,12 @@ auto mux_sim(std::vector<std::vector<bool>> const& t)  // stuck-at fault simulat
 TEST_CASE("MUX f/0 is debugged", "[debug]")
 {
     auto mgr = mux_mgr();
-    auto const m = mgr.zero() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));  // miter
+    auto const m = mgr.zero() ^ ((mgr.var(0) & mgr.var(1)) | (~mgr.var(0) & mgr.var(2)));  // miter
 
     // test patterns
     auto t = m.sat();                                                                    // BHD
-    t.append_range(mux_sat({{{0, false}, {1, true}}, {{0, true}, {2, true}}}, m.uc()));  // SAT solver
+    auto const t2 = mux_sat({{{0, false}, {1, true}}, {{0, true}, {2, true}}}, m.uc());  // SAT solver
+    t.insert(t.end(), t2.begin(), t2.end());
 
     auto const f = mux_sim(t);  // fault location
 
@@ -363,7 +364,8 @@ TEST_CASE("MUX f/1 is debugged", "[debug]")
     auto const m = mgr.one() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));
 
     auto t = m.sat();
-    t.append_range(mux_sat({{{0, false}, {1, false}}, {{0, true}, {2, false}}}, m.uc()));
+    auto const t2 = mux_sat({{{0, false}, {1, false}}, {{0, true}, {2, false}}}, m.uc());
+    t.insert(t.end(), t2.begin(), t2.end());
 
     auto const f = mux_sim(t);
 
