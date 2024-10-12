@@ -114,6 +114,7 @@ TEST_CASE("BDD can be characterized", "[basic]")
 
     SECTION("Number of paths is computed")
     {
+        f.print();
         CHECK(f.path_count() == 5);
     }
 
