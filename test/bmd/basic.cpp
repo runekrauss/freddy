@@ -205,7 +205,7 @@ TEST_CASE("BMD variable order is changeable", "[basic]")
     auto const x0 = mgr.var("x0");
     auto const x2 = mgr.var("x2");
     auto const x4 = mgr.var("x4");
-    auto const f = x0 & x1 | x2 & x3 | x4 & x5;
+    auto const f = (x0 & x1) | (x2 & x3) | (x4 & x5);
 
     SECTION("Levels can be swapped")
     {
