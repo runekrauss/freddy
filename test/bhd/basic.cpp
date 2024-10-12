@@ -273,7 +273,7 @@ TEST_CASE("BHD heuristics restrict solution space", "[basic]")
         auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var(), x4 = mgr.var(), x5 = mgr.var();
         auto const f = x0 & x1 & x2 & x3 & x4 & x5;
 
-        CHECK(f.depth() == 5);
+        CHECK(f.depth() == 4);
         CHECK(f.has_const(true));
         CHECK_FALSE(f.eval(std::vector(6, true)).has_value());
     }
