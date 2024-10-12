@@ -179,10 +179,10 @@ TEST_CASE("BHD is substituted", "[basic]")
 
     SECTION("Variable is removed by existential quantification")
     {
-        auto const g = f.exist(2);
+        auto const g = f.exist(1);
 
-        CHECK_FALSE(g.is_essential(2));
-        CHECK(g.low().is_exp());
+        CHECK_FALSE(g.is_essential(1));
+        CHECK(g.high().is_zero());
         CHECK(g.eval({true, true, true}).value());
     }
 
