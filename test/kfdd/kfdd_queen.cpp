@@ -20,6 +20,80 @@ using namespace freddy;
 // Functions
 // *********************************************************************************************************************
 namespace {
+
+auto enc_with_dtl(dd::kfdd_manager& mgr, std::vector<expansion>& dtl)
+{
+    config::dead_factor = 0.75f;
+    config::growth_factor = 1.25f;
+    config::load_factor = 0.7f;
+    config::ct_size = 1013;
+    config::ut_size = 101;
+    config::vl_size = 16;
+
+    auto constexpr n = 4;  // number of queens
+    assert(dtl.size()>=(n^2));
+
+    std::array<std::array<dd::kfdd, n>, n> x;
+    for (auto i = 0; i < n; ++i)
+    {
+        for (auto j = 0; j < n; ++j)
+        {
+            x[i][j] = mgr.var(dtl[(i*n)+j]);
+        }
+    }
+
+    auto pred = mgr.one();
+    for (auto i = 0; i < n; ++i)
+    {
+        auto tmp = mgr.zero();
+        for (auto j = 0; j < n; ++j)
+        {
+            // two queens must not be in the same row
+            for (auto k = 0; k < n; ++k)
+            {
+                if (k != j)
+                {
+                    pred &= ~(x[i][j] & x[i][k]);
+                }
+            }
+
+            // two queens must not be in the same column
+            for (auto k = 0; k < n; ++k)
+            {
+                if (k != i)
+                {
+                    pred &= ~(x[i][j] & x[k][j]);
+                }
+            }
+
+            // two queens must not be along an up right diagonal
+            for (auto k = 0; k < n; ++k)
+            {
+                auto const l = j + k - i;
+                if (l >= 0 && l < n && k != i)
+                {
+                    pred &= ~(x[i][j] & x[k][l]);
+                }
+            }
+
+            // two queens must not be along a down right diagonal
+            for (auto k = 0; k < n; ++k)
+            {
+                auto const l = j + i - k;
+                if (l >= 0 && l < n && k != i)
+                {
+                    pred &= ~(x[i][j] & x[k][l]);
+                }
+            }
+
+            // there must be a queen in each row globally
+            tmp |= x[i][j];
+        }
+        pred &= tmp;
+    }
+    return pred;
+}
+
 auto enc(dd::kfdd_manager& mgr)
 {
     config::dead_factor = 0.75f;
@@ -36,7 +110,7 @@ auto enc(dd::kfdd_manager& mgr)
     {
         for (auto j = 0; j < n; ++j)
         {
-            x[i][j] = mgr.var(expansion::PD);
+            x[i][j] = mgr.var(expansion::S);
         }
     }
 
@@ -99,7 +173,25 @@ auto enc(dd::kfdd_manager& mgr)
 TEST_CASE("kfdd synthesis is performed", "[queen]")
 {
     dd::kfdd_manager mgr;
-    auto const pred = enc(mgr);
+    std::vector<expansion> dtl{};
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    dtl.push_back(expansion::PD);
+    auto const pred = enc_with_dtl(mgr, dtl);
+    //mgr.dtl_sift(pred);
 #ifndef NDEBUG
     //std::cout << mgr << '\n';
     //std::cout << pred << '\n';

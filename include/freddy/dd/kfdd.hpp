@@ -125,7 +125,7 @@ class kfdd
     template <typename T, typename... Ts>
     auto cof(T, Ts...) const;
 
-    [[nodiscard]] auto size() const;
+    [[nodiscard]] auto size() const -> size_t;
 
     [[nodiscard]] auto depth() const;
 
@@ -218,6 +218,125 @@ class kfdd_manager : public detail::manager<bool, bool>
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
         to_dot(transform(fs), outputs, s);
+    }
+
+    void dtl_sift(kfdd f)
+    {
+        assert(f.mgr == this);
+        //run through all variables
+
+        //for each variable:
+        //move to first position
+        //move to last position, recording minimum size
+        //change type, sift to first position, recording minimum size
+        //change type, sift to last position, recording minimum size
+        //change type to minimum type and move to minimum position
+
+        for(auto x = 0; x < var_count();x++)
+        {
+            //move to first position
+            sift(var2lvl[x], 0);
+            auto min_pos = 0;
+            auto min_t = vl[x].t;
+            auto min_size = f.size();
+            std::cout << "Start sifting for variable " << x << ", starting size: " << min_size << "\n";
+            change_expansion_type(x, expansion::S);
+            for(auto i = 0; i < var_count() - 1; i++)
+            {
+                std::cout << "Sifting variable " << x << " from position " << i << " to " << i+1 << "\n";
+                sift(i, i+1);
+                auto size = f.size();
+                std::cout << "Size: " << size << "\n";
+                if(size < min_size)
+                {
+                    min_pos = i+1;
+                    min_t = expansion::S;
+                    std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type S\n";
+                    min_size = size;
+                }
+            }
+        }
+
+    }
+
+    void change_expansion_type(int x, freddy::expansion t)
+    {
+        assert(x>=0);
+        assert(x < var_count());
+        auto var_t = vl[x].t;
+        if(var_t==t)
+        {
+            //type doesn't change, nothing to do
+            return;
+        }
+        vl[x].t == t;
+        if(var_t == expansion::S)
+        {
+            //S => PD
+            if(t == expansion::PD)
+            {
+                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                {
+                    auto node = *it;
+                    node->br().hi = antiv(node->br().hi,node->br().lo);
+                }
+            }
+            else if(t == expansion::ND)
+            {
+                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                {
+                    auto node = *it;
+                    auto low = node->br().lo;
+                    auto high = node->br().hi;
+                    node->br().hi = low;
+                    node->br().lo = high;
+                    node->br().hi = antiv(node->br().hi,node->br().lo);
+                }
+            }
+        }
+        else if(var_t == expansion::PD)
+        {
+            if(t == expansion::S)
+            {
+                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                {
+                    auto node = *it;
+                    node->br().hi = antiv(node->br().hi,node->br().lo);
+                }
+            }
+            else if(t == expansion::ND)
+            {
+                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                {
+                    auto node = *it;
+                    node->br().lo = antiv(node->br().hi,node->br().lo);
+                }
+            }
+        }
+        else if(var_t == expansion::ND)
+        {
+            if(t == expansion::S)
+            {
+                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                {
+                    auto node = *it;
+                    auto low = node->br().lo;
+                    auto high = node->br().hi;
+                    node->br().hi = low;
+                    node->br().lo = high;
+                    node->br().lo = antiv(node->br().hi,node->br().lo);
+                }
+            }
+            else if(t == expansion::PD)
+            {
+                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                {
+                    auto node = *it;
+                    node->br().lo = antiv(node->br().hi,node->br().lo);
+                }
+            }
+        }
+        gc();
     }
 
   private:
@@ -382,17 +501,17 @@ class kfdd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
         // terminal cases
-        if(f == consts[0])
+        if (f == consts[0])
         {
             return g;
         }
 
-        if(g == consts[0])
+        if (g == consts[0])
         {
             return f;
         }
 
-        if(f == g)
+        if (f == g)
         {
             return consts[0];
         }
@@ -477,22 +596,29 @@ class kfdd_manager : public detail::manager<bool, bool>
         //    return cr->second.first.lock();
         //}
 
-
         auto const x = top_var(f, g);
         auto f_low = cof(f, x, false);
         auto f_high = cof(f, x, true);
 
         auto g_low = cof(g, x, false);
         auto g_high = cof(g, x, true);
+        edge_ptr high;
+        edge_ptr low;
+        switch (vl[x].t)
+        {
+            case expansion::S:
+                high = conj(f_high, g_high);
+                low = conj(f_low, g_low);
+                break;
+            case expansion::PD:
+            case expansion::ND:
+                high = antiv(conj(f_high, g_high), antiv(conj(f_low, g_high), conj(g_low, f_high)));
+                low = conj(f_low, g_low);
+                break;
+            default: break;
+        }
 
-        auto f0_and_g0 = conj(f_low, g_low);
-        auto f2_and_g2 = conj(f_high, g_high);
-        auto f0_and_g2 = conj(f_low, g_high);
-        auto g0_and_f2 = conj(g_low, f_high);
-
-        auto high_child = antiv(f2_and_g2, antiv(f0_and_g2, g0_and_f2));
-
-        auto result = make_branch(x, high_child, f0_and_g0);
+        auto result = make_branch(x, high, low);
         ct.insert_or_assign({operation::AND, f, g}, std::make_pair(result, 0.0));
         return result;
     }
@@ -530,18 +656,12 @@ class kfdd_manager : public detail::manager<bool, bool>
                     w, foa(std::make_shared<bool_node>(x, complement(hi), complement(lo)))));
                 break;
             case expansion::PD:
-
-                //std::cout << "lo:" << '\n';
-                //kfdd{lo, this}.print();
-                //std::cout << "hi:" << '\n';
-                //kfdd{hi, this}.print();
-
-                if(hi==consts[0])
+            case expansion::ND:
+                if (hi == consts[0])
                 {
                     return lo;
                 }
-
-                    if (lo->w)
+                if (lo->w)
                 {
                     w = lo->w;
                     r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(x, hi, complement(lo)))));
@@ -551,43 +671,7 @@ class kfdd_manager : public detail::manager<bool, bool>
                     r = foa(std::make_shared<bool_edge>(
                         false, foa(std::make_shared<bool_node>(x, std::move(hi), std::move(lo)))));
                 }
-                //std::cout << "r:" << '\n';
-                //kfdd{r, this}.print();
-                //std::cout << "hi:" << '\n';
-                //tmp = kfdd{hi, this};
-                //tmp.print();
-                //std::cout << "lo:" << '\n';
-                //kfdd{lo, this}.print();
-                //if (lo->v->is_const())
-                //{
-                //    r = foa(std::make_shared<bool_edge>(
-                //        false, foa(std::make_shared<bool_node>(x, std::move(hi), std::move(lo)))));
-                //}
-                //else
-                // {
-                //     w = lo->w;
-                //     if (!w)
-                //     {
-                //         r = foa(std::make_shared<bool_edge>(
-                //             w, foa(std::make_shared<bool_node>(x, std::move(hi), std::move(lo)))));
-                //     }
-                //     else
-                //     {
-                //     r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(x, hi, complement(lo)))));
-                //     }
-                // }
-                //
-                // std::cout << "r:" << '\n';
-                // kfdd{r, this}.print();
-                // return r;
-
-                //if (!r->v->is_const() && r->v->br().hi == consts[0])
-                //{
-                //    return r->v->br().lo;
-                //}
-                return r;
                 break;
-            case expansion::ND: assert(false); break;
             default: assert(false);
         }
         return r;
@@ -732,7 +816,7 @@ auto inline kfdd::cof(T const a, Ts... args) const
     return kfdd{mgr->subfunc(f, a, std::forward<Ts>(args)...), mgr};
 }
 
-auto inline kfdd::size() const
+size_t inline kfdd::size() const
 {
     assert(mgr);
 
