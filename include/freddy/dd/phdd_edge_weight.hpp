@@ -13,7 +13,7 @@ namespace std
     struct [[maybe_unused]] hash<edge_weight> {
         auto operator()(const edge_weight &v) const -> std::size_t
         {
-            return v.first ?  std::hash<int>()(v.second) ^ (1 << 31) : std::hash<int>()(v.second);
+            return std::hash<int>()(v.second) ^ (v.first << 31);
         }
     };
 
