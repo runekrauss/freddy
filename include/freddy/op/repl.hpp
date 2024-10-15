@@ -4,57 +4,60 @@
 // Includes
 // *********************************************************************************************************************
 
+#include "freddy/detail/operation.hpp"  // detail::operation
+
 #include <cassert>     // assert
 #include <functional>  // std::hash
 #include <memory>      // std::shared_ptr
-#include <ostream>     // std::ostream
 #include <utility>     // std::move
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::detail
+namespace freddy::op
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename, typename>
-class node;
-
 template <typename E, typename V>
-struct edge
+class repl : public detail::operation  // 1-path replacement
 {
-    using node_ptr = std::shared_ptr<node<E, V>>;
+  public:
+    using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
 
-    edge(E w, node_ptr v) :
-            w{std::move(w)},
-            v{std::move(v)}
+    repl(edge_ptr f, bool const a) :
+            // for finding a cache result based on replacement input
+            f{std::move(f)},
+            a{a}
     {
-        assert(this->v);
+        assert(this->f);
     }
 
-    auto operator()() const
+    edge_ptr r;  // replacement result
+  private:
+    [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<E>()(w) ^ std::hash<node_ptr>()(v);
+        return std::hash<edge_ptr>()(f) ^ std::hash<bool>()(a);
     }
 
-    auto friend operator==(edge const& lhs, edge const& rhs)
+    [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
     {
-        return lhs.w == rhs.w && lhs.v == rhs.v;
+        auto other = static_cast<repl const&>(op);
+
+        return f == other.f && a == other.a;
     }
 
-    auto friend operator<<(std::ostream& s, edge const& e) -> std::ostream&
+    auto print(std::ostream& s) const -> void override
     {
-        s << '(' << e.w << ',' << e.v << ')';
-        return s;
+        s << '(' << f << ',' << a << ")->" << r;
     }
 
-    E w;  // weight
+    edge_ptr f;  // instance for the replacement
 
-    node_ptr v;
+    bool a;  // current evaluation
 };
 
-}  // namespace freddy::detail
+}  // namespace freddy::op

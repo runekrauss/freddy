@@ -53,7 +53,6 @@ public:
 
     auto on_model(std::string const& name) const -> void override
     {
-        std::cout << "on_model" << "\n";
         assert(!name.empty());
 
         g.model = name;
@@ -61,7 +60,6 @@ public:
 
     auto on_input(std::string const& name) const -> void override
     {
-        std::cout << "on_input" << "\n";
         assert(!name.empty());
 
         if (!g.counting_is_done)
@@ -74,7 +72,6 @@ public:
 
     auto on_output(std::string const& name) const -> void override
     {
-        std::cout << "on_output" << "\n";
         assert(!name.empty());
 
         if (!g.counting_is_done)
@@ -86,7 +83,6 @@ public:
     auto on_gate(std::vector<std::string> const& inputs, std::string const& output, output_cover_t const& cover) const
         -> void override
     {
-        std::cout << "on_gate" << "\n";
         assert(!output.empty());
         assert(cover.size() == 1 && cover[0].second.length() == 1);  // output (controlling value)
 
@@ -185,7 +181,6 @@ public:
 
     auto on_end() const -> void override
     {
-        std::cout << "on_end" << "\n";
         if (g.counting_is_done)
         {
             assert(g.gates.size() == g.outputs.size());  // outputs can be redundant

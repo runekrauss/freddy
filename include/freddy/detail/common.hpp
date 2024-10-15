@@ -4,14 +4,18 @@
 // Includes
 // *********************************************************************************************************************
 
-#include <algorithm>  // std::min
-#include <cassert>    // assert
-#include <cmath>      // std::ceil
-#include <concepts>   // std::integral
-#include <cstdint>    // std::int32_t
-#include <memory>     // std::shared_ptr
-#include <thread>     // std::thread
-#include <vector>     // std::vector
+#include <algorithm>    // std::min
+#include <cassert>      // assert
+#include <cmath>        // std::ceil
+#include <concepts>     // std::integral
+#include <cstddef>      // std::size_t
+#include <cstdint>      // std::int32_t
+#include <memory>       // std::shared_ptr
+#include <string>       // std::string
+#include <string_view>  // std::string_view
+#include <thread>       // std::thread
+#include <type_traits>  // std::false_type
+#include <vector>       // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -24,22 +28,51 @@ namespace freddy::detail
 // Types
 // =====================================================================================================================
 
+template <typename T>
+struct shared_ptr : std::false_type
+{};
+
+template <typename T>
+struct shared_ptr<std::shared_ptr<T>> : std::true_type
+{};
+
+template <typename T>
+concept is_shared_ptr = shared_ptr<T>::value;
+
+template <typename T>
+struct unique_ptr : std::false_type
+{};
+
+template <typename T>
+struct unique_ptr<std::unique_ptr<T>> : std::true_type
+{};
+
+template <typename T>
+concept is_unique_ptr = unique_ptr<T>::value;
+
 struct comp
 {
-    template <typename T>
-    auto operator()(std::shared_ptr<T> const& lhs, std::shared_ptr<T> const& rhs) const
+    using is_transparent = void;  // activate searches with a type other than the key
+
+    template <typename T1, typename T2>
+        requires(is_shared_ptr<T1> || is_unique_ptr<T1> || std::is_pointer_v<T1>) &&
+                (is_shared_ptr<T2> || is_unique_ptr<T2> || std::is_pointer_v<T2>)  // already stored value
+    auto operator()(T1 const& lhs, T2 const& rhs) const
     {
         assert(lhs);
         assert(rhs);
 
-        return (*lhs == *rhs);
+        return *lhs == *rhs;
     }
 };
 
 struct hash
 {
+    using is_transparent = void;
+
     template <typename T>
-    auto operator()(std::shared_ptr<T> const& p) const
+        requires is_shared_ptr<T> || is_unique_ptr<T> || std::is_pointer_v<T>
+    auto operator()(T const& p) const
     {
         assert(p);
 
@@ -52,7 +85,7 @@ struct hash
 // =====================================================================================================================
 
 template <typename T, typename Callable>
-requires std::integral<T>
+    requires std::integral<T>
 auto inline parallel_for(T const a, T const b, Callable func)
 {
     assert(b >= a);
@@ -91,6 +124,21 @@ auto inline parallel_for(T const a, T const b, Callable func)
     {
         thread.join();
     }
+}
+
+auto inline replace_all(std::string& str, std::string_view from, std::string_view to)
+{
+    assert(!from.empty());
+
+    std::size_t pos{};
+    while ((pos = str.find(from, pos)) != std::string::npos)
+    {
+        str.replace(pos, from.length(), to);
+
+        pos += to.length();  // "from" can be a substring of "to"
+    }
+
+    return str;
 }
 
 }  // namespace freddy::detail

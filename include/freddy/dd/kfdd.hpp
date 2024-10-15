@@ -19,6 +19,11 @@
 #include <utility>    // std::make_pair
 #include <vector>     // std::vector
 
+#include "freddy/op/sharpsat.hpp"
+#include "freddy/op/conj.hpp"
+#include "freddy/op/antiv.hpp"
+#include "freddy/op/ite.hpp"
+
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
@@ -118,9 +123,9 @@ class kfdd
         return f->v->br().x;
     }
 
-    [[nodiscard]] auto high(bool = false) const;
+    [[nodiscard]] auto high() const;
 
-    [[nodiscard]] auto low(bool = false) const;
+    [[nodiscard]] auto low() const;
 
     template <typename T, typename... Ts>
     auto cof(T, Ts...) const;
@@ -147,7 +152,7 @@ class kfdd
 
     [[nodiscard]] auto forall(std::int32_t) const;
 
-    [[nodiscard]] auto satcount() const;
+    [[nodiscard]] auto sharpsat() const;
 
     void print() const;
 
@@ -237,7 +242,7 @@ class kfdd_manager : public detail::manager<bool, bool>
             //move to first position
             sift(var2lvl[x], 0);
             auto min_pos = 0;
-            auto min_t = vl[x].t;
+            //auto min_t = vl[x].t;
             auto min_size = f.size();
             std::cout << "Start sifting for variable " << x << ", starting size: " << min_size << "\n";
             change_expansion_type(x, expansion::S);
@@ -250,7 +255,7 @@ class kfdd_manager : public detail::manager<bool, bool>
                 if(size < min_size)
                 {
                     min_pos = i+1;
-                    min_t = expansion::S;
+                    //min_t = expansion::S;
                     std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type S\n";
                     min_size = size;
                 }
@@ -269,7 +274,7 @@ class kfdd_manager : public detail::manager<bool, bool>
             //type doesn't change, nothing to do
             return;
         }
-        vl[x].t == t;
+        vl[x].t = t;
         if(var_t == expansion::S)
         {
             //S => PD
@@ -343,32 +348,6 @@ class kfdd_manager : public detail::manager<bool, bool>
     using bool_edge = detail::edge<bool, bool>;
 
     using bool_node = detail::node<bool, bool>;
-
-    auto satcount(edge_ptr const& f) -> double
-    {
-        assert(f);
-
-        if (f->v->is_const())
-        {
-            return (f == consts[0]) ? 0 : std::pow(2, var_count());
-        }
-
-        auto const cr = ct.find({operation::SAT, f});
-        if (cr != ct.end())
-        {
-            return cr->second.second;
-        }
-
-        auto count = (satcount(f->v->br().hi) + satcount(f->v->br().lo)) / 2;
-        if (f->w)
-        {  // complemented edge
-            count = std::pow(2, var_count()) - count;
-        }
-
-        ct.insert_or_assign({operation::SAT, f}, std::make_pair(edge_ptr{}, count));
-
-        return count;
-    }
 
     auto simplify(edge_ptr const& f, edge_ptr& g, edge_ptr& h) const noexcept
     {
@@ -480,20 +459,17 @@ class kfdd_manager : public detail::manager<bool, bool>
         {
             std_triple(ret, f, g, h);
         }
-
-        auto const cr = ct.find({operation::ITE, f, g, h});
-        if (cr != ct.end())
+        op::ite op{f,g,h};
+        if (auto const* const ent = cached(op))
         {
-            return cr->second.first.lock();
+            return ent->r;
         }
 
         auto const x = (f->v->br().x == top_var(f, g)) ? top_var(f, h) : top_var(g, h);
-        auto r = make_branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
+        op.r = make_branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
                              ite(cof(f, x, false), cof(g, x, false), cof(h, x, false)));
 
-        ct.insert_or_assign({operation::ITE, f, g, h}, std::make_pair(r, 0.0));
-
-        return r;
+        return cache(std::move(op))->r;
     }
 
     auto antiv(edge_ptr const& f, edge_ptr const& g) -> edge_ptr
@@ -515,11 +491,10 @@ class kfdd_manager : public detail::manager<bool, bool>
         {
             return consts[0];
         }
-
-        auto const cr = ct.find({operation::XOR, f, g});
-        if (cr != ct.end())
+        op::antiv op{f,g};
+        if (auto const* const ent = cached(op))
         {
-            return cr->second.first.lock();
+            return ent->r;
         }
 
         auto const x = top_var(f, g);
@@ -533,10 +508,9 @@ class kfdd_manager : public detail::manager<bool, bool>
         auto low = antiv(f_low, g_low);
         auto high = antiv(f_high, g_high);
 
-        auto result = make_branch(x, high, low);
 
-        ct.insert_or_assign({operation::XOR, f, g}, std::make_pair(result, 0.0));
-        return result;
+        op.r = make_branch(x, high, low);
+        return cache(std::move(op))->r;
     }
 
     auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -584,11 +558,10 @@ class kfdd_manager : public detail::manager<bool, bool>
         {
             return f;
         }
-
-        auto cr = ct.find({operation::AND, f, g});
-        if (cr != ct.end())
+        op::conj op{f,g};
+        if (auto const* const ent = cached(op))
         {
-            return cr->second.first.lock();
+            return ent->r;
         }
         //cr = ct.find({operation::AND, g, f});
         //if (cr != ct.end())
@@ -618,9 +591,8 @@ class kfdd_manager : public detail::manager<bool, bool>
             default: break;
         }
 
-        auto result = make_branch(x, high, low);
-        ct.insert_or_assign({operation::AND, f, g}, std::make_pair(result, 0.0));
-        return result;
+        op.r = make_branch(x, high, low);
+        return cache(std::move(op))->r;
     }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -735,6 +707,31 @@ class kfdd_manager : public detail::manager<bool, bool>
         return gs;
     }
 
+    auto sharpsat(edge_ptr const& f) -> double
+    {
+        assert(f);
+
+        if (f->v->is_const())
+        {
+            return f == consts[0] ? 0 : std::pow(2, var_count());
+        }
+
+        op::sharpsat op{f};
+        if (auto const* const ent = cached(op))
+        {
+            return ent->r;
+        }
+
+        auto count = (sharpsat(f->v->br().hi) + sharpsat(f->v->br().lo)) / 2;
+        if (f->w)
+        {  // complemented edge
+            count = std::pow(2, var_count()) - count;
+        }
+
+        op.r = count;
+        return cache(std::move(op))->r;
+    }
+
     auto static tmls() -> std::array<edge_ptr, 2>
     {
         // choose the 0-leaf due to complemented edges in order to ensure canonicity
@@ -794,18 +791,20 @@ auto inline kfdd::is_one() const noexcept
     return (*this == mgr->one());
 }
 
-auto inline kfdd::high(bool const weighting) const
+auto inline kfdd::high() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return kfdd{mgr->high(f, weighting), mgr};
+    return kfdd{f->v->br().hi, mgr};
 }
 
-auto inline kfdd::low(bool const weighting) const
+auto inline kfdd::low() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return kfdd{mgr->low(f, weighting), mgr};
+    return kfdd{f->v->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>
@@ -813,7 +812,7 @@ auto inline kfdd::cof(T const a, Ts... args) const
 {
     assert(mgr);
 
-    return kfdd{mgr->subfunc(f, a, std::forward<Ts>(args)...), mgr};
+    return kfdd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
 size_t inline kfdd::size() const
@@ -897,12 +896,13 @@ auto inline kfdd::forall(std::int32_t const x) const
     return kfdd{mgr->forall(f, x), mgr};
 }
 
-auto inline kfdd::satcount() const
+auto inline kfdd::sharpsat() const
 {
     assert(mgr);
 
-    return mgr->satcount(f);
+    return mgr->sharpsat(f);
 }
+
 
 void inline kfdd::print() const
 {

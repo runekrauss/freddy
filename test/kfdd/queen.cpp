@@ -398,6 +398,6 @@ TEST_CASE("kfdd SAT analysis is performed", "[queen]")
 {
     dd::kfdd_manager mgr;
 
-    CHECK(enc(mgr).satcount() == 2);
+    CHECK(enc(mgr).sharpsat() == 2);
 }
 }  // namespace
