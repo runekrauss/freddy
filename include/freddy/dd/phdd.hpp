@@ -4,7 +4,6 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/dd/phdd_edge_weight.hpp"
 #include "freddy/detail/manager.hpp"  // detail::manager
 #include "freddy/op/add.hpp"          // op::add
 #include "freddy/op/mul.hpp"          // op::mul
@@ -25,26 +24,43 @@
 #include <utility>      // std::make_pair
 #include <vector>       // std::vector
 
-// *********************************************************************************************************************
-// Namespaces
-// *********************************************************************************************************************
-
-namespace freddy::dd
-{
-
-// =====================================================================================================================
-// Declarations
-// =====================================================================================================================
-
-class phdd_manager;
-
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-using phdd_edge = detail::edge<edge_weight, float>;
-using phdd_node = detail::node<edge_weight, float>;
+using edge_weight = std::pair<bool,int32_t>;
+using phdd_edge = freddy::detail::edge<edge_weight, float>;
+using phdd_node = freddy::detail::node<edge_weight, float>;
 
+// =====================================================================================================================
+// std namespace
+// =====================================================================================================================
+
+// implements hashing and string view for std::pair<bool, int32_t>
+namespace std
+{
+    template <>
+    struct [[maybe_unused]] hash<edge_weight> {
+        auto operator()(const edge_weight &v) const -> std::size_t
+        {
+            return v.first ?  std::hash<int>()(v.second) ^ (1 << 31) : std::hash<int>()(v.second);
+        }
+    };
+
+    std::ostream & operator << (std::ostream & os, const edge_weight & val)
+    {
+        os << (val.first ? "neg\n" : "") << val.second;
+        return os;
+    }
+}  // namespace std
+
+// =====================================================================================================================
+// freddy::dd namespace
+// =====================================================================================================================
+
+namespace freddy::dd
+{
+class phdd_manager;
 class phdd
 {
   public:
@@ -155,12 +171,12 @@ class phdd
         return f->v->br().x;
     }
 
-    [[nodiscard]] auto high(bool = false) const;
+    [[nodiscard]] auto high() const;
 
-    [[nodiscard]] auto low(bool = false) const;
+    [[nodiscard]] auto low() const;
 
     template <typename T, typename... Ts>
-    auto cof(T, Ts...) const;
+    auto fn(T, Ts...) const;
 
     [[nodiscard]] auto size() const;
 
@@ -184,7 +200,7 @@ class phdd
 
     [[nodiscard]] auto forall(std::int32_t) const;
 
-    auto print() const;
+    auto print(std::ostream& =std::cout) const;
 
   private:
     friend phdd_manager;
@@ -671,26 +687,28 @@ auto inline phdd::is_two() const noexcept
     return (*this == mgr->two());
 }
 
-auto inline phdd::high(bool const weighting) const
+auto inline phdd::high() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return phdd{mgr->high(f, weighting), mgr};
+    return phdd{f->v->br().hi, mgr};
 }
 
-auto inline phdd::low(bool const weighting) const
+auto inline phdd::low() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return phdd{mgr->low(f, weighting), mgr};
+    return phdd{f->v->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>
-auto inline phdd::cof(T const a, Ts... args) const
+auto inline phdd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
-    return phdd{mgr->subfunc(f, a, std::forward<Ts>(args)...), mgr};
+    return phdd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
 auto inline phdd::size() const
@@ -774,11 +792,11 @@ auto inline phdd::forall(std::int32_t const x) const
     return phdd{mgr->forall(f, x), mgr};
 }
 
-auto inline phdd::print() const
+auto inline phdd::print(std::ostream& s) const
 {
     assert(mgr);
 
-    mgr->print({*this});
+    mgr->print({*this}, {}, s);
 }
 
 }  // namespace freddy::dd
