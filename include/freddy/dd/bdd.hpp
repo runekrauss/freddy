@@ -10,7 +10,7 @@
 #include "freddy/op/ite.hpp"          // op::ite
 #include "freddy/op/sharpsat.hpp"     // op::sharpsat
 
-#include <algorithm>    // std::transform
+#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::pow
@@ -30,16 +30,12 @@ namespace freddy::dd
 {
 
 // =====================================================================================================================
-// Declarations
+// Types
 // =====================================================================================================================
 
 class bdd_manager;
 
-// =====================================================================================================================
-// Types
-// =====================================================================================================================
-
-class bdd
+class bdd  // binary decision diagram
 {
   public:
     bdd() = default;  // so that BDDs initially work with standard containers
@@ -121,12 +117,12 @@ class bdd
         return f->v->br().x;
     }
 
-    [[nodiscard]] auto high(bool = false) const;
+    [[nodiscard]] auto high() const;
 
-    [[nodiscard]] auto low(bool = false) const;
+    [[nodiscard]] auto low() const;
 
     template <typename T, typename... Ts>
-    auto cof(T, Ts...) const;
+    auto fn(T, Ts...) const;
 
     [[nodiscard]] auto size() const;
 
@@ -152,7 +148,7 @@ class bdd
 
     [[nodiscard]] auto sharpsat() const;
 
-    auto print() const;
+    auto print(std::ostream& = std::cout) const;
 
   private:
     friend bdd_manager;
@@ -177,7 +173,7 @@ class bdd_manager : public detail::manager<bool, bool>
     friend bdd;
 
     bdd_manager() :
-            manager(tmls())
+            manager{tmls()}
     {}
 
     auto var(std::string_view l = {})
@@ -227,6 +223,24 @@ class bdd_manager : public detail::manager<bool, bool>
     using bool_edge = detail::edge<bool, bool>;
 
     using bool_node = detail::node<bool, bool>;
+
+    auto static tmls() -> std::array<edge_ptr, 2>
+    {
+        // choose the 0-leaf due to complemented edges in order to ensure canonicity
+        auto const leaf = std::make_shared<bool_node>(false);
+
+        return std::array<edge_ptr, 2>{std::make_shared<bool_edge>(false, leaf),
+                                       std::make_shared<bool_edge>(true, leaf)};
+    }
+
+    auto static transform(std::vector<bdd> const& fs) -> std::vector<edge_ptr>
+    {
+        std::vector<edge_ptr> gs;
+        gs.reserve(fs.size());
+        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
+
+        return gs;
+    }
 
     auto sharpsat(edge_ptr const& f) -> double
     {
@@ -449,6 +463,10 @@ class bdd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
 
+        if (f == consts[0] || g == consts[0])
+        {  // something conjugated with 0 is 0
+            return consts[0];
+        }
         if (f == consts[1])
         {  // 1g == g
             return g;
@@ -516,24 +534,6 @@ class bdd_manager : public detail::manager<bool, bool>
     {
         return false;  // means a regular (non-complemented) edge
     }
-
-    auto static transform(std::vector<bdd> const& fs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> gs;
-        gs.reserve(fs.size());
-        std::transform(fs.begin(), fs.end(), std::back_inserter(gs), [](auto const& g) { return g.f; });
-
-        return gs;
-    }
-
-    auto static tmls() -> std::array<edge_ptr, 2>
-    {
-        // choose the 0-leaf due to complemented edges in order to ensure canonicity
-        auto const leaf = std::make_shared<bool_node>(false);
-
-        return std::array<edge_ptr, 2>{std::make_shared<bool_edge>(false, leaf),
-                                       std::make_shared<bool_edge>(true, leaf)};
-    }
 };
 
 auto inline bdd::operator~() const
@@ -584,26 +584,28 @@ auto inline bdd::is_one() const noexcept
     return *this == mgr->one();
 }
 
-auto inline bdd::high(bool const weighting) const
+auto inline bdd::high() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return bdd{mgr->high(f, weighting), mgr};
+    return bdd{f->v->br().hi, mgr};
 }
 
-auto inline bdd::low(bool const weighting) const
+auto inline bdd::low() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return bdd{mgr->low(f, weighting), mgr};
+    return bdd{f->v->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>
-auto inline bdd::cof(T const a, Ts... args) const
+auto inline bdd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
-    return bdd{mgr->subfunc(f, a, std::forward<Ts>(args)...), mgr};
+    return bdd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
 auto inline bdd::size() const
@@ -694,11 +696,11 @@ auto inline bdd::sharpsat() const
     return mgr->sharpsat(f);
 }
 
-auto inline bdd::print() const
+auto inline bdd::print(std::ostream& s) const
 {
     assert(mgr);
 
-    mgr->print({*this});
+    mgr->print({*this}, {}, s);
 }
 
 }  // namespace freddy::dd

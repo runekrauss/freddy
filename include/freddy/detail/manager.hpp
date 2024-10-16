@@ -15,7 +15,7 @@
 #include "operation.hpp"            // operation
 #include "variable.hpp"             // variable
 
-#include <algorithm>      // std::max_element
+#include <algorithm>      // std::ranges::max_element
 #include <array>          // std::array
 #include <cassert>        // assert
 #include <concepts>       // std::same_as
@@ -127,7 +127,7 @@ class manager
         return std::accumulate(
                    vl.begin(), vl.end(), 0,
                    [](auto const sum, auto const& var) { return sum + static_cast<std::int32_t>(var.et.size()); }) +
-               ec.size();
+               static_cast<std::int32_t>(ec.size());
     }
 
     // NOLINTBEGIN
@@ -198,7 +198,7 @@ class manager
         consts.reserve(tmls.size());
         var2lvl.reserve(config::vl_size);
 
-        for (edge_ptr& tml : tmls)
+        for (auto& tml : tmls)
         {
             nc.insert(tml->v);
             consts.push_back(*ec.insert(std::move(tml)).first);
@@ -231,45 +231,30 @@ class manager
         return foa(std::make_shared<edge<E, V>>(std::move(w), foa(std::make_shared<node<E, V>>(std::move(c)))));
     }
 
-    auto high(edge_ptr const& f, bool const weighting)
-    {
-        assert(f);
-        assert(!f->v->is_const());
-
-        return weighting ? apply(f->w, f->v->br().hi) : f->v->br().hi;
-    }
-
-    auto low(edge_ptr const& f, bool const weighting)
-    {
-        assert(f);
-        assert(!f->v->is_const());
-
-        return weighting ? apply(f->w, f->v->br().lo) : f->v->br().lo;
-    }
-
     template <typename T>
-    requires std::same_as<T, bool>
-    auto subfunc(edge_ptr const& f, T const a)
+        requires std::same_as<T, bool>
+    auto fn(edge_ptr const& f, T const a)
     {
         assert(f);
         assert(!f->v->is_const());
 
-        return a ? high(f, true) : low(f, true);
+        return a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo);
     }
 
     template <typename T, typename... Ts>
-    requires std::same_as<T, bool>
-    auto subfunc(edge_ptr const& f, T const a, Ts... args)
+        requires std::same_as<T, bool>
+    auto fn(edge_ptr const& f, T const a, Ts... args)
     {
         assert(f);
         assert(!f->v->is_const());
 
-        return a ? subfunc(high(f, true), args...) : subfunc(low(f, true), args...);
+        return a ? fn(apply(f->w, f->v->br().hi), args...) : fn(apply(f->w, f->v->br().lo), args...);
     }
 
     [[nodiscard]] auto node_count(std::vector<edge_ptr> const& fs) const
     {
-        auto marks = get_marks();
+        std::unordered_set<node_ptr, hash, comp> marks;
+        marks.max_load_factor(0.7f);
 
         for (auto const& f : fs)
         {  // (shared) number of nodes
@@ -297,7 +282,7 @@ class manager
             ds[i] = longest_path_rec(fs[i]);
         });
 
-        return *std::max_element(ds.begin(), ds.end()) - 1;  // due to the root edge
+        return *std::ranges::max_element(ds) - 1;  // due to the root edge
     }
 
     [[nodiscard]] auto eval(edge_ptr const& f, std::vector<bool> const& as) const
@@ -472,7 +457,7 @@ class manager
         if (v->is_const())
         {
             ctrl(nc);
-            return *nc.insert(std::move(v)).first;  // in case of a collision, "v" is the list head
+            return *nc.insert(std::move(v)).first;  // in case of a collision, v is the list head
         }
         ctrl(vl[v->br().x].nt);
         return *vl[v->br().x].nt.insert(std::move(v)).first;
@@ -512,6 +497,7 @@ class manager
         return foa(std::make_shared<detail::edge<E, V>>(comb(w, f->w), f->v));
     }
 
+    // NOLINTBEGIN
     auto virtual ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr  // as there are different versions
     {
         assert(f);
@@ -520,9 +506,10 @@ class manager
 
         return disj(conj(f, g), conj(complement(f), h));
     }
+    // NOLINTEND
 
-    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
-        -> void
+    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs,
+                        std::ostream& s) const -> void
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -567,7 +554,8 @@ class manager
             }
         }
 
-        auto marks = get_marks();
+        std::unordered_set<node_ptr, hash, comp> marks;
+        marks.max_load_factor(0.7f);
 
         for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
         {
@@ -725,13 +713,6 @@ class manager
         std::swap(var2lvl[x], var2lvl[y]);
     }
 
-    [[nodiscard]] auto get_marks() const -> std::unordered_set<node_ptr, hash, comp>
-    {
-        std::unordered_set<node_ptr, hash, comp> marks;
-        marks.max_load_factor(0.7f);
-        return marks;
-    }
-
     [[nodiscard]] auto longest_path_rec(edge_ptr const& f) const noexcept -> std::int32_t
     {
         assert(f);
@@ -838,7 +819,7 @@ class manager
 
         if (f->v->is_const())
         {
-            s << 'v' << f->v << " [shape=box,style=filled,color=brown,fontcolor=white,label=\"" << f->v->c()
+            s << 'v' << f->v << " [shape=box,style=filled,color=chocolate,fontcolor=white,label=\"" << f->v->c()
               << "\"];\n";
             s << "{ rank=same; c; v" << f->v << "; }\n";
 
