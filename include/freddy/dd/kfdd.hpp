@@ -225,43 +225,129 @@ class kfdd_manager : public detail::manager<bool, bool>
         to_dot(transform(fs), outputs, s);
     }
 
+    std::string e_to_s(expansion e)
+    {
+        switch(e)
+        {
+            case expansion::S:
+                return "S";
+            break;
+            case expansion::PD:
+                return "PD";
+            break;
+            case expansion::ND:
+                return "ND";
+            break;
+            default: assert(false); break;
+        }
+    }
+
     void dtl_sift(kfdd f)
     {
         assert(f.mgr == this);
         //run through all variables
-
+        auto start_size = f.size();
         //for each variable:
         //move to first position
         //move to last position, recording minimum size
         //change type, sift to first position, recording minimum size
         //change type, sift to last position, recording minimum size
         //change type to minimum type and move to minimum position
-
+        //CURRENTLY WORKING DIFFERENTLY FOR TESTING
         for(auto x = 0; x < var_count();x++)
         {
-            //move to first position
-            sift(var2lvl[x], 0);
-            auto min_pos = 0;
-            //auto min_t = vl[x].t;
+            auto const initial_size = f.size();
             auto min_size = f.size();
-            std::cout << "Start sifting for variable " << x << ", starting size: " << min_size << "\n";
+            auto min_pos = 0;
+            auto min_t = vl[x].t;
+            std::cout << "Start sifting for variable " << x << "\n";
+            std::cout << "t: " << e_to_s(vl[x].t) << ", pos: " << var2lvl[x] << ", size: " << min_size << "\n";
+            //move to first position
             change_expansion_type(x, expansion::S);
+            sift(var2lvl[x], 0);
+            size_t size = f.size();
+            size_t old_size = SIZE_MAX;
+            if(size < min_size)
+            {
+                min_pos = 0;
+                min_t = expansion::S;
+                std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type S\n";
+                min_size = size;
+            }
+            std::cout << "Moved to pos 0" << "\n";
+            std::cout << "t: " << e_to_s(vl[x].t) << ", size: " << size << "\n";
             for(auto i = 0; i < var_count() - 1; i++)
             {
-                std::cout << "Sifting variable " << x << " from position " << i << " to " << i+1 << "\n";
+                old_size = f.size();
                 sift(i, i+1);
-                auto size = f.size();
-                std::cout << "Size: " << size << "\n";
+                size = f.size();
+                std::cout << "Sift: var " << x << ", pos " << std::format("{:03}", i) << " => " << std::format("{:03}", i+1)  << ", t:  S" << ", size: " << old_size << " => " << size << "\n";
                 if(size < min_size)
                 {
                     min_pos = i+1;
-                    //min_t = expansion::S;
+                    min_t = expansion::S;
                     std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type S\n";
                     min_size = size;
                 }
             }
+            change_expansion_type(x, expansion::PD);
+            sift(var2lvl[x], 0);
+                size = f.size();
+            if(size < min_size)
+            {
+                min_pos = 0;
+                min_t = expansion::PD;
+                std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type PD\n";
+                min_size = size;
+            }
+            for(auto i = 0; i < var_count() - 1; i++)
+            {
+                old_size = f.size();
+                sift(i, i+1);
+                size = f.size();
+                std::cout << "Sift: var " << x << ", pos " << std::format("{:03}", i) << " => " << std::format("{:03}", i+1)  << ", t: PD" << ", size: " << old_size << " => " << size << "\n";
+                if(size < min_size)
+                {
+                    min_pos = i+1;
+                    min_t = expansion::PD;
+                    std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type PD\n";
+                    min_size = size;
+                }
+            }
+            change_expansion_type(x, expansion::ND);
+            sift(var2lvl[x], 0);
+                size = f.size();
+            if(size < min_size)
+            {
+                min_pos = 0;
+                min_t = expansion::ND;
+                std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type ND\n";
+                min_size = size;
+            }
+            for(auto i = 0; i < var_count() - 1; i++)
+            {
+                old_size = f.size();
+                sift(i, i+1);
+                size = f.size();
+                std::cout << "Sift: var " << x << ", pos " << std::format("{:03}", i) << " => " << std::format("{:03}", i+1)  << ", t: ND" << ", size: " << old_size << " => " << size << "\n";
+                if(size < min_size)
+                {
+                    min_pos = i+1;
+                    min_t = expansion::ND;
+                    std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type ND\n";
+                    min_size = size;
+                }
+            }
+            change_expansion_type(x, min_t);
+            sift(var_count()-1, min_pos);
+            std::cout << "Sifting for variable " << x << " done. Minimal pos at " << min_pos << " with expansion type " << e_to_s(min_t) << " old size: " << initial_size << " new size: " << f.size() <<  "\n";
         }
-
+        std::cout << "dtl sifting done" << "\n";
+        std::cout << "old size: " << start_size << ", new size: " << f.size() << "\n";
+        for(auto x = 0; x < var_count();x++)
+        {
+            std::cout << "var: " << x << ", t: " << e_to_s(vl[x].t) << ", pos: " << var2lvl[x] << "\n";
+        }
     }
 
     void change_expansion_type(int x, freddy::expansion t)

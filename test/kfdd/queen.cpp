@@ -191,7 +191,8 @@ TEST_CASE("kfdd synthesis is performed", "[queen]")
     dtl.push_back(expansion::PD);
     dtl.push_back(expansion::PD);
     auto const pred = enc_with_dtl(mgr, dtl);
-    //mgr.dtl_sift(pred);
+    mgr.dtl_sift(pred);
+    mgr.dtl_sift(pred);
 #ifndef NDEBUG
     //std::cout << mgr << '\n';
     //std::cout << pred << '\n';
