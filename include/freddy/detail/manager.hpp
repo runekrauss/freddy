@@ -500,8 +500,8 @@ class manager
     }
     // NOLINTEND
 
-    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs,
-                        std::ostream& s) const -> void
+    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
+        -> void
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
