@@ -220,17 +220,13 @@ class bdd_manager : public detail::manager<bool, bool>
     }
 
   private:
-    using bool_edge = detail::edge<bool, bool>;
-
-    using bool_node = detail::node<bool, bool>;
-
     auto static tmls() -> std::array<edge_ptr, 2>
     {
         // choose the 0-leaf due to complemented edges in order to ensure canonicity
-        auto const leaf = std::make_shared<bool_node>(false);
+        auto const leaf = std::make_shared<detail::node<bool, bool>>(false);
 
-        return std::array<edge_ptr, 2>{std::make_shared<bool_edge>(false, leaf),
-                                       std::make_shared<bool_edge>(true, leaf)};
+        return std::array<edge_ptr, 2>{std::make_shared<detail::edge<bool, bool>>(false, leaf),
+                                       std::make_shared<detail::edge<bool, bool>>(true, leaf)};
     }
 
     auto static transform(std::vector<bdd> const& fs) -> std::vector<edge_ptr>
@@ -242,7 +238,7 @@ class bdd_manager : public detail::manager<bool, bool>
         return gs;
     }
 
-    auto sharpsat(edge_ptr const& f) -> double
+    auto sharpsat(edge_ptr const& f)
     {
         assert(f);
 
@@ -455,7 +451,7 @@ class bdd_manager : public detail::manager<bool, bool>
     {
         assert(f);
 
-        return !f->w ? foa(std::make_shared<bool_edge>(true, f->v)) : foa(std::make_shared<bool_edge>(false, f->v));
+        return !f->w ? uedge(true, f->v) : uedge(false, f->v);
     }
 
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -512,9 +508,7 @@ class bdd_manager : public detail::manager<bool, bool>
         }
 
         auto const w = lo->w;
-        return foa(
-            std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(x, !w ? std::move(hi) : complement(hi),
-                                                                           !w ? std::move(lo) : complement(lo)))));
+        return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
     }
 
     [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
