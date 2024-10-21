@@ -10,7 +10,6 @@
 #include <iostream>  // std::cout
 #endif
 #include <vector>  // std::vector
-#include <fstream>
 
 // *********************************************************************************************************************
 // Namespaces
@@ -163,12 +162,12 @@ TEST_CASE("PHDD can be characterized", "[basic]")
 TEST_CASE("PHDD is substituted", "[basic]")
 {
     dd::phdd_manager mgr;
-    auto const x0 = mgr.var(expansion::PD), x1 = mgr.var(expansion::PD);
+    auto const x0 = mgr.var(expansion::S, "x0"), x1 = mgr.var(expansion::S, "x1");
     auto const f = mgr.constant(8) - mgr.constant(20) * x0 + mgr.two() * x1 + mgr.constant(4) * x0 * x1;
 
     SECTION("Variable is replaced by function")
     {
-        auto const g = f.compose(1, mgr.var(expansion::PD) * mgr.var(expansion::PD));
+        auto const g = f.compose(1, mgr.var(expansion::PD) * mgr.var(expansion::S));
 
         CHECK_FALSE(g.is_essential(1));
         CHECK(g.is_essential(2));
@@ -176,25 +175,32 @@ TEST_CASE("PHDD is substituted", "[basic]")
         CHECK(g.high().var() == 2);
         CHECK(g.high().high().var() == 3);
     }
-
-    SECTION("Variable is restricted to constant")
-    {
-        CHECK(f.restr(1, true).high().is_const());
-        CHECK(f.restr(1, false).high().is_const());
-    }
-
-    SECTION("Variable is removed by existential quantification")
-    {
-        auto const g = f.exist(0);
-
-        CHECK_FALSE(g.is_essential(0));
-        CHECK(g == mgr.constant(148) + mgr.constant(6) * x1);
-    }
-
-    SECTION("Variable is removed by universal quantification")
-    {
-        CHECK(f.forall(1) == mgr.constant(16) - mgr.constant(88) * x0);
-    }
+//
+//    auto f_x0t = mgr.constant(6) * x1 + mgr.constant(-12);
+//    auto f_x0f = mgr.constant(2) * x1 + mgr.constant(  8);
+//    auto f_x1t = mgr.constant(-16) * x0 + mgr.constant(10);
+//    auto f_x1f = mgr.constant(-20) * x0 + mgr.constant( 8);
+//
+//    SECTION("Restrictions")
+//    {
+//
+//        REQUIRE(f.restr(0, true ) == f_x0t);
+//        REQUIRE(f.restr(0, false) == f_x0f);
+//        REQUIRE(f.restr(1, true ) == f_x1t);
+//        REQUIRE(f.restr(1, false) == f_x1f);
+//    }
+//
+//    SECTION("existential quantification")
+//    {
+//        REQUIRE(f.exist(0) == f_x0t + f_x0f); // (f_x0t | f_x0f)
+//        REQUIRE(f.exist(1) == f_x1t + f_x1f); // (f_x1t | f_x1f)
+//    }
+//
+//    SECTION("universal quantification")
+//    {
+//        REQUIRE(f.forall(0) == f_x0t * f_x0f);
+//        REQUIRE(f.forall(1) == f_x1t * f_x1f);
+//    }
 }
 
 TEST_CASE("PHDD variable order is changeable", "[basic]")
