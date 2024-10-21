@@ -259,15 +259,11 @@ class bhd_manager : public detail::manager<bool, bool>
     }
 
   private:
-    using bool_edge = detail::edge<bool, bool>;
-
-    using bool_node = detail::node<bool, bool>;
-
     auto static tmls() -> std::array<edge_ptr, 2>
     {
-        auto const leaf = std::make_shared<bool_node>(false);
-        return std::array<edge_ptr, 2>{std::make_shared<bool_edge>(false, leaf),
-                                       std::make_shared<bool_edge>(true, leaf)};
+        auto const leaf = std::make_shared<detail::node<bool, bool>>(false);
+        return std::array<edge_ptr, 2>{std::make_shared<detail::edge<bool, bool>>(false, leaf),
+                                       std::make_shared<detail::edge<bool, bool>>(true, leaf)};
     }
 
     auto static transform(std::vector<bhd> const& fs) -> std::vector<edge_ptr>
@@ -418,8 +414,7 @@ class bhd_manager : public detail::manager<bool, bool>
         }
         w = f->w ? !w : w;  // due to bit flipping
 
-        op.r = foa(std::make_shared<bool_edge>(
-            w, foa(std::make_shared<bool_node>(f->v->br().x, std::move(hi), std::move(lo)))));
+        op.r = uedge(w, unode(f->v->br().x, std::move(hi), std::move(lo)));
         return cache(std::move(op))->r;
     }
 
@@ -474,8 +469,8 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(g);
         assert(x == top_var(f, g));
 
-        if (((static_cast<float>(node_count()) * sizeof(bool_node) +
-              static_cast<float>(edge_count()) * sizeof(bool_edge)) /
+        if (((static_cast<float>(node_count()) * sizeof(detail::node<bool, bool>) +
+              static_cast<float>(edge_count()) * sizeof(detail::edge<bool, bool>)) /
              1e3f) >= static_cast<float>(cost))
         {
             return repl(f, consts[2]);  // to ensure canonicity and because f is usually larger than g
@@ -505,7 +500,7 @@ class bhd_manager : public detail::manager<bool, bool>
     {
         assert(f);
 
-        return !f->w ? foa(std::make_shared<bool_edge>(true, f->v)) : foa(std::make_shared<bool_edge>(false, f->v));
+        return !f->w ? uedge(true, f->v) : uedge(false, f->v);
     }
 
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -579,9 +574,7 @@ class bhd_manager : public detail::manager<bool, bool>
         }
 
         auto const w = lo->w;
-        return foa(
-            std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(x, !w ? std::move(hi) : complement(hi),
-                                                                           !w ? std::move(lo) : complement(lo)))));
+        return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
     }
 
     [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override

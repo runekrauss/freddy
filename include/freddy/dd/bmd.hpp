@@ -277,10 +277,6 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     }
 
   private:
-    using int_edge = detail::edge<std::int32_t, std::int32_t>;
-
-    using int_node = detail::node<std::int32_t, std::int32_t>;
-
     auto static normw(edge_ptr const& f, edge_ptr const& g) noexcept
     {
         assert(f);
@@ -291,9 +287,10 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
 
     auto static tmls() -> std::array<edge_ptr, 2>
     {
-        auto const leaf = std::make_shared<int_node>(1);
+        auto const leaf = std::make_shared<detail::node<std::int32_t, std::int32_t>>(1);
 
-        return std::array<edge_ptr, 2>{std::make_shared<int_edge>(0, leaf), std::make_shared<int_edge>(1, leaf)};
+        return std::array<edge_ptr, 2>{std::make_shared<detail::edge<std::int32_t, std::int32_t>>(0, leaf),
+                                       std::make_shared<detail::edge<std::int32_t, std::int32_t>>(1, leaf)};
     }
 
     auto static transform(std::vector<bmd> const& fs) -> std::vector<edge_ptr>
@@ -340,7 +337,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         {
             return consts[0];
         }
-        return foa(std::make_shared<int_edge>(comb(w, f->w), f->v));
+        return uedge(comb(w, f->w), f->v);
     }
 
     auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -358,7 +355,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         }
         if (f->v == g->v)
         {
-            return f->w + g->w == 0 ? consts[0] : foa(std::make_shared<int_edge>(f->w + g->w, f->v));
+            return f->w + g->w == 0 ? consts[0] : uedge(f->w + g->w, f->v);
         }
 
         // increase the probability of reusing previously computed results (rearrange)
@@ -372,8 +369,8 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         {
             w = normw(g, f);
         }
-        f = foa(std::make_shared<int_edge>(f->w / w, f->v));
-        g = foa(std::make_shared<int_edge>(g->w / w, g->v));
+        f = uedge(f->w / w, f->v);
+        g = uedge(g->w / w, g->v);
 
         op::add op{f, g};
         if (auto const* const ent = cached(op))
@@ -446,10 +443,8 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
 
         assert(w != 0);
 
-        return w != 1 ? foa(std::make_shared<int_edge>(
-                            w, foa(std::make_shared<int_node>(x, foa(std::make_shared<int_edge>(hi->w / w, hi->v)),
-                                                              foa(std::make_shared<int_edge>(lo->w / w, lo->v))))))
-                      : foa(std::make_shared<int_edge>(w, foa(std::make_shared<int_node>(x, hi, lo))));
+        return w != 1 ? uedge(w, unode(x, uedge(hi->w / w, hi->v), uedge(lo->w / w, lo->v)))
+                      : uedge(w, unode(x, hi, lo));
     }
 
     [[nodiscard]] auto merge(std::int32_t const& val1, std::int32_t const& val2) const noexcept -> std::int32_t override
@@ -481,8 +476,8 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         {
             std::swap(f, g);
         }
-        f = foa(std::make_shared<int_edge>(1, f->v));
-        g = foa(std::make_shared<int_edge>(1, g->v));
+        f = uedge(1, f->v);
+        g = uedge(1, g->v);
 
         op::mul op{f, g};
         if (auto const* const ent = cached(op))
