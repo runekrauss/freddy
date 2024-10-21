@@ -43,7 +43,7 @@ namespace std
     struct [[maybe_unused]] hash<edge_weight> {
         auto operator()(const edge_weight &v) const -> std::size_t
         {
-            return v.first ?  std::hash<int>()(v.second) ^ (1 << 31) : std::hash<int>()(v.second);
+            return std::hash<int>()(v.second) ^ (v.first << 31);
         }
     };
 
@@ -369,7 +369,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
             return f;
         }
 
-        return foa(std::make_shared<phdd_edge>(comb(w, f->w), f->v));
+        return uedge(comb(w, f->w), f->v);
     }
 
     auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -403,8 +403,8 @@ class phdd_manager : public detail::manager<edge_weight, float>
             std::swap(f, g);
         }
         auto const w = normw(f, g);
-        f = foa(std::make_shared<phdd_edge>(std::make_pair(f->w.first ^ w.first, f->w.second - w.second), f->v));
-        g = foa(std::make_shared<phdd_edge>(std::make_pair(g->w.first ^ w.first, g->w.second - w.second), g->v));
+        f = uedge({f->w.first ^ w.first, f->w.second - w.second}, f->v);
+        g = uedge({g->w.first ^ w.first, g->w.second - w.second}, g->v);
 
         op::add op{f, g};
         if (auto const* const ent = cached(op))
@@ -475,9 +475,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
         }
         if(vl[x].t == expansion::S and hi == consts[0])
         {
-            return foa(std::make_shared<phdd_edge>(
-                lo->w,
-                foa(std::make_shared<phdd_node>(x, hi, foa(std::make_shared<phdd_edge>(std::make_pair(false, 0), lo->v))))));
+            return uedge(lo->w, unode(x, hi, uedge({false, 0}, lo->v)));
         }
         if(vl[x].t == expansion::PD and hi == consts[0])
         {
@@ -485,18 +483,13 @@ class phdd_manager : public detail::manager<edge_weight, float>
         }
         if(lo == consts[0])
         {
-            return foa(std::make_shared<phdd_edge>(
-                hi->w,
-                foa(std::make_shared<phdd_node>(x, foa(std::make_shared<phdd_edge>(std::make_pair(false, 0), hi->v)), lo))));
+            return uedge(hi->w, unode(x, uedge({false, 0}, hi->v), lo));
         }
 
         auto const w = normw(hi, lo);
 
-        return foa(std::make_shared<phdd_edge>(
-            w,
-            foa(std::make_shared<phdd_node>(x,
-               foa(std::make_shared<phdd_edge>(std::make_pair(hi->w.first ^ w.first, hi->w.second - w.second), hi->v)),
-               foa(std::make_shared<phdd_edge>(std::make_pair(lo->w.first ^ w.first, lo->w.second - w.second), lo->v))))));
+        return uedge(w, unode(x, uedge({hi->w.first ^ w.first, hi->w.second - w.second}, hi->v),
+                                 uedge({lo->w.first ^ w.first, lo->w.second - w.second}, lo->v)));
     }
 
     [[nodiscard]] auto merge(float const& val1, float const& val2) const noexcept -> float override
@@ -533,8 +526,8 @@ class phdd_manager : public detail::manager<edge_weight, float>
         {
             std::swap(f, g);
         }
-        f = foa(std::make_shared<phdd_edge>(std::make_pair(0,0), f->v));
-        g = foa(std::make_shared<phdd_edge>(std::make_pair(0,0), g->v));
+        f = uedge({0,0}, f->v);
+        g = uedge({0,0}, g->v);
 
         op::mul op{f, g};
         if (auto const* const ent = cached(op))
