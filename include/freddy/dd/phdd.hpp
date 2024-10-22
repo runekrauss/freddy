@@ -47,7 +47,7 @@ namespace std
         }
     };
 
-    auto operator << (std::ostream & os, const edge_weight & val) -> std::ostream &
+    inline auto operator << (std::ostream & os, const edge_weight & val) -> std::ostream &
     {
         os << (val.first ? "neg\n" : "") << val.second;
         return os;
