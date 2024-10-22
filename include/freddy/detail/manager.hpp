@@ -525,14 +525,9 @@ class manager
             std::string decomposition;
             switch (vl[lvl2var[i]].t)
             {
-                case expansion::S:
-                    decomposition = "S";
-                    break;
-                case expansion::PD:
-                    decomposition = "PD";
-                    break;
-                default:
-                    assert(false);
+                case expansion::S: decomposition = "S"; break;
+                case expansion::PD: decomposition = "PD"; break;
+                default: assert(false);
             }
 
             s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")"
@@ -835,8 +830,16 @@ class manager
             return;
         }
 
-        s << 'v' << f->v << " [shape=circle,style=filled,color=black,fontcolor=white,label=\"" << vl[f->v->br().x].l
-          << "\"];\n";
+        std::string shape;
+        switch (vl[f->v->br().x].t)
+        {
+            case expansion::PD: shape = "shape=octagon,regular=true"; break;
+            case expansion::S: shape = "shape=circle"; break;
+            default: assert(false);
+        }
+
+        s << 'v' << f->v << " [" << shape << ",style=filled,color=black,fontcolor=white,label=\""
+          << vl[f->v->br().x].l << "\"];\n";
         s << "{ rank=same; x" << f->v->br().x << "; v" << f->v << "; }\n";
         s << 'v' << f->v << " -> v" << f->v->br().hi->v << " [color=blue,dir=none,label=\" " << f->v->br().hi->w
           << " \"];\n";
