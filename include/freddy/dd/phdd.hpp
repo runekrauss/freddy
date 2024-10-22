@@ -4,7 +4,6 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/dd/phdd_edge_weight.hpp"
 #include "freddy/detail/manager.hpp"  // detail::manager
 #include "freddy/op/add.hpp"          // op::add
 #include "freddy/op/mul.hpp"          // op::mul
@@ -25,26 +24,43 @@
 #include <utility>      // std::make_pair
 #include <vector>       // std::vector
 
-// *********************************************************************************************************************
-// Namespaces
-// *********************************************************************************************************************
-
-namespace freddy::dd
-{
-
-// =====================================================================================================================
-// Declarations
-// =====================================================================================================================
-
-class phdd_manager;
-
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-using phdd_edge = detail::edge<edge_weight, double>;
-using phdd_node = detail::node<edge_weight, double>;
+using edge_weight = std::pair<bool,int32_t>;
+using phdd_edge = freddy::detail::edge<edge_weight, float>;
+using phdd_node = freddy::detail::node<edge_weight, float>;
 
+// =====================================================================================================================
+// std namespace
+// =====================================================================================================================
+
+// implements hashing and string view for std::pair<bool, int32_t>
+namespace std
+{
+    template <>
+    struct [[maybe_unused]] hash<edge_weight> {
+        auto operator()(const edge_weight &v) const -> std::size_t
+        {
+            return std::hash<int>()(v.second) ^ (v.first << 31);
+        }
+    };
+
+    auto operator << (std::ostream & os, const edge_weight & val) -> std::ostream &
+    {
+        os << (val.first ? "neg\n" : "") << val.second;
+        return os;
+    }
+}  // namespace std
+
+// =====================================================================================================================
+// freddy::dd namespace
+// =====================================================================================================================
+
+namespace freddy::dd
+{
+class phdd_manager;
 class phdd
 {
   public:
@@ -155,12 +171,12 @@ class phdd
         return f->v->br().x;
     }
 
-    [[nodiscard]] auto high(bool = false) const;
+    [[nodiscard]] auto high() const;
 
-    [[nodiscard]] auto low(bool = false) const;
+    [[nodiscard]] auto low() const;
 
     template <typename T, typename... Ts>
-    auto cof(T, Ts...) const;
+    auto fn(T, Ts...) const;
 
     [[nodiscard]] auto size() const;
 
@@ -186,7 +202,7 @@ class phdd
 
     [[nodiscard]] auto forall(std::int32_t) const;
 
-    auto print() const;
+    auto print(std::ostream& =std::cout) const;
 
   private:
     friend phdd_manager;
@@ -205,17 +221,17 @@ class phdd
     phdd_manager* mgr{};
 };
 
-class phdd_manager : public detail::manager<edge_weight, double>
+class phdd_manager : public detail::manager<edge_weight, float>
 {
   private:
-    auto static factorize_pow2(int w) -> std::pair<int,int>
+    auto static factorize_pow2(uint32_t w) -> std::pair<uint,uint>
     {
         const unsigned int pow = w & (-w);
         auto exp = std::bit_width(pow) - 1;
         return {exp, w / pow};
     }
 
-    auto static decompose_float(float x) -> std::tuple<bool, int32_t ,int32_t>
+    auto static decompose_float(float x) -> std::tuple<bool, uint32_t ,uint32_t>
     {
         assert(!isnanf(x) && !isinff(x) && std::isnormal(x));
         if(x == 0)
@@ -223,9 +239,9 @@ class phdd_manager : public detail::manager<edge_weight, double>
             return {0,0,0};
         }
         bool const sign = std::signbit(x);
-        int32_t const bits = *reinterpret_cast<int32_t*>(&x);
+        uint32_t const bits = *reinterpret_cast<uint32_t*>(&x);
         int32_t const exponent = ((bits >> 23) & 0xFF) - 127 - 23; // bias 127, sig_size 23
-        int32_t const significant = (bits & 0x7FFFFF) | (1 << 23); // leading zero
+        uint32_t const significant = (bits & 0x7FFFFF) | (1 << 23); // leading zero
         auto factors = factorize_pow2(significant);
 
         return {sign, exponent + factors.first, factors.second};
@@ -284,7 +300,8 @@ class phdd_manager : public detail::manager<edge_weight, double>
             return zero();
         }
         auto d = decompose_float(w);
-        return phdd{make_const({std::get<0>(d),std::get<1>(d)}, static_cast<double>(std::get<2>(d))), this};
+        assert(std::bit_width(std::get<2>(d)) < 24);
+        return phdd{make_const({std::get<0>(d),std::get<1>(d)}, static_cast<float>(std::get<2>(d))), this};
     }
 
     [[nodiscard]] auto size(std::vector<phdd> const& fs) const
@@ -355,7 +372,7 @@ class phdd_manager : public detail::manager<edge_weight, double>
             return f;
         }
 
-        return foa(std::make_shared<phdd_edge>(comb(w, f->w), f->v));
+        return uedge(comb(w, f->w), f->v);
     }
 
     auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -371,17 +388,43 @@ class phdd_manager : public detail::manager<edge_weight, double>
         {
             return f;
         }
-        if (f->v->is_const() && g->v->is_const())
-        {
-            auto val = agg(f->w,f->v->c()) + agg(g->w,g->v->c());
-            return this->constant(val).f;
-        }
-
         if (f->v == g->v and
             f->w.first != g->w.first and
             f->w.second == g->w.second)
         {
             return consts[0];
+        }
+        if (f->v->is_const() && g->v->is_const())
+        {
+            if(f->w.second > g->w.second)
+            {
+                std::swap(f,g);
+            } // 2^f_w * ( f_vc + 2^(g_w - f_w) * g_vc)
+            auto f_vc = static_cast<uint32_t>(f->v->c());
+            auto g_vc = static_cast<uint32_t>(g->v->c());
+            auto shift = static_cast<uint32_t>(g->w.second - f->w.second);
+            auto sign = f->w.first;
+
+            assert(std::countl_zero(f_vc) > 1);
+            assert(std::countl_zero(g_vc) + 2 > (int) shift);
+            uint32_t g_vc_s = g_vc << shift;
+
+            std::pair<uint, uint> factors;
+            if(f->w.first == g->w.first)
+            {
+                factors = factorize_pow2(f_vc + g_vc_s);
+            }
+            else
+            {
+                if(f_vc < g_vc_s)
+                {
+                    std::swap(f_vc, g_vc_s);
+                    sign = g->w.first;
+                }
+                factors = factorize_pow2(f_vc - g_vc_s);
+            }
+            assert(std::bit_width(factors.second) < 24);
+            return make_const({sign, factors.first + f->w.second}, static_cast<float>(factors.second));
         }
 
         if (std::abs(f->w.second) <= std::abs(g->w.second))
@@ -389,8 +432,8 @@ class phdd_manager : public detail::manager<edge_weight, double>
             std::swap(f, g);
         }
         auto const w = normw(f, g);
-        f = foa(std::make_shared<phdd_edge>(std::make_pair(f->w.first ^ w.first, f->w.second - w.second), f->v));
-        g = foa(std::make_shared<phdd_edge>(std::make_pair(g->w.first ^ w.first, g->w.second - w.second), g->v));
+        f = uedge({f->w.first ^ w.first, f->w.second - w.second}, f->v);
+        g = uedge({g->w.first ^ w.first, g->w.second - w.second}, g->v);
 
         op::add op{f, g};
         if (auto const* const ent = cached(op))
@@ -408,7 +451,7 @@ class phdd_manager : public detail::manager<edge_weight, double>
         return apply(w, r);
     }
 
-    [[nodiscard]] auto agg(edge_weight const& w, double const& val) const noexcept -> double override
+    [[nodiscard]] auto agg(edge_weight const& w, float const& val) const noexcept -> float override
     {
         return w.first ? -1 * pow(2, w.second) * val : pow(2, w.second) * val;
     }
@@ -461,9 +504,7 @@ class phdd_manager : public detail::manager<edge_weight, double>
         }
         if(vl[x].t == expansion::S and hi == consts[0])
         {
-            return foa(std::make_shared<phdd_edge>(
-                lo->w,
-                foa(std::make_shared<phdd_node>(x, hi, foa(std::make_shared<phdd_edge>(std::make_pair(false, 0), lo->v))))));
+            return uedge(lo->w, unode(x, hi, uedge({false, 0}, lo->v)));
         }
         if(vl[x].t == expansion::PD and hi == consts[0])
         {
@@ -471,21 +512,16 @@ class phdd_manager : public detail::manager<edge_weight, double>
         }
         if(lo == consts[0])
         {
-            return foa(std::make_shared<phdd_edge>(
-                hi->w,
-                foa(std::make_shared<phdd_node>(x, foa(std::make_shared<phdd_edge>(std::make_pair(false, 0), hi->v)), lo))));
+            return uedge(hi->w, unode(x, uedge({false, 0}, hi->v), lo));
         }
 
         auto const w = normw(hi, lo);
 
-        return foa(std::make_shared<phdd_edge>(
-            w,
-            foa(std::make_shared<phdd_node>(x,
-               foa(std::make_shared<phdd_edge>(std::make_pair(hi->w.first ^ w.first, hi->w.second - w.second), hi->v)),
-               foa(std::make_shared<phdd_edge>(std::make_pair(lo->w.first ^ w.first, lo->w.second - w.second), lo->v))))));
+        return uedge(w, unode(x, uedge({hi->w.first ^ w.first, hi->w.second - w.second}, hi->v),
+                                 uedge({lo->w.first ^ w.first, lo->w.second - w.second}, lo->v)));
     }
 
-    [[nodiscard]] auto merge(double const& val1, double const& val2) const noexcept -> double override
+    [[nodiscard]] auto merge(float const& val1, float const& val2) const noexcept -> float override
     {
         return (val1 + val2);
     }
@@ -519,8 +555,8 @@ class phdd_manager : public detail::manager<edge_weight, double>
         {
             std::swap(f, g);
         }
-        f = foa(std::make_shared<phdd_edge>(std::make_pair(0,0), f->v));
-        g = foa(std::make_shared<phdd_edge>(std::make_pair(0,0), g->v));
+        f = uedge({0,0}, f->v);
+        g = uedge({0,0}, g->v);
 
         op::mul op{f, g};
         if (auto const* const ent = cached(op))
@@ -714,26 +750,28 @@ auto inline phdd::is_two() const noexcept
     return (*this == mgr->two());
 }
 
-auto inline phdd::high(bool const weighting) const
+auto inline phdd::high() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return phdd{mgr->high(f, weighting), mgr};
+    return phdd{f->v->br().hi, mgr};
 }
 
-auto inline phdd::low(bool const weighting) const
+auto inline phdd::low() const
 {
     assert(mgr);
+    assert(!f->v->is_const());
 
-    return phdd{mgr->low(f, weighting), mgr};
+    return phdd{f->v->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>
-auto inline phdd::cof(T const a, Ts... args) const
+auto inline phdd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
-    return phdd{mgr->subfunc(f, a, std::forward<Ts>(args)...), mgr};
+    return phdd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
 auto inline phdd::size() const
@@ -825,11 +863,11 @@ auto inline phdd::forall(std::int32_t const x) const
     return phdd{mgr->forall(f, x), mgr};
 }
 
-auto inline phdd::print() const
+auto inline phdd::print(std::ostream& s) const
 {
     assert(mgr);
 
-    mgr->print({*this});
+    mgr->print({*this}, {}, s);
 }
 
 }  // namespace freddy::dd
