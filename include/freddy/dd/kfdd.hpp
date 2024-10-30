@@ -5,6 +5,10 @@
 // *********************************************************************************************************************
 
 #include "freddy/detail/manager.hpp"  // detail::manager
+#include "freddy/op/antiv.hpp"
+#include "freddy/op/conj.hpp"
+#include "freddy/op/ite.hpp"
+#include "freddy/op/sharpsat.hpp"
 
 #include <algorithm>  // std::transform
 #include <array>      // std::array
@@ -18,11 +22,6 @@
 #include <string>     // std::string
 #include <utility>    // std::make_pair
 #include <vector>     // std::vector
-
-#include "freddy/op/sharpsat.hpp"
-#include "freddy/op/conj.hpp"
-#include "freddy/op/antiv.hpp"
-#include "freddy/op/ite.hpp"
 
 // *********************************************************************************************************************
 // Namespaces
@@ -154,6 +153,8 @@ class kfdd
 
     [[nodiscard]] auto sharpsat() const;
 
+    [[nodiscard]] auto dtl_sift() const;
+
     void print() const;
 
   private:
@@ -225,209 +226,86 @@ class kfdd_manager : public detail::manager<bool, bool>
         to_dot(transform(fs), outputs, s);
     }
 
-    std::string e_to_s(expansion e)
-    {
-        switch(e)
-        {
-            case expansion::S:
-                return "S";
-            break;
-            case expansion::PD:
-                return "PD";
-            break;
-            case expansion::ND:
-                return "ND";
-            break;
-            default: assert(false); break;
-        }
-    }
-
-    void dtl_sift(kfdd f)
-    {
-        assert(f.mgr == this);
-        //run through all variables
-        auto start_size = f.size();
-        //for each variable:
-        //move to first position
-        //move to last position, recording minimum size
-        //change type, sift to first position, recording minimum size
-        //change type, sift to last position, recording minimum size
-        //change type to minimum type and move to minimum position
-        //CURRENTLY WORKING DIFFERENTLY FOR TESTING
-        for(auto x = 0; x < var_count();x++)
-        {
-            auto const initial_size = f.size();
-            auto min_size = f.size();
-            auto min_pos = 0;
-            auto min_t = vl[x].t;
-            std::cout << "Start sifting for variable " << x << "\n";
-            std::cout << "t: " << e_to_s(vl[x].t) << ", pos: " << var2lvl[x] << ", size: " << min_size << "\n";
-            //move to first position
-            change_expansion_type(x, expansion::S);
-            sift(var2lvl[x], 0);
-            size_t size = f.size();
-            size_t old_size = SIZE_MAX;
-            if(size < min_size)
-            {
-                min_pos = 0;
-                min_t = expansion::S;
-                std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type S\n";
-                min_size = size;
-            }
-            std::cout << "Moved to pos 0" << "\n";
-            std::cout << "t: " << e_to_s(vl[x].t) << ", size: " << size << "\n";
-            for(auto i = 0; i < var_count() - 1; i++)
-            {
-                old_size = f.size();
-                sift(i, i+1);
-                size = f.size();
-                std::cout << "Sift: var " << x << ", pos " << std::format("{:03}", i) << " => " << std::format("{:03}", i+1)  << ", t:  S" << ", size: " << old_size << " => " << size << "\n";
-                if(size < min_size)
-                {
-                    min_pos = i+1;
-                    min_t = expansion::S;
-                    std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type S\n";
-                    min_size = size;
-                }
-            }
-            change_expansion_type(x, expansion::PD);
-            sift(var2lvl[x], 0);
-                size = f.size();
-            if(size < min_size)
-            {
-                min_pos = 0;
-                min_t = expansion::PD;
-                std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type PD\n";
-                min_size = size;
-            }
-            for(auto i = 0; i < var_count() - 1; i++)
-            {
-                old_size = f.size();
-                sift(i, i+1);
-                size = f.size();
-                std::cout << "Sift: var " << x << ", pos " << std::format("{:03}", i) << " => " << std::format("{:03}", i+1)  << ", t: PD" << ", size: " << old_size << " => " << size << "\n";
-                if(size < min_size)
-                {
-                    min_pos = i+1;
-                    min_t = expansion::PD;
-                    std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type PD\n";
-                    min_size = size;
-                }
-            }
-            change_expansion_type(x, expansion::ND);
-            sift(var2lvl[x], 0);
-                size = f.size();
-            if(size < min_size)
-            {
-                min_pos = 0;
-                min_t = expansion::ND;
-                std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type ND\n";
-                min_size = size;
-            }
-            for(auto i = 0; i < var_count() - 1; i++)
-            {
-                old_size = f.size();
-                sift(i, i+1);
-                size = f.size();
-                std::cout << "Sift: var " << x << ", pos " << std::format("{:03}", i) << " => " << std::format("{:03}", i+1)  << ", t: ND" << ", size: " << old_size << " => " << size << "\n";
-                if(size < min_size)
-                {
-                    min_pos = i+1;
-                    min_t = expansion::ND;
-                    std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x << " at position " << min_pos << " and expansion type ND\n";
-                    min_size = size;
-                }
-            }
-            change_expansion_type(x, min_t);
-            sift(var_count()-1, min_pos);
-            std::cout << "Sifting for variable " << x << " done. Minimal pos at " << min_pos << " with expansion type " << e_to_s(min_t) << " old size: " << initial_size << " new size: " << f.size() <<  "\n";
-        }
-        std::cout << "dtl sifting done" << "\n";
-        std::cout << "old size: " << start_size << ", new size: " << f.size() << "\n";
-        for(auto x = 0; x < var_count();x++)
-        {
-            std::cout << "var: " << x << ", t: " << e_to_s(vl[x].t) << ", pos: " << var2lvl[x] << "\n";
-        }
-    }
-
     void change_expansion_type(int x, freddy::expansion t)
     {
-        assert(x>=0);
+        assert(x >= 0);
         assert(x < var_count());
-        auto var_t = vl[x].t;
-        if(var_t==t)
+        auto& var = vl[x];
+        auto var_t = var.t;
+        if (var_t == t)
         {
             //type doesn't change, nothing to do
             return;
         }
-        vl[x].t = t;
-        if(var_t == expansion::S)
+        var.t = t;
+        if (var_t == expansion::S)
         {
             //S => PD
-            if(t == expansion::PD)
+            if (t == expansion::PD)
             {
-                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
                 {
-                    auto node = *it;
-                    node->br().hi = antiv(node->br().hi,node->br().lo);
+                    auto& br = (*it)->br();
+                    br.hi = antiv(br.hi, br.lo);
                 }
             }
-            else if(t == expansion::ND)
+            //S => ND
+            else if (t == expansion::ND)
             {
-                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
                 {
-                    auto node = *it;
-                    auto low = node->br().lo;
-                    auto high = node->br().hi;
-                    node->br().hi = low;
-                    node->br().lo = high;
-                    node->br().hi = antiv(node->br().hi,node->br().lo);
+                    auto& br = (*it)->br();
+                    std::swap(br.hi, br.lo);
+                    br.hi = antiv(br.hi, br.lo);
                 }
             }
         }
-        else if(var_t == expansion::PD)
+        else if (var_t == expansion::PD)
         {
-            if(t == expansion::S)
+            //PD => S
+            if (t == expansion::S)
             {
-                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
                 {
-                    auto node = *it;
-                    node->br().hi = antiv(node->br().hi,node->br().lo);
+                    auto& br = (*it)->br();
+                    br.hi = antiv(br.hi, br.lo);
+                    //node->br().lo = low;
                 }
             }
-            else if(t == expansion::ND)
+            //PD => ND
+            else if (t == expansion::ND)
             {
-                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
                 {
-                    auto node = *it;
-                    node->br().lo = antiv(node->br().hi,node->br().lo);
+                    auto& br = (*it)->br();
+                    //node->br().hi = high;
+                    br.lo = antiv(br.hi, br.lo);
                 }
             }
         }
-        else if(var_t == expansion::ND)
+        else if (var_t == expansion::ND)
         {
-            if(t == expansion::S)
+            //ND => S
+            if (t == expansion::S)
             {
-                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
                 {
-                    auto node = *it;
-                    auto low = node->br().lo;
-                    auto high = node->br().hi;
-                    node->br().hi = low;
-                    node->br().lo = high;
-                    node->br().lo = antiv(node->br().hi,node->br().lo);
+                    auto& br = (*it)->br();
+                    std::swap(br.hi, br.lo);
+                    br.lo = antiv(br.lo, br.hi);
                 }
             }
-            else if(t == expansion::PD)
+            //ND => PD
+            else if (t == expansion::PD)
             {
-                for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();++it)
+                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
                 {
-                    auto node = *it;
-                    node->br().lo = antiv(node->br().hi,node->br().lo);
+                    auto& br = (*it)->br();
+                    //node->br().hi = high;
+                    br.lo = antiv(br.lo, br.hi);
                 }
             }
         }
-        gc();
     }
 
   private:
@@ -545,7 +423,7 @@ class kfdd_manager : public detail::manager<bool, bool>
         {
             std_triple(ret, f, g, h);
         }
-        op::ite op{f,g,h};
+        op::ite op{f, g, h};
         if (auto const* const ent = cached(op))
         {
             return ent->r;
@@ -553,7 +431,7 @@ class kfdd_manager : public detail::manager<bool, bool>
 
         auto const x = (f->v->br().x == top_var(f, g)) ? top_var(f, h) : top_var(g, h);
         op.r = make_branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
-                             ite(cof(f, x, false), cof(g, x, false), cof(h, x, false)));
+                           ite(cof(f, x, false), cof(g, x, false), cof(h, x, false)));
 
         return cache(std::move(op))->r;
     }
@@ -577,7 +455,7 @@ class kfdd_manager : public detail::manager<bool, bool>
         {
             return consts[0];
         }
-        op::antiv op{f,g};
+        op::antiv op{f, g};
         if (auto const* const ent = cached(op))
         {
             return ent->r;
@@ -593,7 +471,6 @@ class kfdd_manager : public detail::manager<bool, bool>
 
         auto low = antiv(f_low, g_low);
         auto high = antiv(f_high, g_high);
-
 
         op.r = make_branch(x, high, low);
         return cache(std::move(op))->r;
@@ -620,7 +497,7 @@ class kfdd_manager : public detail::manager<bool, bool>
     auto complement(edge_ptr const& f) -> edge_ptr override
     {
         assert(f);
-        return foa(std::make_shared<bool_edge>(merge(f->w, true), f->v));
+        return uedge(merge(f->w, true), f->v);
     }
 
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -644,7 +521,7 @@ class kfdd_manager : public detail::manager<bool, bool>
         {
             return f;
         }
-        op::conj op{f,g};
+        op::conj op{f, g};
         if (auto const* const ent = cached(op))
         {
             return ent->r;
@@ -707,11 +584,9 @@ class kfdd_manager : public detail::manager<bool, bool>
                 w = lo->w;
                 if (!w)
                 {
-                    return foa(std::make_shared<bool_edge>(
-                        w, foa(std::make_shared<bool_node>(x, std::move(hi), std::move(lo)))));
+                    return uedge(w, unode(x, std::move(hi), std::move(lo)));
                 }
-                return foa(std::make_shared<bool_edge>(
-                    w, foa(std::make_shared<bool_node>(x, complement(hi), complement(lo)))));
+                return uedge(w, unode(x, complement(hi), complement(lo)));
                 break;
             case expansion::PD:
             case expansion::ND:
@@ -722,49 +597,17 @@ class kfdd_manager : public detail::manager<bool, bool>
                 if (lo->w)
                 {
                     w = lo->w;
-                    r = foa(std::make_shared<bool_edge>(w, foa(std::make_shared<bool_node>(x, hi, complement(lo)))));
+                    r = uedge(w, unode(x, hi, complement(lo)));
                 }
                 else
                 {
-                    r = foa(std::make_shared<bool_edge>(
-                        false, foa(std::make_shared<bool_node>(x, std::move(hi), std::move(lo)))));
+                    r = uedge(false, unode(x, std::move(hi), std::move(lo)));
                 }
                 break;
             default: assert(false);
         }
         return r;
     }
-
-    // auto make_canonical(edge_ptr f) -> edge_ptr
-    // {
-    //     return f;
-    //     assert(f);
-    //     //terminals are per definition canonical
-    //     if (f->v->is_const())
-    //     {
-    //         return f;
-    //     }
-    //     auto const br = f->v->br();
-    //     if (!f->w)
-    //     {
-    //         return f;
-    //     }
-    //     auto comp = br.lo;
-    //     if(br.lo==consts[0])
-    //     {
-    //         comp = consts[1];
-    //     }
-    //     else if(br.lo==consts[1])
-    //     {
-    //         comp = consts[0];
-    //     }
-    //     else
-    //     {
-    //         comp = complement(br.lo);
-    //     }
-    //     auto canon = foa(std::make_shared<bool_edge>(false, foa(std::make_shared<bool_node>(br.x, br.hi,
-    //     make_canonical(comp))))); return canon;
-    // }
 
     [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
     {
@@ -825,6 +668,147 @@ class kfdd_manager : public detail::manager<bool, bool>
 
         return std::array<edge_ptr, 2>{std::make_shared<bool_edge>(false, leaf),
                                        std::make_shared<bool_edge>(true, leaf)};
+    }
+
+    void dtl_sift()
+    {
+        gc();
+        //run through all variables
+        auto start_size = node_count();
+        //for each variable:
+        //move to first position
+        //move to last position, recording minimum size
+        //change type, sift to first position, recording minimum size
+        //change type, sift to last position, recording minimum size
+        //change type to minimum type and move to minimum position
+        //CURRENTLY WORKING DIFFERENTLY FOR TESTING
+        for (auto x = 0; x < var_count(); x++)
+        {
+            auto const initial_size = node_count();
+            auto const initial_pos = var2lvl[x];
+            auto const initial_t = vl[x].t;
+            auto min_size = node_count();
+            auto min_pos = 0;
+            auto min_t = vl[x].t;
+            std::cout << "Start sifting for variable " << x << "\n";
+            std::cout << "t: " << e_to_s(vl[x].t) << ", pos: " << var2lvl[x] << ", size: " << min_size << "\n";
+            //move to first position
+            change_expansion_type(x, expansion::S);
+            sift(var2lvl[x], 0);
+            auto size = node_count();
+            auto old_size = INT_MAX;
+            if (size < min_size)
+            {
+                min_pos = 0;
+                min_t = expansion::S;
+                std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
+                          << " at position " << min_pos << " and expansion type S\n";
+                min_size = size;
+            }
+            std::cout << "Moved to pos 0"
+                      << "\n";
+            std::cout << "t: " << e_to_s(vl[x].t) << ", size: " << size << "\n";
+            for (auto i = 0; i < var_count() - 1; i++)
+            {
+                old_size = node_count();
+                sift(i, i + 1);
+                size = node_count();
+                std::cout << "Sift: var " << std::format("{:03}", x) << ", pos " << std::format("{:03}", i) << " => "
+                          << std::format("{:03}", i + 1) << ", t:  S"
+                          << ", size: " << old_size << " => " << size << "\n";
+                if (size < min_size)
+                {
+                    min_pos = i + 1;
+                    min_t = expansion::S;
+                    std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
+                              << " at position " << min_pos << " and expansion type S\n";
+                    min_size = size;
+                }
+            }
+            change_expansion_type(x, expansion::PD);
+            sift(var2lvl[x], 0);
+            size = node_count();
+            if (size < min_size)
+            {
+                min_pos = 0;
+                min_t = expansion::PD;
+                std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
+                          << " at position " << min_pos << " and expansion type PD\n";
+                min_size = size;
+            }
+            for (auto i = 0; i < var_count() - 1; i++)
+            {
+                old_size = node_count();
+                sift(i, i + 1);
+                size = node_count();
+                std::cout << "Sift: var " << std::format("{:03}", x) << ", pos " << std::format("{:03}", i) << " => "
+                          << std::format("{:03}", i + 1) << ", t: PD"
+                          << ", size: " << old_size << " => " << size << "\n";
+                if (size < min_size)
+                {
+                    min_pos = i + 1;
+                    min_t = expansion::PD;
+                    std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
+                              << " at position " << min_pos << " and expansion type PD\n";
+                    min_size = size;
+                }
+            }
+
+            change_expansion_type(x, expansion::ND);
+            sift(var2lvl[x], 0);
+            size = node_count();
+            if (size < min_size)
+            {
+                min_pos = 0;
+                min_t = expansion::ND;
+                std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
+                          << " at position " << min_pos << " and expansion type ND\n";
+                min_size = size;
+            }
+            for (auto i = 0; i < var_count() - 1; i++)
+            {
+                old_size = node_count();
+                sift(i, i + 1);
+                size = node_count();
+                std::cout << "Sift: var " << std::format("{:03}", x) << ", pos " << std::format("{:03}", i) << " => "
+                          << std::format("{:03}", i + 1) << ", t: ND"
+                          << ", size: " << old_size << " => " << size << "\n";
+                if (size < min_size)
+                {
+                    min_pos = i + 1;
+                    min_t = expansion::ND;
+                    std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " <<
+                    x
+                              << " at position " << min_pos << " and expansion type ND\n";
+                    min_size = size;
+                }
+            }
+            if (min_size < initial_size)
+            {
+                change_expansion_type(x, min_t);
+                sift(var_count() - 1, min_pos);
+                std::cout << "Sifting for variable " << std::format("{:03}", x) << " done. Minimal pos at " << min_pos
+                          << " with expansion type " << e_to_s(min_t) << " old size: " << initial_size
+                          << " new size: " << node_count() << "\n";
+            }
+            else
+            {
+                change_expansion_type(x, initial_t);
+                sift(var_count() - 1, initial_pos);
+                std::cout << "Sifting for variable " << std::format("{:03}", x)
+                          << " done. No new minimum found. t = " << e_to_s(initial_t) << ", pos = " << initial_pos
+                          << "."
+                          << "\n";
+            }
+        }
+        std::cout << "dtl sifting done"
+                  << "\n";
+        std::cout << "old size: " << start_size << ", new size: " << node_count() << "\n";
+        for (auto x = 0; x < var_count(); x++)
+        {
+            std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
+                      << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
+        }
     }
 };
 
@@ -989,6 +973,11 @@ auto inline kfdd::sharpsat() const
     return mgr->sharpsat(f);
 }
 
+inline auto kfdd::dtl_sift() const
+{
+    assert(mgr);
+    mgr->dtl_sift();
+}
 
 void inline kfdd::print() const
 {

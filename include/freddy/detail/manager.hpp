@@ -533,6 +533,26 @@ class manager
     }
     // NOLINTEND
 
+    static auto e_to_s(expansion e)
+    {
+        switch(e)
+        {
+            case expansion::S:
+                return "S";
+            break;
+            case expansion::PD:
+                return "PD";
+            break;
+            case expansion::ND:
+                return "ND";
+            break;
+            default:
+                assert(false);
+            break;
+        }
+        return "";
+    }
+
     auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs,
                         std::ostream& s) const -> void
     {
@@ -553,7 +573,7 @@ class manager
                 s << "f -> x" << lvl2var[i] << " [style=invis];\n";
             }
 
-            s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")" << lvl2var[i] << "\"];\n";
+            s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")" << lvl2var[i] << " [" << e_to_s(vl[lvl2var[i]].t) << "]" << "\"];\n";
 
             if (i + 1 < var_count())
             {
@@ -605,6 +625,75 @@ class manager
     auto virtual mul(edge_ptr, edge_ptr) -> edge_ptr = 0;
 
     [[nodiscard]] auto virtual regw() const -> E = 0;  // returns the regular weight of an edge
+
+    auto sift(std::int32_t const lvl_x, std::int32_t const lvl_y)
+    {
+        assert(lvl_x < var_count());
+        assert(lvl_y < var_count());
+
+        if (lvl_x == lvl_y)
+        {
+            return;
+        }
+
+        auto const start = lvl_x < lvl_y ? lvl_x : lvl_x - 1;
+        auto const stop = lvl_x < lvl_y ? lvl_y : lvl_y - 1;
+        auto const step = lvl_x < lvl_y ? 1 : -1;
+
+        for (auto lvl = start; lvl != stop; lvl += step)
+        {
+            exchange(lvl);
+        }
+    }
+
+    auto sift_down(std::int32_t lvl, std::int32_t& lvl_min, std::int32_t& ncnt_min)
+    {
+        assert(lvl < var_count());
+        assert(lvl_min < var_count());
+        assert(ncnt_min > 0);
+
+        auto ncnt_start = 0;
+        auto ncnt_end = 0;
+        while (lvl != var_count() - 1 &&
+               config::growth_factor * static_cast<float>(ncnt_start) >= static_cast<float>(ncnt_end))
+        {
+            ncnt_start = node_count();
+            exchange(lvl++);
+            ncnt_end = node_count();
+
+            if (ncnt_end < ncnt_min)
+            {
+                lvl_min = lvl;
+                ncnt_min = ncnt_end;
+            }
+        }
+
+        return lvl;
+    }
+
+    auto sift_up(std::int32_t lvl, std::int32_t& lvl_min, std::int32_t& ncnt_min)
+    {
+        assert(lvl < var_count());
+        assert(lvl_min < var_count());
+        assert(ncnt_min > 0);
+
+        auto ncnt_start = 0;
+        auto ncnt_end = 0;
+        while (--lvl != -1 && config::growth_factor * static_cast<float>(ncnt_start) >= static_cast<float>(ncnt_end))
+        {
+            ncnt_start = node_count();
+            exchange(lvl);
+            ncnt_end = node_count();
+
+            if (ncnt_end < ncnt_min)
+            {
+                lvl_min = lvl;
+                ncnt_min = ncnt_end;
+            }
+        }
+
+        return ++lvl;
+    }
 
     std::vector<edge_ptr> vars;  // DD variables that are never cleared
 
@@ -768,75 +857,6 @@ class manager
         }
     }
 
-    auto sift(std::int32_t const lvl_x, std::int32_t const lvl_y)
-    {
-        assert(lvl_x < var_count());
-        assert(lvl_y < var_count());
-
-        if (lvl_x == lvl_y)
-        {
-            return;
-        }
-
-        auto const start = lvl_x < lvl_y ? lvl_x : lvl_x - 1;
-        auto const stop = lvl_x < lvl_y ? lvl_y : lvl_y - 1;
-        auto const step = lvl_x < lvl_y ? 1 : -1;
-
-        for (auto lvl = start; lvl != stop; lvl += step)
-        {
-            exchange(lvl);
-        }
-    }
-
-    auto sift_down(std::int32_t lvl, std::int32_t& lvl_min, std::int32_t& ncnt_min)
-    {
-        assert(lvl < var_count());
-        assert(lvl_min < var_count());
-        assert(ncnt_min > 0);
-
-        auto ncnt_start = 0;
-        auto ncnt_end = 0;
-        while (lvl != var_count() - 1 &&
-               config::growth_factor * static_cast<float>(ncnt_start) >= static_cast<float>(ncnt_end))
-        {
-            ncnt_start = node_count();
-            exchange(lvl++);
-            ncnt_end = node_count();
-
-            if (ncnt_end < ncnt_min)
-            {
-                lvl_min = lvl;
-                ncnt_min = ncnt_end;
-            }
-        }
-
-        return lvl;
-    }
-
-    auto sift_up(std::int32_t lvl, std::int32_t& lvl_min, std::int32_t& ncnt_min)
-    {
-        assert(lvl < var_count());
-        assert(lvl_min < var_count());
-        assert(ncnt_min > 0);
-
-        auto ncnt_start = 0;
-        auto ncnt_end = 0;
-        while (--lvl != -1 && config::growth_factor * static_cast<float>(ncnt_start) >= static_cast<float>(ncnt_end))
-        {
-            ncnt_start = node_count();
-            exchange(lvl);
-            ncnt_end = node_count();
-
-            if (ncnt_end < ncnt_min)
-            {
-                lvl_min = lvl;
-                ncnt_min = ncnt_end;
-            }
-        }
-
-        return ++lvl;
-    }
-
     auto to_dot(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks, std::ostream& s) const
     {
         assert(f);
@@ -875,8 +895,6 @@ class manager
     std::vector<std::int32_t> lvl2var;
 
     std::unordered_set<node_ptr, hash, comp> nc;  // constants
-
-    std::vector<variable<E, V>> vl;
 };
 
 }  // namespace freddy::detail

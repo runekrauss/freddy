@@ -191,15 +191,25 @@ TEST_CASE("kfdd synthesis is performed", "[queen]")
     dtl.push_back(expansion::PD);
     dtl.push_back(expansion::PD);
     auto const pred = enc_with_dtl(mgr, dtl);
-    mgr.dtl_sift(pred);
-    mgr.dtl_sift(pred);
+    //std::cout << "no. of solutions: " << pred.sharpsat() << "\n";
+    pred.dtl_sift();
+    pred.print();
+    mgr.change_expansion_type(15,expansion::PD);
+    mgr.change_expansion_type(12, expansion::PD);
+    mgr.change_expansion_type(10, expansion::PD);
+    mgr.change_expansion_type(9, expansion::PD);
+    mgr.change_expansion_type(6, expansion::PD);
+    mgr.change_expansion_type(5, expansion::PD);
+    mgr.change_expansion_type(3, expansion::PD);
+    mgr.change_expansion_type(0, expansion::PD);
+    //std::cout << "no. of solutions: " << pred.sharpsat() << "\n";
 #ifndef NDEBUG
     //std::cout << mgr << '\n';
     //std::cout << pred << '\n';
     pred.print();
 #endif
-    std::vector solution1 = {false,false,true,false,true,false,false,false,false,false,false,true,false,true,false,false};
-    std::vector solution2 = {false,true,false,false,false,false,false,true,true,false,false,false,false,false,true,false};
+    const std::vector solution1 = {false,false,true,false,true,false,false,false,false,false,false,true,false,true,false,false};
+    const std::vector solution2 = {false,true,false,false,false,false,false,true,true,false,false,false,false,false,true,false};
     CHECK(pred.eval(solution1)==true);
     CHECK(pred.eval(solution2)==true);
     for(int i = 0; i < 65536; i++)
@@ -220,7 +230,7 @@ TEST_CASE("kfdd synthesis is performed", "[queen]")
         auto var13 = !!(i & 0b0010000000000000);
         auto var14 = !!(i & 0b0100000000000000);
         auto var15 = !!(i & 0b1000000000000000);
-        std::vector params = {var0,var1,var2,var3,var4,var5,var6,var7,var8,var9,var10,var11,var12,var13,var14,var15};
+        const std::vector params = {var0,var1,var2,var3,var4,var5,var6,var7,var8,var9,var10,var11,var12,var13,var14,var15};
         if(params==solution1||params==solution2) {continue;}
         CHECK(pred.eval(params) == false);
     }
