@@ -221,13 +221,13 @@ class manager
         {
             case expansion::S:
             case expansion::PD:
-                new_var = foa(std::make_shared<edge<E, V>>(
-                    regw(), foa(std::make_shared<node<E, V>>(var_count() - 1, consts[1], consts[0]))));
+                new_var = uedge(
+                    regw(), unode(var_count() - 1, consts[1], consts[0]));
                 break;
             case expansion::ND:
                 //another way to get negated regw?
-                new_var = foa(std::make_shared<edge<E, V>>(
-                    consts[1]->w, foa(std::make_shared<node<E, V>>(var_count() - 1, consts[1], consts[0]))));
+                new_var = uedge(
+                    consts[1]->w, unode(var_count() - 1, consts[1], consts[0]));
                 break;
             default: assert(false); break;
         }
@@ -240,7 +240,7 @@ class manager
 
     auto make_const(E w, V c)
     {
-        return foa(std::make_shared<edge<E, V>>(std::move(w), foa(std::make_shared<node<E, V>>(std::move(c)))));
+        return uedge(std::move(w), unode(std::move(c)));
     }
 
     template <typename T>
@@ -480,40 +480,35 @@ class manager
         return var2lvl[f->v->br().x] <= var2lvl[g->v->br().x] ? f->v->br().x : g->v->br().x;
     }
 
-    auto foa(node_ptr v) -> node_ptr
+    auto unode(std::int32_t const x, edge_ptr hi, edge_ptr lo)  // unique node
     {
-        assert(v);
-
-        if (v->is_const())
-        {
-            ctrl(nc);
-            return *nc.insert(std::move(v)).first;  // in case of a collision, v is the list head
-        }
-        ctrl(vl[v->br().x].nt);
-        return *vl[v->br().x].nt.insert(std::move(v)).first;
+        return foa(node<E, V>{x, std::move(hi), std::move(lo)}, vl[x].nt);
     }
 
-    auto foa(edge_ptr e) -> edge_ptr
+    auto unode(V c)
     {
-        assert(e);
+        return foa(node<E, V>{std::move(c)}, nc);
+    }
 
-        if (e->v->is_const())
+    auto uedge(E w, node_ptr v)
+    {
+        if (v->is_const())
         {
-            ctrl(ec);
-            return *ec.insert(std::move(e)).first;
+            return foa(edge<E, V>{std::move(w), std::move(v)}, ec);
         }
-        ctrl(vl[e->v->br().x].et);
-        return *vl[e->v->br().x].et.insert(std::move(e)).first;
+        // v is labeled by variable
+        auto const x = v->br().x;
+        return foa(edge<E, V>{std::move(w), std::move(v)}, vl[x].et);
     }
 
     template <typename T>
-    auto cache(T op) -> T const*
+    auto cache(T op)
     {
         return static_cast<T const*>((*ct.insert(std::make_unique<T>(std::move(op))).first).get());
     }
 
     template <typename T>
-    [[nodiscard]] auto cached(T const& op) const noexcept -> T const*
+    [[nodiscard]] auto cached(T const& op) const noexcept
     {
         auto const cr = ct.find(&op);
         return cr == ct.end() ? nullptr : static_cast<T const*>((*cr).get());
@@ -524,7 +519,7 @@ class manager
     {
         assert(f);
 
-        return foa(std::make_shared<detail::edge<E, V>>(comb(w, f->w), f->v));
+        return uedge(comb(w, f->w), f->v);
     }
 
     // NOLINTBEGIN
@@ -619,80 +614,9 @@ class manager
     std::vector<variable<E, V>> vl;
 
     std::vector<std::int32_t> var2lvl;  // for reordering
-
-    auto sift(std::int32_t const lvl_x, std::int32_t const lvl_y) -> void
-    {
-        assert(lvl_x < var_count());
-        assert(lvl_y < var_count());
-
-        if (lvl_x == lvl_y)
-        {
-            return;
-        }
-
-        auto const start = (lvl_x < lvl_y) ? lvl_x : lvl_x - 1;
-        auto const stop = (lvl_x < lvl_y) ? lvl_y : lvl_y - 1;
-        auto const step = (lvl_x < lvl_y) ? 1 : -1;
-
-        for (auto lvl = start; lvl != stop; lvl += step)
-        {
-            exchange(lvl);
-        }
-    }
-
-    auto sift_down(std::int32_t lvl, std::int32_t& lvl_min, std::int32_t& ncnt_min) -> std::int32_t
-    {
-        assert(lvl < var_count());
-        assert(lvl_min < var_count());
-        assert(ncnt_min > 0);
-
-        auto ncnt_start = 0;
-        auto ncnt_end = 0;
-        while (lvl != var_count() - 1 &&
-               config::growth_factor * static_cast<float>(ncnt_start) >= static_cast<float>(ncnt_end))
-        {
-            ncnt_start = node_count();
-            exchange(lvl++);
-            ncnt_end = node_count();
-
-            if (ncnt_end < ncnt_min)
-            {
-                lvl_min = lvl;
-                ncnt_min = ncnt_end;
-            }
-        }
-
-        return lvl;
-    }
-
-    auto sift_up(std::int32_t lvl, std::int32_t& lvl_min, std::int32_t& ncnt_min) -> std::int32_t
-    {
-        assert(lvl < var_count());
-        assert(lvl_min < var_count());
-        assert(ncnt_min > 0);
-
-        auto ncnt_start = 0;
-        auto ncnt_end = 0;
-        while (--lvl != -1 && config::growth_factor * static_cast<float>(ncnt_start) >= static_cast<float>(ncnt_end))
-        {
-            ncnt_start = node_count();
-            exchange(lvl);
-            ncnt_end = node_count();
-
-            if (ncnt_end < ncnt_min)
-            {
-                lvl_min = lvl;
-                ncnt_min = ncnt_end;
-            }
-        }
-
-        return ++lvl;
-    }
-
-
   private:
     template <typename T>
-    auto ctrl(T& ut) -> void
+    auto ctrl(T& ut)
     {
         if (ut.load_factor() < config::load_factor)
         {
@@ -768,7 +692,7 @@ class manager
         {
             if (swap_is_needed((*it)->br().hi, (*it)->br().lo))  // swapping levels is a local operation
             {
-                auto v = *it;
+                auto v = *it;  // to ensure existing references are not lost
                 it = vl[x].nt.erase(it);
 
                 auto& br = v->br();
@@ -777,7 +701,8 @@ class manager
                 br.hi = hi;
                 br.x = y;
 
-                foa(v);
+                ctrl(vl[y].nt);
+                vl[y].nt.insert(std::move(v));
             }
             else
             {
@@ -789,7 +714,9 @@ class manager
         {  // swap edges pointing to swapped nodes
             if ((*it)->v->br().x == y)
             {
-                foa(*it);
+                ctrl(vl[y].et);
+                vl[y].et.insert(*it);
+
                 it = vl[x].et.erase(it);
             }
             else
@@ -804,6 +731,18 @@ class manager
         std::swap(var2lvl[x], var2lvl[y]);
     }
 
+    template <typename T>
+    auto foa(T&& obj, std::unordered_set<std::shared_ptr<T>, hash, comp>& ut)
+    {  // find or add node/edge
+        auto const search = ut.find(&obj);
+        if (search == ut.end())
+        {
+            ctrl(ut);  // check for garbage collection and unique table expansion
+            return *ut.insert(std::make_shared<T>(std::forward<T>(obj))).first;
+        }
+        return *search;
+    }
+
     [[nodiscard]] auto longest_path_rec(edge_ptr const& f) const noexcept -> std::int32_t
     {
         assert(f);
@@ -811,7 +750,7 @@ class manager
         return f->v->is_const() ? 1 : std::max(longest_path_rec(f->v->br().hi), longest_path_rec(f->v->br().lo)) + 1;
     }
 
-    auto node_count(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks) const -> void
+    auto node_count(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks) const
     {
         assert(f);
 
@@ -829,7 +768,76 @@ class manager
         }
     }
 
-    auto to_dot(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks, std::ostream& s) const -> void
+    auto sift(std::int32_t const lvl_x, std::int32_t const lvl_y)
+    {
+        assert(lvl_x < var_count());
+        assert(lvl_y < var_count());
+
+        if (lvl_x == lvl_y)
+        {
+            return;
+        }
+
+        auto const start = lvl_x < lvl_y ? lvl_x : lvl_x - 1;
+        auto const stop = lvl_x < lvl_y ? lvl_y : lvl_y - 1;
+        auto const step = lvl_x < lvl_y ? 1 : -1;
+
+        for (auto lvl = start; lvl != stop; lvl += step)
+        {
+            exchange(lvl);
+        }
+    }
+
+    auto sift_down(std::int32_t lvl, std::int32_t& lvl_min, std::int32_t& ncnt_min)
+    {
+        assert(lvl < var_count());
+        assert(lvl_min < var_count());
+        assert(ncnt_min > 0);
+
+        auto ncnt_start = 0;
+        auto ncnt_end = 0;
+        while (lvl != var_count() - 1 &&
+               config::growth_factor * static_cast<float>(ncnt_start) >= static_cast<float>(ncnt_end))
+        {
+            ncnt_start = node_count();
+            exchange(lvl++);
+            ncnt_end = node_count();
+
+            if (ncnt_end < ncnt_min)
+            {
+                lvl_min = lvl;
+                ncnt_min = ncnt_end;
+            }
+        }
+
+        return lvl;
+    }
+
+    auto sift_up(std::int32_t lvl, std::int32_t& lvl_min, std::int32_t& ncnt_min)
+    {
+        assert(lvl < var_count());
+        assert(lvl_min < var_count());
+        assert(ncnt_min > 0);
+
+        auto ncnt_start = 0;
+        auto ncnt_end = 0;
+        while (--lvl != -1 && config::growth_factor * static_cast<float>(ncnt_start) >= static_cast<float>(ncnt_end))
+        {
+            ncnt_start = node_count();
+            exchange(lvl);
+            ncnt_end = node_count();
+
+            if (ncnt_end < ncnt_min)
+            {
+                lvl_min = lvl;
+                ncnt_min = ncnt_end;
+            }
+        }
+
+        return ++lvl;
+    }
+
+    auto to_dot(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks, std::ostream& s) const
     {
         assert(f);
 
@@ -867,6 +875,8 @@ class manager
     std::vector<std::int32_t> lvl2var;
 
     std::unordered_set<node_ptr, hash, comp> nc;  // constants
+
+    std::vector<variable<E, V>> vl;
 };
 
 }  // namespace freddy::detail
