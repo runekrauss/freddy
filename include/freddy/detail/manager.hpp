@@ -514,7 +514,7 @@ class manager
     // NOLINTEND
 
     auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs,
-                        std::ostream& s) const -> void
+                        std::ostream& s, bool unessential_levels = true) const -> void
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -526,31 +526,43 @@ class manager
         {
             s << "f -> c [style=invis];\n";
         }
-        for (auto i = 0; i < var_count(); ++i)  // arrange nodes per level
+        std::vector<int> relevant_vars_ordered = {};
+        for (auto lvl = 0; lvl < var_count(); ++lvl)  // var nodes per level
+        {
+            auto var = lvl2var[lvl];
+            bool is_essential_fs = unessential_levels;
+            for (auto f : fs)
+            {
+                is_essential_fs |= is_essential(f, var);
+            }
+            if (is_essential_fs)
+            {
+                relevant_vars_ordered.push_back(var);
+                std::string decomposition;
+                switch (vl[lvl2var[lvl]].t)
+                {
+                    case expansion::S: decomposition = "S"; break;
+                    case expansion::PD: decomposition = "PD"; break;
+                    default: assert(false);
+                }
+                s << 'x' << lvl2var[lvl] << R"( [shape=plaintext,fontname="times italic",label=")" << lvl2var[lvl]
+                  << " " << decomposition << "\"];\n";
+            }
+        }
+        for (auto i = 0; i < relevant_vars_ordered.size(); ++i)  // arrange nodes per level
         {
             if (i == 0)
             {
-                s << "f -> x" << lvl2var[i] << " [style=invis];\n";
+                s << "f -> x" << relevant_vars_ordered[i] << " [style=invis];\n";
             }
 
-            std::string decomposition;
-            switch (vl[lvl2var[i]].t)
+            if (i + 1 < relevant_vars_ordered.size())
             {
-                case expansion::S: decomposition = "S"; break;
-                case expansion::PD: decomposition = "PD"; break;
-                default: assert(false);
-            }
-
-            s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")"
-              << lvl2var[i] << " " << decomposition << "\"];\n";
-
-            if (i + 1 < var_count())
-            {
-                s << 'x' << lvl2var[i] << " -> x" << lvl2var[i + 1] << " [style=invis];\n";
+                s << 'x' << relevant_vars_ordered[i] << " -> x" << relevant_vars_ordered[i + 1] << " [style=invis];\n";
             }
             else
             {
-                s << 'x' << lvl2var[i] << " -> c [style=invis];\n";
+                s << 'x' << relevant_vars_ordered[i] << " -> c [style=invis];\n";
             }
         }
 
