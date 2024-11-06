@@ -99,6 +99,8 @@ class manager
         s << "#Operations = " << mgr.ct.size();
         s << "\nOccupancy = " << mgr.ct.load_factor();
 
+        s << mgr.getCacheStats();
+
         return s;
     }
 
@@ -468,15 +470,114 @@ class manager
         return foa(edge<E, V>{std::move(w), std::move(v)}, vl[x].et);
     }
 
+    //
+    //
+    //
+    struct stat{
+        int cache_call{0};
+        int cache_collision{0};
+        int cache_max_coll{0};
+        int cached_call{0};
+        int cached_hit{0};
+        int cached_hit_added_indexes{0};
+        int cached_miss_added_indexes{0};
+    };
+    mutable std::unordered_map<std::string, stat> stats;
+
+    [[nodiscard]] auto getCacheStats() const
+    {
+        std::string s = "\nCache Analizations per Operation:\n";
+        for (const auto& pair : stats) {
+            const std::string& key = pair.first;
+            const stat& values = pair.second;
+
+            s += "------\n" + key + ":\n";
+            s += "cached_call: " + std::to_string(values.cached_call) + "\n";
+            s += "cached_hit: " + std::to_string(values.cached_hit) + "\n";
+            double hit_rate = static_cast<double>(values.cached_hit) / values.cached_call;
+            s += "hitrate: " + std::to_string(hit_rate) + "\n";
+            double hit_avg = static_cast<double>(values.cached_hit_added_indexes / values.cached_hit);
+            s += "hitAvg-" + std::to_string(hit_avg) + "\n";
+            double miss_avg = static_cast<double>(values.cached_miss_added_indexes) / (values.cached_call - values.cached_hit);
+            s += "missAvg-" + std::to_string(miss_avg) + "\n-\n";
+
+            s += "cache_call: " + std::to_string(values.cache_call) + "\n";
+            s += "cache_collision: " + std::to_string(values.cache_collision) + "\n";
+            double collision_rate = static_cast<double>(values.cache_collision) / values.cache_call;
+            s += "collisionRate-" + std::to_string(collision_rate) + "\n";
+            s += "cache_max_coll: " + std::to_string(values.cache_max_coll) + "\n";
+        }
+        return s;
+    }
+
+    template <typename T>
+    auto cache_stats(T const& op) {
+        stats[typeid(op).name()].cache_call++;
+
+        int index_in_bucket = 0;
+        int hash = op() % ct.bucket_count();
+
+        bool collided = false;
+
+        for (auto it = ct.begin(hash); it != ct.end(hash); ++it)
+        {
+            index_in_bucket++;
+            collided = true;
+        }
+
+        if (collided){
+            stats[typeid(op).name()].cache_collision++;
+        }
+
+        if (index_in_bucket > stats[typeid(op).name()].cache_max_coll){
+            stats[typeid(op).name()].cache_max_coll = index_in_bucket;
+        }
+    }
+
+    template <typename T>
+    auto cached_stats(T const& op) const
+    {
+        stats[typeid(op).name()].cached_call++;
+
+        int index_in_bucket = 0;
+        int hash = op() % ct.bucket_count();
+
+        bool found_something = false;
+
+        for (auto it = ct.begin(hash); it != ct.end(hash); ++it)
+        {
+            index_in_bucket++;
+
+            if (*(*it) == op){
+                found_something = true;
+                break;
+            }
+        }
+
+        if (found_something){
+            stats[typeid(op).name()].cached_hit_added_indexes += index_in_bucket;
+            stats[typeid(op).name()].cached_hit++;
+        } else {
+            stats[typeid(op).name()].cached_miss_added_indexes += index_in_bucket;
+        }
+    }
+    //
+    //
+    //
+
     template <typename T>
     auto cache(T op)
     {
+        cache_stats(op);
+
         return static_cast<T const*>((*ct.insert(std::make_unique<T>(std::move(op))).first).get());
     }
 
     template <typename T>
     [[nodiscard]] auto cached(T const& op) const noexcept
     {
+        cached_stats(op);
+
         auto const cr = ct.find(&op);
         return cr == ct.end() ? nullptr : static_cast<T const*>((*cr).get());
     }
