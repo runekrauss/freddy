@@ -694,60 +694,7 @@ class manager
 
         return ++lvl;
     }
-
-    std::vector<edge_ptr> vars;  // DD variables that are never cleared
-
-    std::vector<edge_ptr> consts;  // DD constants that are never cleared
-
-    // to cache operation results
-    std::vector<variable<E, V>> vl;
-
-    std::vector<std::int32_t> var2lvl;  // for reordering
-  private:
-    template <typename T>
-    auto ctrl(T& ut)
-    {
-        if (ut.load_factor() < config::load_factor)
-        {
-            return;
-        }
-        // collision probability is too high => clean up nodes/edges
-        auto const old_lf = ut.load_factor();
-        gc();
-
-        if (ut.load_factor() > old_lf - config::dead_factor)
-        {  // too few nodes were deleted => resize/rehash this UT
-            ut.reserve(2 * ut.bucket_count());
-        }
-    }
-
-    [[nodiscard]] auto eval(node_ptr const& v, std::vector<bool> const& as) const -> V
-    {
-        assert(v);
-        assert(static_cast<std::int32_t>(as.size()) == var_count());
-
-        if (v->is_const())
-        {
-            return v->c();
-        }
-
-        V r{};
-        auto const br = v->br();
-        switch (vl[br.x].t)
-        {
-            case expansion::PD: r = as[br.x] ? merge(eval(br.hi, as), eval(br.lo, as)) : eval(br.lo, as); break;
-            case expansion::ND: r = !as[br.x] ? merge(eval(br.hi, as), eval(br.lo, as)) : eval(br.lo, as); break;
-            case expansion::S:
-            {
-                r = as[br.x] ? eval(br.hi, as) : eval(br.lo, as);
-                break;
-            }
-            default: assert(false);
-        }
-        return r;
-    }
-
-    auto exchange(std::int32_t const lvl)  // with the level below
+        auto exchange(std::int32_t const lvl)  // with the level below
     {
         assert(lvl < var_count());
         assert(var_count() > 1);
@@ -819,15 +766,69 @@ class manager
         std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
         std::swap(var2lvl[x], var2lvl[y]);
     }
+    template <typename T>
+    auto ctrl(T& ut)
+    {
+        if (ut.load_factor() < config::load_factor)
+        {
+            return;
+        }
+        // collision probability is too high => clean up nodes/edges
+        auto const old_lf = ut.load_factor();
+        gc();
+
+        if (ut.load_factor() > old_lf - config::dead_factor)
+        {  // too few nodes were deleted => resize/rehash this UT
+            ut.reserve(2 * ut.bucket_count());
+        }
+    }
+
+    std::vector<edge_ptr> vars;  // DD variables that are never cleared
+
+    std::vector<edge_ptr> consts;  // DD constants that are never cleared
+
+    // to cache operation results
+    std::vector<variable<E, V>> vl;
+
+    std::vector<std::int32_t> var2lvl;  // for reordering
+  private:
+
+
+    [[nodiscard]] auto eval(node_ptr const& v, std::vector<bool> const& as) const -> V
+    {
+        assert(v);
+        assert(static_cast<std::int32_t>(as.size()) == var_count());
+
+        if (v->is_const())
+        {
+            return v->c();
+        }
+
+        V r{};
+        auto const br = v->br();
+        switch (vl[br.x].t)
+        {
+            case expansion::PD: r = as[br.x] ? merge(eval(br.hi, as), eval(br.lo, as)) : eval(br.lo, as); break;
+            case expansion::ND: r = !as[br.x] ? merge(eval(br.hi, as), eval(br.lo, as)) : eval(br.lo, as); break;
+            case expansion::S:
+            {
+                r = as[br.x] ? eval(br.hi, as) : eval(br.lo, as);
+                break;
+            }
+            default: assert(false);
+        }
+        return r;
+    }
 
     template <typename T>
-    auto foa(T&& obj, std::unordered_set<std::shared_ptr<T>, hash, comp>& ut)
+    auto foa(const T obj, std::unordered_set<std::shared_ptr<T>, hash, comp>& ut)
     {  // find or add node/edge
         auto const search = ut.find(&obj);
+
         if (search == ut.end())
         {
             ctrl(ut);  // check for garbage collection and unique table expansion
-            return *ut.insert(std::make_shared<T>(std::forward<T>(obj))).first;
+            return *ut.insert(std::make_shared<T>(obj)).first;
         }
         return *search;
     }
