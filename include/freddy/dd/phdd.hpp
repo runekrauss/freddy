@@ -29,8 +29,8 @@
 // =====================================================================================================================
 
 using edge_weight = std::pair<bool,int32_t>;
-using phdd_edge = freddy::detail::edge<edge_weight, float>;
-using phdd_node = freddy::detail::node<edge_weight, float>;
+using phdd_edge = freddy::detail::edge<edge_weight, double>;
+using phdd_node = freddy::detail::node<edge_weight, double>;
 
 // =====================================================================================================================
 // std namespace
@@ -221,29 +221,33 @@ class phdd
     phdd_manager* mgr{};
 };
 
-class phdd_manager : public detail::manager<edge_weight, float>
+class phdd_manager : public detail::manager<edge_weight, double>
 {
   private:
-    auto static factorize_pow2(uint32_t w) -> std::pair<uint,uint>
+    auto static factorize_pow2(uint64_t w) -> std::pair<uint64_t ,uint64_t >
     {
-        const unsigned int pow = w & (-w);
+        uint64_t pow = w & (-w);
         auto exp = std::bit_width(pow) - 1;
         return {exp, w / pow};
     }
 
-    auto static decompose_float(float x) -> std::tuple<bool, uint32_t ,uint32_t>
+    auto static decompose_double(double x) -> std::tuple<bool, uint64_t ,uint64_t>
     {
-        assert(!isnanf(x) && !isinff(x) && std::isnormal(x));
+        if(std::isnan(x) || std::isinf(x) || !std::isnormal(x))
+        {
+            throw std::invalid_argument("double value escaped supported range");
+        }
         if(x == 0)
         {
             return {0,0,0};
         }
         bool const sign = std::signbit(x);
-        uint32_t const bits = *reinterpret_cast<uint32_t*>(&x);
-        int32_t const exponent = ((bits >> 23) & 0xFF) - 127 - 23; // bias 127, sig_size 23
-        uint32_t const significant = (bits & 0x7FFFFF) | (1 << 23); // leading zero
+        uint64_t const bits = *reinterpret_cast<uint64_t*>(&x);
+        int64_t const exponent = static_cast<int64_t>((bits >> static_cast<uint64_t>(52)) & static_cast<uint64_t>(0x7FF))
+                                 - 1023 - 52; // bias 1023, sig_size 52
+        uint64_t const significant = (bits & static_cast<uint64_t>(0xFFFFFFFFFFFFF))
+                                     | (static_cast<uint64_t>(1) << static_cast<uint64_t>(52)); // leading zero
         auto factors = factorize_pow2(significant);
-
         return {sign, exponent + factors.first, factors.second};
     }
 
@@ -293,15 +297,18 @@ class phdd_manager : public detail::manager<edge_weight, float>
         return phdd{consts[2], this};
     }
 
-    auto constant(float const w)
+    auto constant(double const w)
     {
         if(w == 0)
         {
             return zero();
         }
-        auto d = decompose_float(w);
-        assert(std::bit_width(std::get<2>(d)) < 24);
-        return phdd{make_const({std::get<0>(d),std::get<1>(d)}, static_cast<float>(std::get<2>(d))), this};
+        auto d = decompose_double(w);
+        if(std::bit_width(std::get<2>(d)) >= 53)
+        {
+            throw std::invalid_argument("double value escaped supported range");
+        }
+        return phdd{make_const({std::get<0>(d),std::get<1>(d)}, static_cast<double>(std::get<2>(d))), this};
     }
 
     [[nodiscard]] auto size(std::vector<phdd> const& fs) const
@@ -400,14 +407,17 @@ class phdd_manager : public detail::manager<edge_weight, float>
             {
                 std::swap(f,g);
             } // 2^f_w * ( f_vc + 2^(g_w - f_w) * g_vc)
-            auto f_vc = static_cast<uint32_t>(f->v->c());
-            auto g_vc = static_cast<uint32_t>(g->v->c());
+            auto f_vc = static_cast<uint64_t>(f->v->c());
+            auto g_vc = static_cast<uint64_t>(g->v->c());
             auto shift = static_cast<uint32_t>(g->w.second - f->w.second);
             auto sign = f->w.first;
 
-            assert(std::countl_zero(f_vc) > 1);
-            assert(std::countl_zero(g_vc) + 2 > (int) shift);
-            uint32_t g_vc_s = g_vc << shift;
+            if(std::countl_zero(f_vc) <= 1 ||
+               std::countl_zero(g_vc) + 2 <= static_cast<int>(shift))
+            {
+                throw std::invalid_argument("add up two constants leads to overflow");
+            }
+            uint64_t g_vc_s = g_vc << shift;
 
             std::pair<uint, uint> factors;
             if(f->w.first == g->w.first)
@@ -423,8 +433,11 @@ class phdd_manager : public detail::manager<edge_weight, float>
                 }
                 factors = factorize_pow2(f_vc - g_vc_s);
             }
-            assert(std::bit_width(factors.second) < 24);
-            return make_const({sign, factors.first + f->w.second}, static_cast<float>(factors.second));
+            if(std::bit_width(factors.second) >= 53)
+            {
+                throw std::invalid_argument("add up two constants leads to overflow");
+            }
+            return make_const({sign, factors.first + f->w.second}, static_cast<double>(factors.second));
         }
 
         if (std::abs(f->w.second) <= std::abs(g->w.second))
@@ -451,7 +464,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
         return apply(w, r);
     }
 
-    [[nodiscard]] auto agg(edge_weight const& w, float const& val) const noexcept -> float override
+    [[nodiscard]] auto agg(edge_weight const& w, double const& val) const noexcept -> double override
     {
         return w.first ? -1 * pow(2, w.second) * val : pow(2, w.second) * val;
     }
@@ -521,7 +534,7 @@ class phdd_manager : public detail::manager<edge_weight, float>
                                  uedge({lo->w.first ^ w.first, lo->w.second - w.second}, lo->v)));
     }
 
-    [[nodiscard]] auto merge(float const& val1, float const& val2) const noexcept -> float override
+    [[nodiscard]] auto merge(double const& val1, double const& val2) const noexcept -> double override
     {
         return (val1 + val2);
     }
