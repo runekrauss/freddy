@@ -243,9 +243,11 @@ class kfdd_manager : public detail::manager<bool, bool>
             //S => PD
             if (t == expansion::PD)
             {
-                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
+                for (const auto & it : var.nt)
                 {
-                    auto& br = (*it)->br();
+                    auto& br = it->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
                     br.hi = antiv(br.hi, br.lo);
                 }
             }
@@ -691,26 +693,39 @@ class kfdd_manager : public detail::manager<bool, bool>
             return static_cast<size_t>(node_count());
         };
 
-        auto move_to_top = [&](int x) { sift(var2lvl[x], 0); };
+        auto move_to_bottom = [&](const int x) { sift(var2lvl[x], var_count()-1); };
 
-        auto move_to_bottom = [&](int x) { sift(var2lvl[x], var_count() - 1); };
-
-        auto get_size_info = [&](int x) {
+        auto get_size_info = [&](const int x) {
             return vl[x].nt.size();
         };
 
-        auto find_smallest_level = [&](int x)-> smallest_level_r {
-            move_to_top(x);
+        auto comp_largest_layer = [&](const int x,const int y) {
+            return get_size_info(x) > get_size_info(y);
+        };
+
+        auto find_smallest_level = [&](const int x)-> smallest_level_r {
             auto size = get_size();
-            auto pos = 0;
-            for(auto i = 0; i < var_count()-1;i++)
+            auto pos = var2lvl[x];;
+            move_to_bottom(x);
+            for(auto i = var_count()-1; i >= 0;--i)
             {
+                auto old_size = get_size();
                 exchange(i);
+                auto new_size = get_size();
+                auto exceeding_size = static_cast<float>(old_size) * config::growth_factor;
+                auto new_size_f = static_cast<float>(new_size);
+                if(new_size_f > exceeding_size)
+                {
+                    exchange(i);
+                    auto actual_growth_factor = new_size_f / static_cast<float>(old_size);
+                    std::cout << "aborting sifting of variable " << x << ", actual growth factor was: " << actual_growth_factor << '\n';
+                    break;
+                }
                 auto tmp_size = get_size();
                 if (tmp_size < size)
                 {
                     size = tmp_size;
-                    pos = i+1;
+                    pos = i;
                 }
             }
             return {.x=x, .pos=pos, .size=size, .expansion = vl[x].t };
@@ -734,6 +749,7 @@ class kfdd_manager : public detail::manager<bool, bool>
             {
                 res = tmp_res;
             }
+            move_to_bottom(x);
             change_expansion_type(x, res.expansion);
             sift(var2lvl[x], res.pos);
             return res;
@@ -746,152 +762,28 @@ class kfdd_manager : public detail::manager<bool, bool>
             std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
                       << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
         }
-        for(auto x = 0; x < var_count(); ++x)
+
+        auto vars = std::vector<int>(var_count());
+        for (auto x = 0; x < var_count(); x++)
         {
+            vars[x] = x;
+        }
+        std::ranges::sort(vars, comp_largest_layer);
+        for(auto i = 0; i < var_count(); ++i)
+        {
+            auto x = vars[i];
             sift_single_var(x);
         }
+        //for(auto x = 0; x < var_count(); ++x)
+        //{
+        //    sift_single_var(x);
+        //}
         std::cout << "After sifting:" << '\n';
          for (auto x = 0; x < var_count(); x++)
          {
              std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
                        << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
          }
-
-        // //run through all variables
-        // auto start_size = get_size();
-        // //for each variable:
-        // //move to first position
-        // //move to last position, recording minimum size
-        // //change type, sift to first position, recording minimum size
-        // //change type, sift to last position, recording minimum size
-        // //change type to minimum type and move to minimum position
-        // //CURRENTLY WORKING DIFFERENTLY FOR TESTING
-        // for (auto x = 0; x < var_count(); x++)
-        // {
-        //     auto const initial_size = get_size();
-        //     auto const initial_pos = var2lvl[x];
-        //     auto const initial_t = vl[x].t;
-        //     auto min_size = get_size();
-        //     auto min_pos = 0;
-        //     auto min_t = vl[x].t;
-        //     std::cout << "Start sifting for variable " << x << "\n";
-        //     std::cout << "t: " << e_to_s(vl[x].t) << ", pos: " << var2lvl[x] << ", size: " << min_size << "\n";
-        //     //move to first position
-        //     // sift(var2lvl[x], 0);
-        //     auto size = get_size();
-        //     auto old_size = INT_MAX;
-        //     change_expansion_type(x, expansion::S);
-        //     if (size < min_size)
-        //     {
-        //         min_pos = 0;
-        //         min_t = expansion::S;
-        //         std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
-        //                   << " at position " << min_pos << " and expansion type S\n";
-        //         min_size = size;
-        //     }
-        //     std::cout << "Moved to pos 0"
-        //               << "\n";
-        //     std::cout << "t: " << e_to_s(vl[x].t) << ", size: " << size << "\n";
-        //     for (auto i = 0; i < var_count() - 1; i++)
-        //     {
-        //         old_size = get_size();
-        //         exchange(i);
-        //         size = get_size();
-        //         std::cout << "Sift: var " << std::format("{:03}", x) << ", pos " << std::format("{:03}", i) << " => "
-        //                   << std::format("{:03}", i + 1) << ", t:  S"
-        //                   << ", size: " << old_size << " => " << size << "\n";
-        //         if (size < min_size)
-        //         {
-        //             min_pos = i + 1;
-        //             min_t = expansion::S;
-        //             std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
-        //                       << " at position " << min_pos << " and expansion type S\n";
-        //             min_size = size;
-        //         }
-        //     }
-        //     change_expansion_type(x, expansion::PD);
-        //     sift(var2lvl[x], 0);
-        //     size = get_size();
-        //     if (size < min_size)
-        //     {
-        //         min_pos = 0;
-        //         min_t = expansion::PD;
-        //         std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
-        //                   << " at position " << min_pos << " and expansion type PD\n";
-        //         min_size = size;
-        //     }
-        //     for (auto i = 0; i < var_count() - 1; i++)
-        //     {
-        //         old_size = get_size();
-        //         sift(i, i + 1);
-        //         size = get_size();
-        //         std::cout << "Sift: var " << std::format("{:03}", x) << ", pos " << std::format("{:03}", i) << " => "
-        //                   << std::format("{:03}", i + 1) << ", t: PD"
-        //                   << ", size: " << old_size << " => " << size << "\n";
-        //         if (size < min_size)
-        //         {
-        //             min_pos = i + 1;
-        //             min_t = expansion::PD;
-        //             std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
-        //                       << " at position " << min_pos << " and expansion type PD\n";
-        //             min_size = size;
-        //         }
-        //     }
-        //
-        //     change_expansion_type(x, expansion::ND);
-        //     sift(var2lvl[x], 0);
-        //     size = get_size();
-        //     if (size < min_size)
-        //     {
-        //         min_pos = 0;
-        //         min_t = expansion::ND;
-        //         std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
-        //                   << " at position " << min_pos << " and expansion type ND\n";
-        //         min_size = size;
-        //     }
-        //     for (auto i = 0; i < var_count() - 1; i++)
-        //     {
-        //         old_size = get_size();
-        //         sift(i, i + 1);
-        //         size = get_size();
-        //         std::cout << "Sift: var " << std::format("{:03}", x) << ", pos " << std::format("{:03}", i) << " => "
-        //                   << std::format("{:03}", i + 1) << ", t: ND"
-        //                   << ", size: " << old_size << " => " << size << "\n";
-        //         if (size < min_size)
-        //         {
-        //             min_pos = i + 1;
-        //             min_t = expansion::ND;
-        //             std::cout << "Found a new min size of " << size << " (was " << min_size << ") with variable " << x
-        //                       << " at position " << min_pos << " and expansion type ND\n";
-        //             min_size = size;
-        //         }
-        //     }
-        //     if (min_size < initial_size)
-        //     {
-        //         change_expansion_type(x, min_t);
-        //         sift(var_count() - 1, min_pos);
-        //         std::cout << "Sifting for variable " << std::format("{:03}", x) << " done. Minimal pos at " << min_pos
-        //                   << " with expansion type " << e_to_s(min_t) << " old size: " << initial_size
-        //                   << " new size: " << get_size() << "\n";
-        //     }
-        //     else
-        //     {
-        //         change_expansion_type(x, initial_t);
-        //         sift(var_count() - 1, initial_pos);
-        //         std::cout << "Sifting for variable " << std::format("{:03}", x)
-        //                   << " done. No new minimum found. t = " << e_to_s(initial_t) << ", pos = " << initial_pos
-        //                   << "."
-        //                   << "\n";
-        //     }
-        // }
-        // std::cout << "dtl sifting done"
-        //           << "\n";
-        // std::cout << "old size: " << start_size << ", new size: " << get_size() << "\n";
-        // for (auto x = 0; x < var_count(); x++)
-        // {
-        //     std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
-        //               << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
-        // }
     }
 };
 

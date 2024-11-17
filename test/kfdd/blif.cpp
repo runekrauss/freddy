@@ -268,6 +268,10 @@ TEST_CASE("kfdd blif c432 parsing", "[blif]")
     }
     file.close();
 
+    //std::cout << g.mgr << '\n';
+    std::cout << "Size: " << g.mgr.size(g.f) << '\n';
+    g.f[0].dtl_sift();
+    //std::cout << g.mgr << '\n';
     std::cout << "Size: " << g.mgr.size(g.f) << '\n';
 }
-}
+}  // namespace
