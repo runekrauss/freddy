@@ -626,6 +626,23 @@ class manager
 
     [[nodiscard]] auto virtual regw() const -> E = 0;  // returns the regular weight of an edge
 
+    auto get_depth(const std::shared_ptr<detail::node<bool,bool>>& n) {
+        if(n->is_const())
+        {
+            return 0;
+        }
+        return std::max(get_depth(n->br().hi->v), get_depth(n->br().lo->v))+1;
+    }
+
+    auto get_max_depth(const int x) {
+        int max = 0;
+        for(auto& el : vl[x].nt)
+        {
+            max = std::max(max, get_depth(el));
+        }
+        return max;
+    }
+
     auto sift(std::int32_t const lvl_x, std::int32_t const lvl_y)
     {
         assert(lvl_x < var_count());
@@ -642,9 +659,12 @@ class manager
 
         for (auto lvl = start; lvl != stop; lvl += step)
         {
+            auto varNo = lvl2var[lvl];
+            auto current_depth = get_max_depth(varNo);
             exchange(lvl);
         }
     }
+
 
     auto sift_down(std::int32_t lvl, std::int32_t& lvl_min, std::int32_t& ncnt_min)
     {
@@ -742,8 +762,23 @@ class manager
             }
             else
             {
+                if(!(*it)->is_const()&&
+                    ((!(*it)->br().hi->v->is_const()&&(*it)->br().hi->v->br().x==y)||
+                     (!(*it)->br().lo->v->is_const()&&(*it)->br().lo->v->br().x==y)))
+                {
+                    auto swapneeded = swap_is_needed((*it)->br().hi, (*it)->br().lo);
+                }
                 ++it;
             }
+        }
+
+        for(auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
+        {
+            if (swap_is_needed((*it)->br().hi, (*it)->br().lo))
+            {
+                assert(false);
+            }
+            ++it;
         }
 
         for (auto it = vl[x].et.begin(); it != vl[x].et.end();)
@@ -757,11 +792,32 @@ class manager
             }
             else
             {
+                if(!(*it)->v->is_const()&&
+                    ((!(*it)->v->br().hi->v->is_const()&&(*it)->v->br().hi->v->br().x==y)||
+                     (!(*it)->v->br().lo->v->is_const()&&(*it)->v->br().lo->v->br().x==y)))
+                {
+                    auto swapneeded = swap_is_needed((*it)->v->br().hi, (*it)->v->br().lo);
+                    int abc = 0;
+                }
                 ++it;
             }
         }
 
         gc();  // clean up possible dead nodes
+
+        if(x==15&&y==20)
+        {
+            int counter = 0;
+            for(auto& el : vl[x].nt)
+            {
+                if(!el->is_const()&&((!el->br().hi->v->is_const()&&el->br().hi->v->br().x==y)||(!el->br().lo->v->is_const()&&el->br().lo->v->br().x==y)))
+                {
+                    auto swapneeded = swap_is_needed(el->br().hi, el->br().lo);
+                    int abc = 0;
+                }
+                counter++;
+            }
+        }
 
         std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
         std::swap(var2lvl[x], var2lvl[y]);

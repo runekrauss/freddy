@@ -22,7 +22,7 @@
 #include <string>     // std::string
 #include <utility>    // std::make_pair
 #include <vector>     // std::vector
-
+#include <format>
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
@@ -679,7 +679,7 @@ class kfdd_manager : public detail::manager<bool, bool>
         int x;
         int pos;
         size_t size;
-        expansion expansion;
+        freddy::expansion expansion;
     };
 
     void dtl_sift(kfdd f, bool kfddsize)
@@ -730,6 +730,7 @@ class kfdd_manager : public detail::manager<bool, bool>
             }
             return {.x=x, .pos=pos, .size=size, .expansion = vl[x].t };
         };
+
 
         auto sift_single_var = [&](const int x) -> smallest_level_r {
             move_to_bottom(x);
