@@ -555,7 +555,7 @@ class phdd_manager : public detail::manager<edge_weight, double>
         {
             return apply(f->w, g);
         }
-        if (f->v == consts[1]->v)
+        if (g->v == consts[1]->v)
         {
             return apply(g->w, f);
         }
