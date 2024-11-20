@@ -227,9 +227,8 @@ class phdd_manager : public detail::manager<edge_weight, double>
   private:
     auto static factorize_pow2(uint64_t w) -> std::pair<uint64_t ,uint64_t >
     {
-        uint64_t pow = w & (-w);
-        auto exp = std::bit_width(pow) - 1;
-        return {exp, w / pow};
+        uint64_t const exp = std::bit_width(w & (-w)) - 1;
+        return {exp, w >> exp};
     }
 
     auto static decompose_double(double x) -> std::tuple<bool, uint64_t ,uint64_t>
