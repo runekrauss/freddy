@@ -23,6 +23,7 @@
 #include <string_view>  // std::string_view
 #include <utility>      // std::make_pair
 #include <vector>       // std::vector
+#include <limits>       // std::numeric_limits
 
 // =====================================================================================================================
 // Types
@@ -409,33 +410,35 @@ class phdd_manager : public detail::manager<edge_weight, double>
             } // 2^f_w * ( f_vc + 2^(g_w - f_w) * g_vc)
             auto f_vc = static_cast<uint64_t>(f->v->c());
             auto g_vc = static_cast<uint64_t>(g->v->c());
-            auto shift = static_cast<uint32_t>(g->w.second - f->w.second);
+            auto shift = static_cast<uint64_t>(g->w.second - f->w.second);
             auto sign = f->w.first;
 
-            if(std::countl_zero(f_vc) <= 1 ||
-               std::countl_zero(g_vc) + 2 <= static_cast<int>(shift))
+            if(std::countl_zero(g_vc) < static_cast<long int>(shift))
             {
-                throw std::invalid_argument("add up two constants leads to overflow");
+                throw std::invalid_argument("to big constants, addition of constants leads to underflow");
             }
-            uint64_t g_vc_s = g_vc << shift;
-
-            std::pair<uint, uint> factors;
+            g_vc <<= shift;
+            std::pair<uint64_t , uint64_t> factors;
             if(f->w.first == g->w.first)
             {
-                factors = factorize_pow2(f_vc + g_vc_s);
+                if(f_vc > std::numeric_limits<unsigned long int>::max() - g_vc)
+                {
+                    throw std::invalid_argument("to big constants, addition of constants leads to underflow");
+                }
+                factors = factorize_pow2(f_vc + g_vc);
             }
             else
             {
-                if(f_vc < g_vc_s)
+                if(f_vc < g_vc)
                 {
-                    std::swap(f_vc, g_vc_s);
+                    std::swap(f_vc, g_vc);
                     sign = g->w.first;
                 }
-                factors = factorize_pow2(f_vc - g_vc_s);
+                factors = factorize_pow2(f_vc - g_vc);
             }
             if(std::bit_width(factors.second) >= 53)
             {
-                throw std::invalid_argument("add up two constants leads to overflow");
+                throw std::invalid_argument("to big constants, addition of constants leads to underflow");
             }
             return make_const({sign, factors.first + f->w.second}, static_cast<double>(factors.second));
         }
@@ -558,6 +561,11 @@ class phdd_manager : public detail::manager<edge_weight, double>
         }
         if (f->v->is_const() && g->v->is_const())
         {
+            // check if mul of const node values is exact
+            if(fma(f->v->c(), g->v->c(), - (f->v->c() * g->v->c())) != 0)
+            {
+                throw std::invalid_argument("to big constants, multiplication of constants leads to underflow");
+            }
             return make_const({f->w.first ^ g->w.first,
                                f->w.second + g->w.second},
                                f->v->c() * g->v->c());
