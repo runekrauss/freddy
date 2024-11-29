@@ -496,7 +496,7 @@ class manager
             auto hitrate_value       = static_cast<double>(values.cached_hit) / values.cached_call;
 
             auto hitavg_name         = "Hit avg.";
-            auto hitavg_value        = static_cast<double>(values.cached_hit_added_indexes / values.cached_hit);
+            auto hitavg_value = (values.cached_hit != 0) ? static_cast<double>(values.cached_hit_added_indexes) / values.cached_hit : 0.0;
 
             auto missavg_name        = "Miss avg.";
             auto missavg_value       = static_cast<double>(values.cached_miss_added_indexes) / (values.cached_call - values.cached_hit);
