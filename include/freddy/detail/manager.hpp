@@ -99,7 +99,7 @@ class manager
         s << "#Operations = " << mgr.ct.size();
         s << "\nOccupancy = " << mgr.ct.load_factor();
 
-        s << mgr.getCacheStats();
+        s << mgr.cacheStats();
 
         return s;
     }
