@@ -484,28 +484,37 @@ class manager
     };
     mutable std::unordered_map<std::string, stat> stats;
 
-    [[nodiscard]] auto getCacheStats() const
+    [[nodiscard]] auto cacheStats() const
     {
+
         std::string s = "\nCache Analizations per Operation:\n";
         for (const auto& pair : stats) {
             const std::string& key = pair.first;
             const stat& values = pair.second;
 
-            s += "------\n" + key + ":\n";
-            s += "cached_call: " + std::to_string(values.cached_call) + "\n";
-            s += "cached_hit: " + std::to_string(values.cached_hit) + "\n";
-            double hit_rate = static_cast<double>(values.cached_hit) / values.cached_call;
-            s += "hitrate: " + std::to_string(hit_rate) + "\n";
-            double hit_avg = static_cast<double>(values.cached_hit_added_indexes / values.cached_hit);
-            s += "hitAvg-" + std::to_string(hit_avg) + "\n";
-            double miss_avg = static_cast<double>(values.cached_miss_added_indexes) / (values.cached_call - values.cached_hit);
-            s += "missAvg-" + std::to_string(miss_avg) + "\n-\n";
+            auto hitrate_name        = "Hit rate";
+            auto hitrate_value       = static_cast<double>(values.cached_hit) / values.cached_call;
 
-            s += "cache_call: " + std::to_string(values.cache_call) + "\n";
-            s += "cache_collision: " + std::to_string(values.cache_collision) + "\n";
-            double collision_rate = static_cast<double>(values.cache_collision) / values.cache_call;
-            s += "collisionRate-" + std::to_string(collision_rate) + "\n";
-            s += "cache_max_coll: " + std::to_string(values.cache_max_coll) + "\n";
+            auto hitavg_name         = "Hit avg.";
+            auto hitavg_value        = static_cast<double>(values.cached_hit_added_indexes / values.cached_hit);
+
+            auto missavg_name        = "Miss avg.";
+            auto missavg_value       = static_cast<double>(values.cached_miss_added_indexes) / (values.cached_call - values.cached_hit);
+
+            auto collisionrate_name  = "Collision rate";
+            auto collisionrate_value = static_cast<double>(values.cache_collision) / values.cache_call;
+
+            auto maxcollisions_name  = "Max. collisions";
+            auto maxcollisions_value = std::to_string(values.cache_max_coll);
+
+
+            s += key + " Stats" + '\n';
+            s += std::format("{:-<11}", '-') + '\n';
+            s += std::format("{:15} : {:>10.2f} %", hitrate_name, hitrate_value) + '\n';
+            s += std::format("{:15} : {:>10.2f}", hitavg_name, hitavg_value) + '\n';
+            s += std::format("{:15} : {:>10.2f}", missavg_name, missavg_value) + '\n';
+            s += std::format("{:15} : {:>10.2f} %", collisionrate_name, collisionrate_value) + '\n';
+            s += std::format("{:15} : {:>10}", maxcollisions_name, maxcollisions_value);
         }
         return s;
     }
