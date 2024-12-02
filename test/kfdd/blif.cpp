@@ -249,31 +249,31 @@ auto static read_blif(std::ifstream& file, dd_reader const& reader)
 
 TEST_CASE("kfdd blif c432 parsing", "[blif]")
 {
-    // auto filename = std::string{"c432.blif"};
-    // std::ifstream file{filename};
-    // if (!file.is_open())
-    // {
-    //     std::cout << "Failed to open " << filename << '\n';
-    //     assert(false);
-    // }
-    //
-    // dd g;
-    // dd_reader reader{g};
-    //
-    // if (read_blif(file, reader) != lorina::return_code::success)  // parse BLIF in topological order
-    // {
-    //     file.close();
-    //     std::cout << "Failed to read " << filename << '\n';
-    //     assert(false);
-    // }
-    // file.close();
-    //
-    // //std::cout << g.mgr << '\n';
-    // std::cout << "Size: " << g.mgr.size(g.f) << '\n';
-    // //g.mgr.reorder();
-    // g.f[0].dtl_sift();
-    // //g.mgr.sift(15,35);
-    // //std::cout << g.mgr << '\n';
-    // std::cout << "Size: " << g.mgr.size(g.f) << '\n';
+    auto filename = std::string{"c432.blif"};
+    std::ifstream file{filename};
+    if (!file.is_open())
+    {
+        std::cout << "Failed to open " << filename << '\n';
+        assert(false);
+    }
+
+    dd g;
+    dd_reader reader{g};
+
+    if (read_blif(file, reader) != lorina::return_code::success)  // parse BLIF in topological order
+    {
+        file.close();
+        std::cout << "Failed to read " << filename << '\n';
+        assert(false);
+    }
+    file.close();
+
+    //std::cout << g.mgr << '\n';
+    std::cout << "Size: " << g.mgr.size(g.f) << '\n';
+    //g.mgr.reorder();
+    //g.f[0].dtl_sift();
+    g.mgr.sift(15,35);
+    //std::cout << g.mgr << '\n';
+    std::cout << "Size: " << g.mgr.size(g.f) << '\n';
 }
 }  // namespace

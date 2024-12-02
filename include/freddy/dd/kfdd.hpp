@@ -309,7 +309,7 @@ class kfdd_manager : public detail::manager<bool, bool>
                 }
             }
         }
-        var.nt.rehash(0);
+        var.nt.rehash(var.nt.bucket_count());
         gc();
     }
 
@@ -747,13 +747,13 @@ class kfdd_manager : public detail::manager<bool, bool>
             {
                 res = tmp_res;
             }
-            move_to_bottom(x);
-            change_expansion_type(x, expansion::ND);
-            tmp_res = find_smallest_level(x);
-            if(tmp_res.size < res.size)
-            {
-                res = tmp_res;
-            }
+            //move_to_bottom(x);
+            //change_expansion_type(x, expansion::ND);
+            //tmp_res = find_smallest_level(x);
+            //if(tmp_res.size < res.size)
+            //{
+            //    res = tmp_res;
+            //}
             move_to_bottom(x);
             change_expansion_type(x, res.expansion);
             sift(var2lvl[x], res.pos);
