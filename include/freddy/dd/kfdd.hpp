@@ -230,6 +230,7 @@ class kfdd_manager : public detail::manager<bool, bool>
     {
         assert(x >= 0);
         assert(x < var_count());
+        assert(var2lvl[x] == var_count()-1);
         auto& var = vl[x];
         auto var_t = var.t;
         if (var_t == t)
@@ -693,7 +694,10 @@ class kfdd_manager : public detail::manager<bool, bool>
             return static_cast<size_t>(node_count());
         };
 
-        auto move_to_bottom = [&](const int x) { sift(var2lvl[x], var_count()-1); };
+        auto move_to_bottom = [&](const int x) {
+            sift(var2lvl[x], var_count()-1);
+
+        };
 
         auto get_size_info = [&](const int x) {
             return vl[x].nt.size();
@@ -705,7 +709,7 @@ class kfdd_manager : public detail::manager<bool, bool>
 
         auto find_smallest_level = [&](const int x)-> smallest_level_r {
             auto size = get_size();
-            auto pos = var2lvl[x];;
+            auto pos = var2lvl[x];
             move_to_bottom(x);
             for(auto i = var_count()-1; i >= 0;--i)
             {
@@ -772,8 +776,9 @@ class kfdd_manager : public detail::manager<bool, bool>
         std::ranges::sort(vars, comp_largest_layer);
         for(auto i = 0; i < var_count(); ++i)
         {
-            auto x = vars[i];
-            sift_single_var(x);
+            //auto x = vars[i];
+            //sift_single_var(x);
+            sift_single_var(i);
         }
         //for(auto x = 0; x < var_count(); ++x)
         //{
