@@ -860,7 +860,6 @@ class manager
             changed = false;
             for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
             {
-                //assert(end == vl[x].nt.end());
                 if (swap_is_needed((*it)->br().hi, (*it)->br().lo))  // swapping levels is a local operation
                 {
                     auto v = *it;  // to ensure existing references are not lost
@@ -878,58 +877,6 @@ class manager
                         assert(false);
                     }
                     vl[y].nt.insert(std::move(v));
-
-                    // if (x == 30 && y == 25)
-                    // {
-                    //     auto level_x = var2lvl[y];
-                    //     auto level_y = var2lvl[x];
-                    //     for (auto node : vl[x].nt)
-                    //     {
-                    //         if (node->is_const())
-                    //         {
-                    //             continue;
-                    //         }
-                    //         if (!node->br().lo->v->is_const() && level_x > var2lvl[node->br().lo->v->br().x])
-                    //         {
-                    //             auto upperVar = x;
-                    //             auto upperLevel = level_x;
-                    //             auto lowerVar = node->br().lo->v->br().x;
-                    //             auto lowerLevel = var2lvl[node->br().lo->v->br().x];
-                    //             assert(false);
-                    //         }
-                    //         if (!node->br().hi->v->is_const() && level_x > var2lvl[node->br().hi->v->br().x])
-                    //         {
-                    //             auto upperVar = x;
-                    //             auto upperLevel = level_x;
-                    //             auto lowerVar = node->br().hi->v->br().x;
-                    //             auto lowerLevel = var2lvl[node->br().hi->v->br().x];
-                    //             assert(false);
-                    //         }
-                    //     }
-                    //     for (auto node : vl[y].nt)
-                    //     {
-                    //         if (node->is_const())
-                    //         {
-                    //             continue;
-                    //         }
-                    //         if (!node->br().lo->v->is_const() && level_y > var2lvl[node->br().lo->v->br().x])
-                    //         {
-                    //             auto upperVar = y;
-                    //             auto upperLevel = level_y;
-                    //             auto lowerVar = node->br().lo->v->br().x;
-                    //             auto lowerLevel = var2lvl[node->br().lo->v->br().x];
-                    //             assert(false);
-                    //         }
-                    //         if (!node->br().hi->v->is_const() && level_y > var2lvl[node->br().hi->v->br().x])
-                    //         {
-                    //             auto upperVar = y;
-                    //             auto upperLevel = level_y;
-                    //             auto lowerVar = node->br().hi->v->br().x;
-                    //             auto lowerLevel = var2lvl[node->br().hi->v->br().x];
-                    //             assert(false);
-                    //         }
-                    //     }
-                    // }
 
                     if (capacity < vl[x].nt.bucket_count())
                     {
@@ -973,15 +920,17 @@ class manager
         {
             assert(false);
         }
-        std::cout << "count(pre):     " << pre_count << '\n';
-        std::cout << "count(post):    " << post_count << '\n';
-        std::cout << "count(removed): " << remove_count << '\n';
-        std::cout << "count(diff):    " << pre_count - remove_count - post_count << '\n';
+        //std::cout << "count(pre):     " << pre_count << '\n';
+        //std::cout << "count(post):    " << post_count << '\n';
+        //std::cout << "count(removed): " << remove_count << '\n';
+        //std::cout << "count(diff):    " << pre_count - remove_count - post_count << '\n';
 
         gc();  // clean up possible dead nodes
 
         std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
         std::swap(var2lvl[x], var2lvl[y]);
+
+        gc();  // clean up possible dead nodes
     }
     // auto exchange(std::int32_t const lvl)  // with the level below
     // {

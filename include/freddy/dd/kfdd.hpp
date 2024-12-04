@@ -255,9 +255,11 @@ class kfdd_manager : public detail::manager<bool, bool>
             //S => ND
             else if (t == expansion::ND)
             {
-                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
+                for (const auto & it : var.nt)
                 {
-                    auto& br = (*it)->br();
+                    auto& br = it->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
                     std::swap(br.hi, br.lo);
                     br.hi = antiv(br.hi, br.lo);
                 }
@@ -268,9 +270,11 @@ class kfdd_manager : public detail::manager<bool, bool>
             //PD => S
             if (t == expansion::S)
             {
-                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
+                for (const auto & it : var.nt)
                 {
-                    auto& br = (*it)->br();
+                    auto& br = it->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
                     br.hi = antiv(br.hi, br.lo);
                     //node->br().lo = low;
                 }
@@ -278,11 +282,14 @@ class kfdd_manager : public detail::manager<bool, bool>
             //PD => ND
             else if (t == expansion::ND)
             {
-                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
+                for (const auto & it : var.nt)
                 {
-                    auto& br = (*it)->br();
+                    auto& br = it->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
                     //node->br().hi = high;
-                    br.lo = antiv(br.hi, br.lo);
+                    auto newLow = antiv(br.hi, br.lo);
+                    br.lo = newLow;
                 }
             }
         }
@@ -291,9 +298,11 @@ class kfdd_manager : public detail::manager<bool, bool>
             //ND => S
             if (t == expansion::S)
             {
-                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
+                for (const auto & it : var.nt)
                 {
-                    auto& br = (*it)->br();
+                    auto& br = it->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
                     std::swap(br.hi, br.lo);
                     br.lo = antiv(br.lo, br.hi);
                 }
@@ -301,15 +310,17 @@ class kfdd_manager : public detail::manager<bool, bool>
             //ND => PD
             else if (t == expansion::PD)
             {
-                for (auto it = var.nt.begin(); it != var.nt.end(); ++it)
+                for (const auto & it : var.nt)
                 {
-                    auto& br = (*it)->br();
+                    auto& br = it->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
                     //node->br().hi = high;
                     br.lo = antiv(br.lo, br.hi);
                 }
             }
         }
-        var.nt.rehash(var.nt.bucket_count());
+        var.nt.rehash(var.nt.bucket_count()+1);
         gc();
     }
 
@@ -737,23 +748,30 @@ class kfdd_manager : public detail::manager<bool, bool>
 
 
         auto sift_single_var = [&](const int x) -> smallest_level_r {
-            move_to_bottom(x);
-            change_expansion_type(x, expansion::PD);
-            auto res = find_smallest_level(x);
+            //find smallest level for Shannon
             move_to_bottom(x);
             change_expansion_type(x, expansion::S);
+            auto res = find_smallest_level(x);
+
+            //find smallest level for Positive Davio
+            move_to_bottom(x);
+            change_expansion_type(x, expansion::PD);
             auto tmp_res = find_smallest_level(x);
             if(tmp_res.size < res.size)
             {
                 res = tmp_res;
             }
-            //move_to_bottom(x);
-            //change_expansion_type(x, expansion::ND);
-            //tmp_res = find_smallest_level(x);
-            //if(tmp_res.size < res.size)
-            //{
-            //    res = tmp_res;
-            //}
+
+            //find smallest level for Negative Davio
+            move_to_bottom(x);
+            change_expansion_type(x, expansion::ND);
+            tmp_res = find_smallest_level(x);
+            if(tmp_res.size < res.size)
+            {
+                res = tmp_res;
+            }
+
+            //move variable to smallest level with smallest expansion type
             move_to_bottom(x);
             change_expansion_type(x, res.expansion);
             sift(var2lvl[x], res.pos);

@@ -192,20 +192,8 @@ TEST_CASE("kfdd synthesis is performed", "[queen]")
     dtl.push_back(expansion::S);
     auto const pred = enc_with_dtl(mgr, dtl);
     pred.print();
-    //std::cout << "no. of solutions: " << pred.sharpsat() << "\n";
     pred.dtl_sift(true);
-    //mgr.change_expansion_type(0, expansion::S);
-    //pred.print();
-    //mgr.change_expansion_type(0, expansion::PD);
     pred.print();
-    //mgr.change_expansion_type(15,expansion::PD);
-    //mgr.change_expansion_type(12, expansion::PD);
-    //mgr.change_expansion_type(10, expansion::PD);
-    //mgr.change_expansion_type(9, expansion::PD);
-    //mgr.change_expansion_type(6, expansion::PD);
-    //mgr.change_expansion_type(5, expansion::PD);
-    //mgr.change_expansion_type(3, expansion::PD);
-    //mgr.change_expansion_type(0, expansion::PD);
     //std::cout << "no. of solutions: " << pred.sharpsat() << "\n";
 #ifndef NDEBUG
     //std::cout << mgr << '\n';

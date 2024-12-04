@@ -7,7 +7,7 @@
 
 #include <lorina/blif.hpp>  // lorina::read_blif
 
-#include <freddy/dd/kfdd.hpp>  // freddy::kfdd::kfdd_manager
+#include <freddy/dd/bdd.hpp>  // freddy::bdd::bdd_manager
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 #include <algorithm>      // std::find
 #include <cassert>        // assert
@@ -30,12 +30,12 @@ struct dd
 {
     bool counting_is_done{false};  // Is the analysis phase over?
 
-    freddy::dd::kfdd_manager mgr;  // for handling DD-related operations
+    freddy::dd::bdd_manager mgr;  // for handling DD-related operations
 
-    std::vector<freddy::dd::kfdd> f;
+    std::vector<freddy::dd::bdd> f;
 
     // name -> (use count, node/edge)
-    std::unordered_map<std::string, std::pair<std::int32_t, freddy::dd::kfdd>> gates;
+    std::unordered_map<std::string, std::pair<std::int32_t, freddy::dd::bdd>> gates;
 
     std::string model;
 
@@ -64,7 +64,7 @@ public:
 
         if (!g.counting_is_done)
         {  // analysis phase
-            g.gates[name] = std::make_pair(0, g.mgr.var(freddy::expansion::S, name));
+            g.gates[name] = std::make_pair(0, g.mgr.var(name));
 
             g.inputs.push_back(name);
         }
@@ -122,7 +122,7 @@ public:
             {
                 ++g.gates[inputs[0]].first;
 
-                g.gates[output] = std::make_pair(0, freddy::dd::kfdd{});
+                g.gates[output] = std::make_pair(0, freddy::dd::bdd{});
             }
         }
         else
@@ -174,7 +174,7 @@ public:
                 ++g.gates[inputs[0]].first;
                 ++g.gates[inputs[1]].first;
 
-                g.gates[output] = std::make_pair(0, freddy::dd::kfdd{});
+                g.gates[output] = std::make_pair(0, freddy::dd::bdd{});
             }
         }
     }
@@ -247,7 +247,7 @@ auto static read_blif(std::ifstream& file, dd_reader const& reader)
 //     return EXIT_SUCCESS;
 // }
 
-TEST_CASE("kfdd blif c432 parsing", "[blif]")
+TEST_CASE("bdd blif c432 parsing", "[blif]")
 {
     auto filename = std::string{"c432.blif"};
     std::ifstream file{filename};
@@ -270,9 +270,7 @@ TEST_CASE("kfdd blif c432 parsing", "[blif]")
 
     //std::cout << g.mgr << '\n';
     std::cout << "Size: " << g.mgr.size(g.f) << '\n';
-    //g.mgr.reorder();
-    g.f[0].dtl_sift();
-    //g.mgr.sift(15,35);
+    g.mgr.sift(15,35);
     //std::cout << g.mgr << '\n';
     std::cout << "Size: " << g.mgr.size(g.f) << '\n';
 }

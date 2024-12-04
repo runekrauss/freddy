@@ -6,3 +6,4 @@ out/
 cmake*/
 .idea/
 __pycache__/
+.natvis
