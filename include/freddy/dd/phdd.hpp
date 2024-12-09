@@ -334,11 +334,11 @@ class phdd_manager : public detail::manager<edge_weight, double>
     }
 
     auto print(std::vector<phdd> const& fs, std::vector<std::string> const& outputs = {},
-               std::ostream& s = std::cout, bool unessential_levels = true) const
+               std::ostream& s = std::cout, bool darkmode = true) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        to_dot(transform(fs), outputs, s, unessential_levels);
+        to_dot_alt(transform(fs), outputs, s, darkmode);
     }
 
   private:
