@@ -25,9 +25,9 @@ auto inline load_factor = 0.7f;  // percentage (UT occupancy) from which dead no
 // Sizes
 // ---------------------------------------------------------------------------------------------------------------------
 
-auto inline ct_size = 11;  // initial capacity of the computed table (operation cache)
+auto inline ct_size = 262147;  // initial capacity of the computed table (operation cache)
 
-auto inline ut_size = 11;  // initial capacity of a unique table (per DD level)
+auto inline ut_size = 257;  // initial capacity of a unique table (per DD level)
 
 auto inline vl_size = 32;  // initial capacity of the variable list
 

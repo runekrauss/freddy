@@ -171,10 +171,10 @@ class manager
                 }
             }
         };
-        for (auto const lvl : lvl2var)
+        for (auto const var : lvl2var)
         {  // an increased chance of deleting nodes/edges
-            cleanup(vl[lvl].et);
-            cleanup(vl[lvl].nt);
+            cleanup(vl[var].et);
+            cleanup(vl[var].nt);
         }
         cleanup(ec);
         cleanup(nc);
@@ -204,105 +204,105 @@ class manager
             //}
             auto upper_var = lvl2var[lvl];
             auto lower_var = lvl2var[lvl + 1];
-            for (auto i = 0; i < var_count(); ++i)
-            {
-                for (auto& node : vl[i].nt)
-                {
-                    if(!vl[i].nt.contains(node)){assert(false);}
-                    if (!node->br().lo->v->is_const())
-                    {
-                        auto loX = node->br().lo->v->br().x;
-                        if(!vl[loX].nt.contains(node->br().lo->v))
-                        {
-                            auto found = false;
-                            int foundIndex = -1;
-                            for(auto x = 0; x < var_count(); ++x)
-                            {
-                                if(vl[x].nt.contains(node->br().lo->v))
-                                {
-                                    foundIndex = x;
-                                    found = true;
-                                }
-                            }
-                            assert(false);
-                        }
-                        if(var2lvl[i] > var2lvl[loX])
-                        {
-                            auto upperVar = i;
-                            auto upperLevel = var2lvl[i];
-                            auto lowerVar = node->br().lo->v->br().x;
-                            auto lowerLevel = var2lvl[node->br().lo->v->br().x];
-                            assert(false);
-                        }
-                    }
-                    if (!node->br().hi->v->is_const())
-                    {
-                        auto hiX = node->br().hi->v->br().x;
-                        if(!vl[hiX].nt.contains(node->br().hi->v))
-                        {
-                            assert(false);
-                        }
-                        if(var2lvl[i] > var2lvl[hiX])
-                        {
-                            auto upperVar = i;
-                            auto upperLevel = var2lvl[i];
-                            auto lowerVar = node->br().hi->v->br().x;
-                            auto lowerLevel = var2lvl[node->br().hi->v->br().x];
-                            assert(false);
-                        }
-                    }
-                }
-            }
+            // for (auto i = 0; i < var_count(); ++i)
+            // {
+            //     for (auto& node : vl[i].nt)
+            //     {
+            //         if(!vl[i].nt.contains(node)){assert(false);}
+            //         if (!node->br().lo->v->is_const())
+            //         {
+            //             auto loX = node->br().lo->v->br().x;
+            //             if(!vl[loX].nt.contains(node->br().lo->v))
+            //             {
+            //                 auto found = false;
+            //                 int foundIndex = -1;
+            //                 for(auto x = 0; x < var_count(); ++x)
+            //                 {
+            //                     if(vl[x].nt.contains(node->br().lo->v))
+            //                     {
+            //                         foundIndex = x;
+            //                         found = true;
+            //                     }
+            //                 }
+            //                 assert(false);
+            //             }
+            //             if(var2lvl[i] > var2lvl[loX])
+            //             {
+            //                 auto upperVar = i;
+            //                 auto upperLevel = var2lvl[i];
+            //                 auto lowerVar = node->br().lo->v->br().x;
+            //                 auto lowerLevel = var2lvl[node->br().lo->v->br().x];
+            //                 assert(false);
+            //             }
+            //         }
+            //         if (!node->br().hi->v->is_const())
+            //         {
+            //             auto hiX = node->br().hi->v->br().x;
+            //             if(!vl[hiX].nt.contains(node->br().hi->v))
+            //             {
+            //                 assert(false);
+            //             }
+            //             if(var2lvl[i] > var2lvl[hiX])
+            //             {
+            //                 auto upperVar = i;
+            //                 auto upperLevel = var2lvl[i];
+            //                 auto lowerVar = node->br().hi->v->br().x;
+            //                 auto lowerLevel = var2lvl[node->br().hi->v->br().x];
+            //                 assert(false);
+            //             }
+            //         }
+            //     }
+            // }
             exchange(lvl);
-            for (auto i = 0; i < var_count(); ++i)
-            {
-                for (auto node : vl[i].nt)
-                {
-                    if(!vl[i].nt.contains(node)){assert(false);}
-                    if (!node->br().lo->v->is_const())
-                    {
-                        auto loX = node->br().lo->v->br().x;
-                        if(!vl[loX].nt.contains(node->br().lo->v))
-                        {
-                            auto found = false;
-                            int foundIndex = -1;
-                            for(auto x = 0; x < var_count(); ++x)
-                            {
-                                if(vl[x].nt.contains(node->br().lo->v))
-                                {
-                                    foundIndex = x;
-                                    found = true;
-                                }
-                            }
-                            assert(false);
-                        }
-                        if(var2lvl[i] > var2lvl[loX])
-                        {
-                            auto upperVar = i;
-                            auto upperLevel = var2lvl[i];
-                            auto lowerVar = node->br().lo->v->br().x;
-                            auto lowerLevel = var2lvl[node->br().lo->v->br().x];
-                            assert(false);
-                        }
-                    }
-                    if (!node->br().hi->v->is_const())
-                    {
-                        auto hiX = node->br().hi->v->br().x;
-                        if(!vl[hiX].nt.contains(node->br().hi->v))
-                        {
-                            assert(false);
-                        }
-                        if(var2lvl[i] > var2lvl[hiX])
-                        {
-                            auto upperVar = i;
-                            auto upperLevel = var2lvl[i];
-                            auto lowerVar = node->br().hi->v->br().x;
-                            auto lowerLevel = var2lvl[node->br().hi->v->br().x];
-                            assert(false);
-                        }
-                    }
-                }
-            }
+            // for (auto i = 0; i < var_count(); ++i)
+            // {
+            //     for (auto node : vl[i].nt)
+            //     {
+            //         if(!vl[i].nt.contains(node)){assert(false);}
+            //         if (!node->br().lo->v->is_const())
+            //         {
+            //             auto loX = node->br().lo->v->br().x;
+            //             if(!vl[loX].nt.contains(node->br().lo->v))
+            //             {
+            //                 auto found = false;
+            //                 int foundIndex = -1;
+            //                 for(auto x = 0; x < var_count(); ++x)
+            //                 {
+            //                     if(vl[x].nt.contains(node->br().lo->v))
+            //                     {
+            //                         foundIndex = x;
+            //                         found = true;
+            //                     }
+            //                 }
+            //                 assert(false);
+            //             }
+            //             if(var2lvl[i] > var2lvl[loX])
+            //             {
+            //                 auto upperVar = i;
+            //                 auto upperLevel = var2lvl[i];
+            //                 auto lowerVar = node->br().lo->v->br().x;
+            //                 auto lowerLevel = var2lvl[node->br().lo->v->br().x];
+            //                 assert(false);
+            //             }
+            //         }
+            //         if (!node->br().hi->v->is_const())
+            //         {
+            //             auto hiX = node->br().hi->v->br().x;
+            //             if(!vl[hiX].nt.contains(node->br().hi->v))
+            //             {
+            //                 assert(false);
+            //             }
+            //             if(var2lvl[i] > var2lvl[hiX])
+            //             {
+            //                 auto upperVar = i;
+            //                 auto upperLevel = var2lvl[i];
+            //                 auto lowerVar = node->br().hi->v->br().x;
+            //                 auto lowerLevel = var2lvl[node->br().hi->v->br().x];
+            //                 assert(false);
+            //             }
+            //         }
+            //     }
+            // }
         }
     }
 
@@ -841,18 +841,19 @@ class manager
             return hi->v->br().x == y || lo->v->br().x == y;
         };
 
-        int remove_count = 0;
-        int pre_count = 0;
-        int post_count = 0;
 
-        for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
-        {
-            if (swap_is_needed((*it)->br().hi, (*it)->br().lo))
-            {
-                pre_count++;
-            }
-            ++it;
-        }
+        //int remove_count = 0;
+        //int pre_count = 0;
+        //int post_count = 0;
+
+        // for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
+        // {
+        //     if (swap_is_needed((*it)->br().hi, (*it)->br().lo))
+        //     {
+        //         pre_count++;
+        //     }
+        //     ++it;
+        // }
         bool changed = false;
         auto capacity = vl[x].nt.bucket_count();
         do
@@ -864,7 +865,7 @@ class manager
                 {
                     auto v = *it;  // to ensure existing references are not lost
                     it = vl[x].nt.erase(it);
-                    remove_count++;
+                    //remove_count++;
                     auto& br = v->br();
                     auto const hi = make_branch(x, cof(br.hi, y, true), cof(br.lo, y, true));
                     br.lo = make_branch(x, cof(br.hi, y, false), cof(br.lo, y, false));
@@ -872,10 +873,10 @@ class manager
                     br.x = y;
 
                     ctrl(vl[y].nt);
-                    if(v->br().x != y)
-                    {
-                        assert(false);
-                    }
+                    // if(v->br().x != y)
+                    // {
+                    //     assert(false);
+                    // }
                     vl[y].nt.insert(std::move(v));
 
                     if (capacity < vl[x].nt.bucket_count())
@@ -908,171 +909,31 @@ class manager
             gc();
         } while (changed);
 
-        for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
-        {
-            if (swap_is_needed((*it)->br().hi, (*it)->br().lo))
-            {
-                post_count++;
-            }
-            ++it;
-        }
-        if (pre_count - remove_count != 0 || post_count > 0)
-        {
-            assert(false);
-        }
+        // for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
+        // {
+        //     if (swap_is_needed((*it)->br().hi, (*it)->br().lo))
+        //     {
+        //         post_count++;
+        //     }
+        //     ++it;
+        // }
+        // if (pre_count - remove_count != 0 || post_count > 0)
+        // {
+        //     assert(false);
+        // }
         //std::cout << "count(pre):     " << pre_count << '\n';
         //std::cout << "count(post):    " << post_count << '\n';
         //std::cout << "count(removed): " << remove_count << '\n';
         //std::cout << "count(diff):    " << pre_count - remove_count - post_count << '\n';
 
-        gc();  // clean up possible dead nodes
+        //gc();  // clean up possible dead nodes
 
         std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
         std::swap(var2lvl[x], var2lvl[y]);
 
         gc();  // clean up possible dead nodes
     }
-    // auto exchange(std::int32_t const lvl)  // with the level below
-    // {
-    //     assert(lvl < var_count());
-    //     assert(var_count() > 1);
-    //
-    //     if (lvl == var_count() - 1)
-    //     {
-    //         return;
-    //     }
-    //
-    //     gc();  // ensure that dead nodes are not swapped
-    //
-    //     auto const x = lvl2var[lvl];
-    //     auto const y = lvl2var[lvl + 1];
-    //
-    //     auto swap_is_needed = [y](auto const& hi, auto const& lo) {
-    //         assert(hi);
-    //         assert(lo);
-    //
-    //         if (hi->v->is_const() && lo->v->is_const())
-    //         {
-    //             return false;
-    //         }
-    //         if (hi->v->is_const() || lo->v->is_const())
-    //         {
-    //             return hi->v->is_const() ? lo->v->br().x == y : hi->v->br().x == y;
-    //         }
-    //         return hi->v->br().x == y || lo->v->br().x == y;
-    //     };
-    //
-    //
-    //
-    //     int remove_count = 0;
-    //     int pre_count = 0;
-    //     int post_count = 0;
-    //     for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
-    //     {
-    //         if (swap_is_needed((*it)->br().hi, (*it)->br().lo))
-    //         {
-    //             pre_count++;
-    //         }
-    //         ++it;
-    //     }
-    //
-    //     auto changed = false;
-    //     do
-    //     {
-    //         changed = false;
-    //         for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
-    //         {
-    //             if (swap_is_needed((*it)->br().hi, (*it)->br().lo))  // swapping levels is a local operation
-    //             {
-    //                 changed = true;
-    //                 auto v = *it;  // to ensure existing references are not lost
-    //                 it = vl[x].nt.erase(it);
-    //                 remove_count++;
-    //                 auto& br = v->br();
-    //                 auto const hi = make_branch(x, cof(br.hi, y, true), cof(br.lo, y, true));
-    //                 br.lo = make_branch(x, cof(br.hi, y, false), cof(br.lo, y, false));
-    //                 br.hi = hi;
-    //                 br.x = y;
-    //
-    //                 if(y==var_count()-1&&(!br.lo->v->is_const()||!br.hi->v->is_const()))
-    //                 {
-    //                     assert(false);
-    //                 }
-    //
-    //                 ctrl(vl[y].nt);
-    //                 vl[y].nt.insert(std::move(v));
-    //                 break;
-    //             }
-    //             else
-    //             {
-    //                 //if(!(*it)->is_const()&&
-    //                 //    ((!(*it)->br().hi->v->is_const()&&(*it)->br().hi->v->br().x==y)||
-    //                 //     (!(*it)->br().lo->v->is_const()&&(*it)->br().lo->v->br().x==y)))
-    //                 //{
-    //                 //    auto swapneeded = swap_is_needed((*it)->br().hi, (*it)->br().lo);
-    //                 //}
-    //                 ++it;
-    //             }
-    //         }
-    //     } while (changed);
-    //
-    //     for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
-    //     {
-    //         if (swap_is_needed((*it)->br().hi, (*it)->br().lo))
-    //         {
-    //             post_count++;
-    //         }
-    //         ++it;
-    //     }
-    //
-    //     for (auto it = vl[x].et.begin(); it != vl[x].et.end();)
-    //     {  // swap edges pointing to swapped nodes
-    //         if ((*it)->v->br().x == y)
-    //         {
-    //             ctrl(vl[y].et);
-    //             vl[y].et.insert(*it);
-    //
-    //             it = vl[x].et.erase(it);
-    //         }
-    //         else
-    //         {
-    //             //if(!(*it)->v->is_const()&&
-    //             //    ((!(*it)->v->br().hi->v->is_const()&&(*it)->v->br().hi->v->br().x==y)||
-    //             //     (!(*it)->v->br().lo->v->is_const()&&(*it)->v->br().lo->v->br().x==y)))
-    //             //{
-    //             //    auto swapneeded = swap_is_needed((*it)->v->br().hi, (*it)->v->br().lo);
-    //             //    int abc = 0;
-    //             //}
-    //             ++it;
-    //         }
-    //     }
-    //
-    //     //} while (changed);
-    //
-    //     gc();  // clean up possible dead nodes
-    //     //if(x==15&&y==20)
-    //     //{
-    //     //    int counter = 0;
-    //     //    for(auto& el : vl[x].nt)
-    //     //    {
-    //     //
-    //     if(!el->is_const()&&((!el->br().hi->v->is_const()&&el->br().hi->v->br().x==y)||(!el->br().lo->v->is_const()&&el->br().lo->v->br().x==y)))
-    //     //        {
-    //     //            auto swapneeded = swap_is_needed(el->br().hi, el->br().lo);
-    //     //            int abc = 0;
-    //     //        }
-    //     //        counter++;
-    //     //    }
-    //     //}
-    //
-    //     if(pre_count-remove_count!=post_count)
-    //     {
-    //         assert(false);
-    //     }
-    //
-    //     std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
-    //     std::swap(var2lvl[x], var2lvl[y]);
-    // }
+
     template <typename T>
     auto ctrl(T& ut)
     {

@@ -47,7 +47,7 @@ struct dd
 class dd_reader : public lorina::blif_reader
 {
 public:
-    explicit dd_reader(dd& g) :
+    explicit dd_reader(dd& g, int size_first_sifting) :
             g{g}
     {}
 
@@ -177,6 +177,11 @@ public:
                 g.gates[output] = std::make_pair(0, freddy::dd::kfdd{});
             }
         }
+        if (g.mgr.node_count() > next_sifting)
+        {
+            g.mgr.dtl_sift();
+            next_sifting = next_sifting * 2;
+        }
     }
 
     auto on_end() const -> void override
@@ -190,11 +195,13 @@ public:
             {
                 g.f.push_back(po.second.second);
             }
+            g.gates.clear();
         }
         g.counting_is_done = true;
     }
 private:
     dd& g;
+    mutable int next_sifting;
 };
 
 // *********************************************************************************************************************
@@ -247,33 +254,77 @@ auto static read_blif(std::ifstream& file, dd_reader const& reader)
 //     return EXIT_SUCCESS;
 // }
 
-TEST_CASE("kfdd blif c432 parsing", "[blif]")
+auto static test_blif(std::string blif_name, int size_first_sifting)
 {
-    auto filename = std::string{"c432.blif"};
-    std::ifstream file{filename};
+    std::ifstream file{blif_name};
     if (!file.is_open())
     {
-        std::cout << "Failed to open " << filename << '\n';
+        std::cout << "Failed to open " << blif_name << '\n';
         assert(false);
     }
 
     dd g;
-    dd_reader reader{g};
+    dd_reader reader{g, size_first_sifting};
 
     if (read_blif(file, reader) != lorina::return_code::success)  // parse BLIF in topological order
     {
         file.close();
-        std::cout << "Failed to read " << filename << '\n';
+        std::cout << "Failed to read " << blif_name << '\n';
         assert(false);
     }
     file.close();
-
+    auto noFs = g.f.size();
+    g.gates.clear();
+    g.mgr.gc();
     //std::cout << g.mgr << '\n';
+
+    std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
     std::cout << "Size: " << g.mgr.size(g.f) << '\n';
+
     //g.mgr.reorder();
     g.f[0].dtl_sift();
     //g.mgr.sift(15,35);
-    //std::cout << g.mgr << '\n';
+    //std::cout << g.mgr << '\n';w
+    std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
     std::cout << "Size: " << g.mgr.size(g.f) << '\n';
 }
+
+
+TEST_CASE("kfdd blif c432 dtl sifting", "[blif]")
+{
+    test_blif("c432.blif",10000);
+}
+
+TEST_CASE("kfdd blif c880 dtl sifting", "[blif]")
+{
+    test_blif("c880.blif", 20000);
+}
+
+TEST_CASE("kfdd blif c1355 dtl sifting", "[blif]")
+{
+    test_blif("c1355.blif", 110000);
+}
+
+TEST_CASE("kfdd blif c1908 dtl sifting", "[blif]")
+{
+    test_blif("c1908.blif", 20000);
+}
+
+TEST_CASE("kfdd blif c2670 dtl sifting", "[blif]")
+{
+    test_blif("c2670.blif", 25000);
+}
+
+TEST_CASE("kfdd blif c3540 dtl sifting", "[blif]")
+{
+    test_blif("c3540.blif", 270000);
+}
+
+TEST_CASE("kfdd blif c5315 dtl sifting", "[blif]")
+{
+    test_blif("c5315.blif", 10000);
+}
+
+
+
 }  // namespace

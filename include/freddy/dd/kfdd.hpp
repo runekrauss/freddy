@@ -15,14 +15,14 @@
 #include <cassert>    // assert
 #include <cmath>      // std::pow
 #include <cstdint>    // std::int32_t
-#include <iostream>   // std::cout
-#include <iterator>   // std::back_inserter
-#include <memory>     // std::shared_ptr
-#include <ostream>    // std::ostream
-#include <string>     // std::string
-#include <utility>    // std::make_pair
-#include <vector>     // std::vector
 #include <format>
+#include <iostream>  // std::cout
+#include <iterator>  // std::back_inserter
+#include <memory>    // std::shared_ptr
+#include <ostream>   // std::ostream
+#include <string>    // std::string
+#include <utility>   // std::make_pair
+#include <vector>    // std::vector
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
@@ -131,6 +131,8 @@ class kfdd
 
     [[nodiscard]] auto size() const -> size_t;
 
+    [[nodiscard]] auto size(std::vector<kfdd> const& fs) const -> size_t;
+
     [[nodiscard]] auto depth() const;
 
     [[nodiscard]] auto path_count() const noexcept;
@@ -226,11 +228,80 @@ class kfdd_manager : public detail::manager<bool, bool>
         to_dot(transform(fs), outputs, s);
     }
 
-    void change_expansion_type(int x, freddy::expansion t)
+    void change_type(const expansion from, const expansion to, const std::shared_ptr<detail::node<bool, bool>>& node) {}
+
+    void change_expansion_type(int x, expansion t)
     {
+
+        const auto change_type = [&](const expansion from, const expansion to,
+                                     const std::shared_ptr<detail::node<bool, bool>>& node) {
+            if (from == expansion::S)
+            {
+                //S => PD
+                if (to == expansion::PD)
+                {
+                    auto& br = node->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
+                    br.hi = antiv(br.hi, br.lo);
+                }
+                //S => ND
+                else if (to == expansion::ND)
+                {
+                    auto& br = node->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
+                    std::swap(br.hi, br.lo);
+                    br.hi = antiv(br.hi, br.lo);
+                }
+            }
+            else if (from == expansion::PD)
+            {
+                //PD => S
+                if (to == expansion::S)
+                {
+                    auto& br = node->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
+                    br.hi = antiv(br.hi, br.lo);
+                    //node->br().lo = low;
+                }
+                //PD => ND
+                else if (to == expansion::ND)
+                {
+                    auto& br = node->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
+                    //node->br().hi = high;
+                    br.lo = antiv(br.hi, br.lo);
+                }
+            }
+            else if (from == expansion::ND)
+            {
+                //ND => S
+                if (to == expansion::S)
+                {
+                    auto& br = node->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
+                    std::swap(br.hi, br.lo);
+                    br.lo = antiv(br.lo, br.hi);
+                }
+                //ND => PD
+                else if (to == expansion::PD)
+                {
+                    auto& br = node->br();
+                    assert(br.hi->v->is_const());
+                    assert(br.lo->v->is_const());
+                    //node->br().hi = high;
+                    br.lo = antiv(br.lo, br.hi);
+                }
+            }
+        };
+
         assert(x >= 0);
         assert(x < var_count());
-        assert(var2lvl[x] == var_count()-1);
+        assert(var2lvl[x] == var_count() - 1);
         auto& var = vl[x];
         auto var_t = var.t;
         if (var_t == t)
@@ -239,89 +310,130 @@ class kfdd_manager : public detail::manager<bool, bool>
             return;
         }
         var.t = t;
-        if (var_t == expansion::S)
+        std::unordered_set<std::shared_ptr<detail::node<bool, bool>>, detail::hash, detail::comp> tmp_nt;
+
+        //for (const auto& it : var.nt)
+        //{
+        //    change_type(var_t, t, it);
+        //}
+
+        for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
         {
-            //S => PD
-            if (t == expansion::PD)
-            {
-                for (const auto & it : var.nt)
-                {
-                    auto& br = it->br();
-                    assert(br.hi->v->is_const());
-                    assert(br.lo->v->is_const());
-                    br.hi = antiv(br.hi, br.lo);
-                }
-            }
-            //S => ND
-            else if (t == expansion::ND)
-            {
-                for (const auto & it : var.nt)
-                {
-                    auto& br = it->br();
-                    assert(br.hi->v->is_const());
-                    assert(br.lo->v->is_const());
-                    std::swap(br.hi, br.lo);
-                    br.hi = antiv(br.hi, br.lo);
-                }
-            }
+            auto v = *it;  // to ensure existing references are not lost
+            it = vl[x].nt.erase(it);
+            change_type(var_t, t, v);
+            tmp_nt.insert(std::move(v));
         }
-        else if (var_t == expansion::PD)
-        {
-            //PD => S
-            if (t == expansion::S)
-            {
-                for (const auto & it : var.nt)
-                {
-                    auto& br = it->br();
-                    assert(br.hi->v->is_const());
-                    assert(br.lo->v->is_const());
-                    br.hi = antiv(br.hi, br.lo);
-                    //node->br().lo = low;
-                }
-            }
-            //PD => ND
-            else if (t == expansion::ND)
-            {
-                for (const auto & it : var.nt)
-                {
-                    auto& br = it->br();
-                    assert(br.hi->v->is_const());
-                    assert(br.lo->v->is_const());
-                    //node->br().hi = high;
-                    auto newLow = antiv(br.hi, br.lo);
-                    br.lo = newLow;
-                }
-            }
-        }
-        else if (var_t == expansion::ND)
-        {
-            //ND => S
-            if (t == expansion::S)
-            {
-                for (const auto & it : var.nt)
-                {
-                    auto& br = it->br();
-                    assert(br.hi->v->is_const());
-                    assert(br.lo->v->is_const());
-                    std::swap(br.hi, br.lo);
-                    br.lo = antiv(br.lo, br.hi);
-                }
-            }
-            //ND => PD
-            else if (t == expansion::PD)
-            {
-                for (const auto & it : var.nt)
-                {
-                    auto& br = it->br();
-                    assert(br.hi->v->is_const());
-                    assert(br.lo->v->is_const());
-                    //node->br().hi = high;
-                    br.lo = antiv(br.lo, br.hi);
-                }
-            }
-        }
-        var.nt.rehash(var.nt.bucket_count()+1);
+        assert(vl[x].nt.empty());
+        vl[x].nt.merge(tmp_nt);
+        //for (auto it = tmp_nt.begin(); it != tmp_nt.end();)
+        //{
+        //    auto& br = (*it)->br();
+        //    it = tmp_nt.erase(it);
+        //    unode(br.x, br.hi, br.lo);
+        //}
         gc();
+    }
+
+        void dtl_sift()
+    {
+        auto get_size = [&] { return static_cast<size_t>(node_count()); };
+        gc();
+
+        auto move_to_bottom = [&](const int x) { sift(var2lvl[x], var_count() - 1); };
+
+        auto get_size_info = [&](const int x) { return vl[x].nt.size(); };
+
+        auto comp_largest_layer = [&](const int x, const int y) { return get_size_info(x) > get_size_info(y); };
+
+        auto find_smallest_level = [&](const int x) -> smallest_level_r {
+            auto size = get_size();
+            auto pos = var2lvl[x];
+            move_to_bottom(x);
+            auto exceeding_size = static_cast<float>(get_size()) * config::growth_factor;
+            for (auto i = var_count() - 1; i >= 0; --i)
+            {
+                exchange(i);
+                auto current_size = get_size();
+                auto new_size_f = static_cast<float>(current_size);
+                if (new_size_f > exceeding_size)
+                {
+                    exchange(i);
+                    std::cout << "aborting sifting of variable " << x << ", exceeding growth factor." << '\n';
+                    break;
+                }
+                if (current_size < size)
+                {
+                    size = current_size;
+                    pos = i;
+                }
+            }
+            return {.x = x, .pos = pos, .size = size, .expansion = vl[x].t};
+        };
+
+        auto sift_single_var = [&](const int x) -> smallest_level_r {
+            smallest_level_r tmp_res{};
+            smallest_level_r res{};
+            //find smallest level for Shannon
+            move_to_bottom(x);
+            change_expansion_type(x, expansion::S);
+            res = find_smallest_level(x);
+
+            //find smallest level for Positive Davio
+            move_to_bottom(x);
+            change_expansion_type(x, expansion::PD);
+            tmp_res = find_smallest_level(x);
+            if (tmp_res.size < res.size)
+            {
+                res = tmp_res;
+            }
+
+            //find smallest level for Negative Davio
+            //move_to_bottom(x);
+            //change_expansion_type(x, expansion::ND);
+            //tmp_res = find_smallest_level(x);
+            //if (tmp_res.size < res.size)
+            //{
+            //    res = tmp_res;
+            //}
+
+            //move variable to smallest level with smallest expansion type
+            move_to_bottom(x);
+            change_expansion_type(x, res.expansion);
+            sift(var2lvl[x], res.pos);
+            return res;
+        };
+
+        gc();
+        std::cout << "Before sifting:" << '\n';
+        for (auto x = 0; x < var_count(); x++)
+        {
+            std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
+                      << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
+        }
+
+        auto vars = std::vector<int>(var_count());
+        for (auto x = 0; x < var_count(); x++)
+        {
+            vars[x] = x;
+        }
+        std::ranges::sort(vars, comp_largest_layer);
+        for (auto i = 0; i < var_count(); ++i)
+        {
+            auto x = vars[i];
+            sift_single_var(x);
+            //sift_single_var(i);
+        }
+        //for(auto x = 0; x < var_count(); ++x)
+        //{
+        //    sift_single_var(x);
+        //}
+        std::cout << "After sifting:" << '\n';
+        for (auto x = 0; x < var_count(); x++)
+        {
+            std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
+                      << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
+        }
     }
 
   private:
@@ -696,80 +808,71 @@ class kfdd_manager : public detail::manager<bool, bool>
 
     void dtl_sift(kfdd f, bool kfddsize)
     {
-
-        auto get_size = [&]() {
+        auto get_size = [&] {
             if (kfddsize)
             {
                 return f.size();
             }
             return static_cast<size_t>(node_count());
         };
+        gc();
 
-        auto move_to_bottom = [&](const int x) {
-            sift(var2lvl[x], var_count()-1);
+        auto move_to_bottom = [&](const int x) { sift(var2lvl[x], var_count() - 1); };
 
-        };
+        auto get_size_info = [&](const int x) { return vl[x].nt.size(); };
 
-        auto get_size_info = [&](const int x) {
-            return vl[x].nt.size();
-        };
+        auto comp_largest_layer = [&](const int x, const int y) { return get_size_info(x) > get_size_info(y); };
 
-        auto comp_largest_layer = [&](const int x,const int y) {
-            return get_size_info(x) > get_size_info(y);
-        };
-
-        auto find_smallest_level = [&](const int x)-> smallest_level_r {
+        auto find_smallest_level = [&](const int x) -> smallest_level_r {
             auto size = get_size();
             auto pos = var2lvl[x];
             move_to_bottom(x);
-            for(auto i = var_count()-1; i >= 0;--i)
+            auto exceeding_size = static_cast<float>(get_size()) * config::growth_factor;
+            for (auto i = var_count() - 1; i >= 0; --i)
             {
-                auto old_size = get_size();
                 exchange(i);
-                auto new_size = get_size();
-                auto exceeding_size = static_cast<float>(old_size) * config::growth_factor;
-                auto new_size_f = static_cast<float>(new_size);
-                if(new_size_f > exceeding_size)
+                auto current_size = get_size();
+                auto new_size_f = static_cast<float>(current_size);
+                if (new_size_f > exceeding_size)
                 {
                     exchange(i);
-                    auto actual_growth_factor = new_size_f / static_cast<float>(old_size);
-                    std::cout << "aborting sifting of variable " << x << ", actual growth factor was: " << actual_growth_factor << '\n';
+                    std::cout << "aborting sifting of variable " << x << ", exceeding growth factor." << '\n';
                     break;
                 }
-                auto tmp_size = get_size();
-                if (tmp_size < size)
+                if (current_size < size)
                 {
-                    size = tmp_size;
+                    size = current_size;
                     pos = i;
                 }
             }
-            return {.x=x, .pos=pos, .size=size, .expansion = vl[x].t };
+            return {.x = x, .pos = pos, .size = size, .expansion = vl[x].t};
         };
 
-
         auto sift_single_var = [&](const int x) -> smallest_level_r {
+            smallest_level_r tmp_res{};
+            smallest_level_r res{};
             //find smallest level for Shannon
             move_to_bottom(x);
             change_expansion_type(x, expansion::S);
-            auto res = find_smallest_level(x);
+            res = find_smallest_level(x);
 
             //find smallest level for Positive Davio
             move_to_bottom(x);
             change_expansion_type(x, expansion::PD);
-            auto tmp_res = find_smallest_level(x);
-            if(tmp_res.size < res.size)
+            tmp_res = find_smallest_level(x);
+            if (tmp_res.size < res.size)
             {
                 res = tmp_res;
             }
 
             //find smallest level for Negative Davio
-            move_to_bottom(x);
-            change_expansion_type(x, expansion::ND);
-            tmp_res = find_smallest_level(x);
-            if(tmp_res.size < res.size)
-            {
-                res = tmp_res;
-            }
+            //move_to_bottom(x);
+            //change_expansion_type(x, expansion::ND);
+            //tmp_res = find_smallest_level(x);
+            //if (tmp_res.size < res.size)
+            //{
+            //    res = tmp_res;
+            //}
 
             //move variable to smallest level with smallest expansion type
             move_to_bottom(x);
@@ -792,22 +895,22 @@ class kfdd_manager : public detail::manager<bool, bool>
             vars[x] = x;
         }
         std::ranges::sort(vars, comp_largest_layer);
-        for(auto i = 0; i < var_count(); ++i)
+        for (auto i = 0; i < var_count(); ++i)
         {
-            //auto x = vars[i];
-            //sift_single_var(x);
-            sift_single_var(i);
+            auto x = vars[i];
+            sift_single_var(x);
+            //sift_single_var(i);
         }
         //for(auto x = 0; x < var_count(); ++x)
         //{
         //    sift_single_var(x);
         //}
         std::cout << "After sifting:" << '\n';
-         for (auto x = 0; x < var_count(); x++)
-         {
-             std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
-                       << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
-         }
+        for (auto x = 0; x < var_count(); x++)
+        {
+            std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
+                      << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
+        }
     }
 };
 
