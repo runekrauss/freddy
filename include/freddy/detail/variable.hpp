@@ -10,13 +10,13 @@
 #include "freddy/expansion.hpp"  // expansion
 #include "node.hpp"              // node
 
-#include <cassert>        // assert
-#include <cstdint>        // std::int32_t
-#include <memory>         // std::shared_ptr
-#include <ostream>        // std::ostream
-#include <string>         // std::string
-#include <string_view>    // std::string_view
-#include <unordered_set>  // std::unordered_set
+#include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
+
+#include <cassert>      // assert
+#include <memory>       // std::shared_ptr
+#include <ostream>      // std::ostream
+#include <string>       // std::string
+#include <string_view>  // std::string_view
 
 // *********************************************************************************************************************
 // Namespaces
@@ -54,30 +54,15 @@ struct variable
             default: assert(false);
         }
 
-        auto print = [&s](auto const& ut) {
-            for (auto i = 0; i < static_cast<std::int32_t>(ut.bucket_count()); ++i)
-            {
-                if (ut.bucket_size(i) > 0)
-                {
-                    s << "| " << i << " | ";
-                    for (auto it = ut.begin(i); it != ut.end(i); ++it)
-                    {
-                        s << *it << *(*it) << '[' << it->use_count() << "] ";
-                    }
-                    s << "|\n";
-                }
-            }
-        };
+        s << "\nET:";
+        s << "\n#Buckets = " << var.et.bucket_count();
+        s << "\n#Edges = " << var.et.size();
+        s << "\nMax. load = " << var.et.max_load();
 
-        s << "\nET:\n";
-        print(var.et);
-        s << "#Edges = " << var.et.size();
-        s << "\nOccupancy = " << var.et.load_factor();
-
-        s << "\nNT:\n";
-        print(var.nt);
-        s << "#Nodes = " << var.nt.size();
-        s << "\nOccupancy = " << var.nt.load_factor();
+        s << "\nNT:";
+        s << "\n#Buckets = " << var.nt.bucket_count();
+        s << "\n#Nodes = " << var.nt.size();
+        s << "\nMax. load = " << var.nt.max_load();
 
         return s;
     }
@@ -86,9 +71,9 @@ struct variable
 
     std::string l;  // name
 
-    std::unordered_set<std::shared_ptr<edge<E, V>>, hash, comp> et;
+    boost::unordered_flat_set<std::shared_ptr<edge<E, V>>, hash, comp> et;
 
-    std::unordered_set<std::shared_ptr<node<E, V>>, hash, comp> nt;
+    boost::unordered_flat_set<std::shared_ptr<node<E, V>>, hash, comp> nt;
 };
 
 }  // namespace freddy::detail

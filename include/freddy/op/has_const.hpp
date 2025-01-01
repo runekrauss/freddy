@@ -37,10 +37,11 @@ class has_const : public detail::operation  // constant search
     }
 
     bool r{};  // constant search result
+
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<edge_ptr>()(f) ^ std::hash<V>()(c);
+        return std::hash<edge_ptr>()(f) + std::hash<V>()(c);
     }
 
     [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override

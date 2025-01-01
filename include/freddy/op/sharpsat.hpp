@@ -36,6 +36,7 @@ class sharpsat : public detail::operation  // sharp satisfiability problem
     }
 
     double r{};  // #SAT result
+
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {

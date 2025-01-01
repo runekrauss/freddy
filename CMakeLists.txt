@@ -13,6 +13,23 @@ endif()
 add_library(freddy INTERFACE)
 target_include_directories(freddy INTERFACE include)
 
+option(FREDDY_STATS "Calculate statistics")
+if(FREDDY_STATS)
+    add_compile_definitions(BOOST_UNORDERED_ENABLE_STATS)
+endif()
+
+find_package(Boost QUIET)
+if(NOT Boost_FOUND)
+    include(FetchContent)
+    FetchContent_Declare(
+        boost_unordered
+        GIT_REPOSITORY https://github.com/MikePopoloski/boost_unordered
+        GIT_TAG v1.87.0
+        GIT_SHALLOW 1
+    )
+    FetchContent_MakeAvailable(boost_unordered)
+endif()
+
 option(CLANGTIDY "Check code")
 if(CLANGTIDY)
     find_program(CLANG_TIDY clang-tidy REQUIRED)
@@ -27,7 +44,8 @@ if(FREDDY_TEST)
         FetchContent_Declare(
             Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG v3.5.3
+            GIT_TAG v3.7.1
+            GIT_SHALLOW 1
             SYSTEM
         )
         FetchContent_MakeAvailable(Catch2)

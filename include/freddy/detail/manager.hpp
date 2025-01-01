@@ -15,6 +15,8 @@
 #include "operation.hpp"            // operation
 #include "variable.hpp"             // variable
 
+#include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
+
 #include <algorithm>      // std::ranges::max_element
 #include <array>          // std::array
 #include <cassert>        // assert
@@ -25,7 +27,6 @@
 #include <ostream>        // std::ostream
 #include <string>         // std::string
 #include <string_view>    // std::string_view
-#include <unordered_set>  // std::unordered_set
 #include <utility>        // std::move
 #include <vector>         // std::vector
 
@@ -58,48 +59,59 @@ class manager
             }
         }
 
-        auto print = [&s](auto const& uc) {
-            for (auto i = 0; i < static_cast<std::int32_t>(uc.bucket_count()); ++i)
-            {
-                if (uc.bucket_size(i) > 0)
-                {
-                    s << "| " << i << " | ";
-                    for (auto it = uc.begin(i); it != uc.end(i); ++it)
-                    {
-                        s << *it << *(*it) << '[' << it->use_count() << "] ";
-                    }
-                    s << "|\n";
-                }
-            }
-        };
+        s << "\nEC:";
+        s << "\n#Buckets = " << mgr.ec.bucket_count();
+        s << "\n#Edges = " << mgr.ec.size();
+        s << "\nMax. load = " << mgr.ec.max_load();
 
-        s << "\nEC:\n";
-        print(mgr.ec);
-        s << "#Edges = " << mgr.ec.size();
-        s << "\nOccupancy = " << mgr.ec.load_factor();
+        s << "\nNC:";
+        s << "\n#Buckets = " << mgr.nc.bucket_count();
+        s << "\n#Edges = " << mgr.nc.size();
+        s << "\nMax. load = " << mgr.nc.max_load();
 
-        s << "\nNC:\n";
-        print(mgr.nc);
-        s << "#Constants = " << mgr.nc.size();
-        s << "\nOccupancy = " << mgr.nc.load_factor();
+        s << "\nCT:";
+        s << "\n#Buckets = " << mgr.ct.bucket_count();
+        s << "\n#Operations = " << mgr.ct.size();
+        s << "\nMax. load = " << mgr.ct.max_load();
 
-        s << "\nCT:\n";
-        for (auto i = 0; i < static_cast<std::int32_t>(mgr.ct.bucket_count()); ++i)
+#ifdef FREDDY_STATS
+        auto a = 0.0;
+        auto b = 0.0;
+        auto c = 0.0;
+        auto d = 0.0;
+        auto e = 0.0;
+        for (auto const& var : mgr.vl)
         {
-            if (mgr.ct.bucket_size(i) > 0)
-            {
-                s << "| " << i << " | ";
-                for (auto it = mgr.ct.begin(i); it != mgr.ct.end(i); ++it)
-                {
-                    s << *(*it) << ' ';
-                }
-                s << "|\n";
-            }
+            auto const et_stats = var.et.get_stats();
+            auto const nt_stats = var.nt.get_stats();
+            
+            a += (et_stats.insertion.probe_length.average + nt_stats.insertion.probe_length.average) / 2.0;
+            b += (et_stats.successful_lookup.probe_length.average + nt_stats.successful_lookup.probe_length.average) / 2.0;
+            c += (et_stats.successful_lookup.num_comparisons.average + nt_stats.successful_lookup.num_comparisons.average) / 2.0;
+            d += (et_stats.unsuccessful_lookup.probe_length.average + nt_stats.unsuccessful_lookup.probe_length.average) / 2.0;
+            e += (et_stats.unsuccessful_lookup.num_comparisons.average + nt_stats.unsuccessful_lookup.num_comparisons.average) / 2.0;
         }
-        s << "#Operations = " << mgr.ct.size();
-        s << "\nOccupancy = " << mgr.ct.load_factor();
-
-        s << mgr.cacheStats();
+        s << "\nUT insertion probe length = " << a / var_count();
+        s << "\nUT successful lookup probe length = " << b / var_count();
+        s << "\nUT successful lookup num comparisons = " << c / var_count();
+        s << "\nUT unsuccessful lookup probe length = " << d / var_count();
+        s << "\nUT unsuccessful lookup num comparisons = " << e / var_count();
+        
+        auto const ec_stats = mgr.ec.get_stats();
+        auto const nc_stats = mgr.nc.get_stats();
+        s << "\nC insertion probe length = " << (ec_stats.insertion.probe_length.average + nc_stats.insertion.probe_length.average) / 2.0;
+        s << "\nC successful lookup probe length = " << (ec_stats.successful_lookup.probe_length.average + nc_stats.successful_lookup.probe_length.average) / 2.0;
+        s << "\nC successful lookup num comparisons = " << (ec_stats.successful_lookup.num_comparisons.average + nc_stats.successful_lookup.num_comparisons.average) / 2.0;
+        s << "\nC unsuccessful lookup probe length = " << (ec_stats.unsuccessful_lookup.probe_length.average + nc_stats.unsuccessful_lookup.probe_length.average) / 2.0;
+        s << "\nC unsuccessful lookup num comparisons = " << (ec_stats.unsuccessful_lookup.num_comparisons.average + nc_stats.unsuccessful_lookup.num_comparisons.average) / 2.0;
+        
+        auto const ct_stats = mgr.ct.get_stats();
+        s << "\nCT insertion probe length = " << ct_stats.insertion.probe_length.average;
+        s << "\nCT successful lookup probe length = " << ct_stats.successful_lookup.probe_length.average;
+        s << "\nCT successful lookup num comparisons = " << ct_stats.successful_lookup.num_comparisons.average;
+        s << "\nCT unsuccessful lookup probe length = " << ct_stats.unsuccessful_lookup.probe_length.average;
+        s << "\nCT unsuccessful lookup num comparisons = " << ct_stats.unsuccessful_lookup.num_comparisons.average;
+#endif
 
         return s;
     }
@@ -172,10 +184,10 @@ class manager
                 }
             }
         };
-        for (auto const lvl : lvl2var)
+        for (auto const var : lvl2var)
         {  // an increased chance of deleting nodes/edges
-            cleanup(vl[lvl].et);
-            cleanup(vl[lvl].nt);
+            cleanup(vl[var].et);
+            cleanup(vl[var].nt);
         }
         cleanup(ec);
         cleanup(nc);
@@ -252,8 +264,8 @@ class manager
 
     [[nodiscard]] auto node_count(std::vector<edge_ptr> const& fs) const
     {
-        std::unordered_set<node_ptr, hash, comp> marks;
-        marks.max_load_factor(0.7f);
+        boost::unordered_flat_set<node_ptr, hash, comp> marks;
+        marks.reserve(config::ut_size);
 
         for (auto const& f : fs)
         {  // (shared) number of nodes
@@ -470,123 +482,15 @@ class manager
         return foa(edge<E, V>{std::move(w), std::move(v)}, vl[x].et);
     }
 
-    //
-    //
-    //
-    struct stat{
-        int cache_call{0};
-        int cache_collision{0};
-        int cache_max_coll{0};
-        int cached_call{0};
-        int cached_hit{0};
-        int cached_hit_added_indexes{0};
-        int cached_miss_added_indexes{0};
-    };
-    mutable std::unordered_map<std::string, stat> stats;
-
-    [[nodiscard]] auto cacheStats() const
-    {
-
-        std::string s = "\nCache Analizations per Operation:\n";
-        for (const auto& pair : stats) {
-            const std::string& key = pair.first;
-            const stat& values = pair.second;
-
-            auto hitrate_name        = "Hit rate";
-            auto hitrate_value       = static_cast<double>(values.cached_hit) / values.cached_call;
-
-            auto hitavg_name         = "Hit avg.";
-            auto hitavg_value = (values.cached_hit != 0) ? static_cast<double>(values.cached_hit_added_indexes) / values.cached_hit : 0.0;
-
-            auto missavg_name        = "Miss avg.";
-            auto missavg_value       = static_cast<double>(values.cached_miss_added_indexes) / (values.cached_call - values.cached_hit);
-
-            auto collisionrate_name  = "Collision rate";
-            auto collisionrate_value = static_cast<double>(values.cache_collision) / values.cache_call;
-
-            auto maxcollisions_name  = "Max. collisions";
-            auto maxcollisions_value = std::to_string(values.cache_max_coll);
-
-
-            s += key + " Stats" + '\n';
-            s += std::format("{:-<11}", '-') + '\n';
-            s += std::format("{:15} : {:>10.2f} %", hitrate_name, hitrate_value) + '\n';
-            s += std::format("{:15} : {:>10.2f}", hitavg_name, hitavg_value) + '\n';
-            s += std::format("{:15} : {:>10.2f}", missavg_name, missavg_value) + '\n';
-            s += std::format("{:15} : {:>10.2f} %", collisionrate_name, collisionrate_value) + '\n';
-            s += std::format("{:15} : {:>10}", maxcollisions_name, maxcollisions_value);
-        }
-        return s;
-    }
-
-    template <typename T>
-    auto cache_stats(T const& op) {
-        stats[typeid(op).name()].cache_call++;
-
-        int index_in_bucket = 0;
-        int hash = op() % ct.bucket_count();
-
-        bool collided = false;
-
-        for (auto it = ct.begin(hash); it != ct.end(hash); ++it)
-        {
-            index_in_bucket++;
-            collided = true;
-        }
-
-        if (collided){
-            stats[typeid(op).name()].cache_collision++;
-        }
-
-        if (index_in_bucket > stats[typeid(op).name()].cache_max_coll){
-            stats[typeid(op).name()].cache_max_coll = index_in_bucket;
-        }
-    }
-
-    template <typename T>
-    auto cached_stats(T const& op) const
-    {
-        stats[typeid(op).name()].cached_call++;
-
-        int index_in_bucket = 0;
-        int hash = op() % ct.bucket_count();
-
-        bool found_something = false;
-
-        for (auto it = ct.begin(hash); it != ct.end(hash); ++it)
-        {
-            index_in_bucket++;
-
-            if (*(*it) == op){
-                found_something = true;
-                break;
-            }
-        }
-
-        if (found_something){
-            stats[typeid(op).name()].cached_hit_added_indexes += index_in_bucket;
-            stats[typeid(op).name()].cached_hit++;
-        } else {
-            stats[typeid(op).name()].cached_miss_added_indexes += index_in_bucket;
-        }
-    }
-    //
-    //
-    //
-
     template <typename T>
     auto cache(T op)
     {
-        cache_stats(op);
-
         return static_cast<T const*>((*ct.insert(std::make_unique<T>(std::move(op))).first).get());
     }
 
     template <typename T>
     [[nodiscard]] auto cached(T const& op) const noexcept
     {
-        cached_stats(op);
-
         auto const cr = ct.find(&op);
         return cr == ct.end() ? nullptr : static_cast<T const*>((*cr).get());
     }
@@ -642,8 +546,8 @@ class manager
             }
         }
 
-        std::unordered_set<node_ptr, hash, comp> marks;
-        marks.max_load_factor(0.7f);
+        boost::unordered_flat_set<node_ptr, hash, comp> marks;
+        marks.reserve(config::ut_size);
 
         for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
         {
@@ -692,7 +596,7 @@ class manager
     template <typename T>
     auto ctrl(T& ut)
     {
-        if (ut.load_factor() < config::load_factor)
+        if (ut.size() <= ut.max_load())
         {
             return;
         }
@@ -798,14 +702,14 @@ class manager
             }
         }
 
-        gc();  // clean up possible dead nodes
-
         std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
         std::swap(var2lvl[x], var2lvl[y]);
+        
+        gc();  // clean up possible dead nodes
     }
 
     template <typename T>
-    auto foa(T&& obj, std::unordered_set<std::shared_ptr<T>, hash, comp>& ut)
+    auto foa(T&& obj, boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>& ut)
     {  // find or add node/edge
         auto const search = ut.find(&obj);
         if (search == ut.end())
@@ -823,7 +727,7 @@ class manager
         return f->v->is_const() ? 1 : std::max(longest_path_rec(f->v->br().hi), longest_path_rec(f->v->br().lo)) + 1;
     }
 
-    auto node_count(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks) const
+    auto node_count(edge_ptr const& f, boost::unordered_flat_set<node_ptr, hash, comp>& marks) const
     {
         assert(f);
 
@@ -910,7 +814,7 @@ class manager
         return ++lvl;
     }
 
-    auto to_dot(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks, std::ostream& s) const
+    auto to_dot(edge_ptr const& f, boost::unordered_flat_set<node_ptr, hash, comp>& marks, std::ostream& s) const
     {
         assert(f);
 
@@ -941,13 +845,13 @@ class manager
         to_dot(f->v->br().lo, marks, s);
     }
 
-    std::unordered_set<std::unique_ptr<operation>, hash, comp> ct;  // to cache operations
+    boost::unordered_flat_set<std::unique_ptr<operation>, hash, comp> ct;  // to cache operations
 
-    std::unordered_set<edge_ptr, hash, comp> ec;
+    boost::unordered_flat_set<edge_ptr, hash, comp> ec;
 
     std::vector<std::int32_t> lvl2var;
 
-    std::unordered_set<node_ptr, hash, comp> nc;  // constants
+    boost::unordered_flat_set<node_ptr, hash, comp> nc;  // constants
 
     std::vector<variable<E, V>> vl;
 };

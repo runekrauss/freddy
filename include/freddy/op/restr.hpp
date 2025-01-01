@@ -40,10 +40,11 @@ class restr : public detail::operation  // variable substitution
     }
 
     edge_ptr r;  // substitution result
+
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<edge_ptr>()(f) ^ std::hash<std::int32_t>()(x) ^ std::hash<bool>()(a);
+        return std::hash<edge_ptr>()(f) + std::hash<std::int32_t>()(x) + std::hash<bool>()(a);
     }
 
     [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override

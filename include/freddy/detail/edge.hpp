@@ -38,7 +38,7 @@ struct edge
 
     auto operator()() const
     {
-        return std::hash<E>()(w) ^ std::hash<node_ptr>()(v);
+        return std::hash<node_ptr>()(v) + std::hash<E>()(w);
     }
 
     auto friend operator==(edge const& lhs, edge const& rhs)

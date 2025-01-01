@@ -37,10 +37,11 @@ class repl : public detail::operation  // 1-path replacement
     }
 
     edge_ptr r;  // replacement result
+
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<edge_ptr>()(f) ^ std::hash<bool>()(a);
+        return std::hash<edge_ptr>()(f) + std::hash<bool>()(a);
     }
 
     [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override

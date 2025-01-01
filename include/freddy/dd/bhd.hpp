@@ -326,7 +326,7 @@ class bhd_manager : public detail::manager<bool, bool>
     }
 
     auto uc(edge_ptr const& f, std::vector<std::optional<bool>>& path,
-            std::vector<std::vector<std::pair<std::int32_t, bool>>>& uclauses)
+            std::vector<std::vector<std::pair<std::int32_t, bool>>>& uclauses) const
     {
         assert(f);
 

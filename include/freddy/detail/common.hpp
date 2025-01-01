@@ -4,6 +4,8 @@
 // Includes
 // *********************************************************************************************************************
 
+#include <boost/unordered/hash_traits.hpp>  // is_avalanching
+
 #include <algorithm>    // std::min
 #include <cassert>      // assert
 #include <cmath>        // std::ceil
@@ -68,6 +70,8 @@ struct comp
 
 struct hash
 {
+    using is_avalanching = std::true_type;  // do not use post-mixing
+
     using is_transparent = void;
 
     template <typename T>
@@ -79,6 +83,16 @@ struct hash
         return p->operator()();
     }
 };
+
+// =====================================================================================================================
+// Constants
+// =====================================================================================================================
+
+auto inline constexpr p1 = 12583037;  // prime
+
+auto inline constexpr p2 = 4256383;
+
+auto inline constexpr p3 = 741563;
 
 // =====================================================================================================================
 // Functions

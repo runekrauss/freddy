@@ -4,7 +4,8 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "edge.hpp"  // edge
+#include "common.hpp"  // p1
+#include "edge.hpp"    // edge
 
 #include <cassert>     // assert
 #include <cstdint>     // std::int32_t
@@ -53,11 +54,11 @@ class node
             val{std::move(c)}
     {}
 
-    auto operator()() const
+    auto operator()() const  // multiplicative hash whose primes have a LCM such that few collisions occur
     {
-        return is_const() ? std::hash<V>()(c())
-                          : std::hash<std::int32_t>()(br().x) ^ std::hash<edge_ptr>()(br().hi) ^
-                                std::hash<edge_ptr>()(br().lo);
+        // x is not part of the key since several UTs are provided
+        return is_const() ? std::hash<V>()(c())  // hash forces an overflow to increase entropy
+                          : std::hash<edge_ptr>()(br().hi) * p1 + std::hash<edge_ptr>()(br().lo) * p2;
     }
 
     auto friend operator==(node const& lhs, node const& rhs)
