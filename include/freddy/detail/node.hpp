@@ -11,7 +11,6 @@
 #include <cstdint>     // std::int32_t
 #include <functional>  // std::hash
 #include <memory>      // std::shared_ptr
-#include <ostream>     // std::ostream
 #include <utility>     // std::move
 #include <variant>     // std::variant
 
@@ -72,22 +71,6 @@ class node
             return lhs.c() == rhs.c();
         }
         return lhs.br().x == rhs.br().x && lhs.br().hi == rhs.br().hi && lhs.br().lo == rhs.br().lo;
-    }
-
-    auto friend operator<<(std::ostream& s, node const& v) -> std::ostream&
-    {
-        s << '(';
-        if (v.is_const())
-        {
-            s << v.c();
-        }
-        else
-        {
-            s << v.br().x << ',' << v.br().hi << ',' << v.br().lo;
-        }
-        s << ')';
-
-        return s;
     }
 
     [[nodiscard]] auto is_const() const -> bool

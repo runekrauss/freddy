@@ -51,11 +51,6 @@ class has_const : public detail::operation  // constant search
         return f == other.f && c == other.c;
     }
 
-    auto print(std::ostream& s) const -> void override
-    {
-        s << '(' << f << ',' << c << ")->" << r;
-    }
-
     edge_ptr f;  // search operand
 
     V c;  // constant

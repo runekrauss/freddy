@@ -54,11 +54,6 @@ class restr : public detail::operation  // variable substitution
         return f == other.f && x == other.x && a == other.a;
     }
 
-    auto print(std::ostream& s) const -> void override
-    {
-        s << '(' << f << ',' << x << ',' << a << ")->" << r;
-    }
-
     edge_ptr f;  // substitution operand
 
     std::int32_t x;  // variable to assign

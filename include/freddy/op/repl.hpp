@@ -51,11 +51,6 @@ class repl : public detail::operation  // 1-path replacement
         return f == other.f && a == other.a;
     }
 
-    auto print(std::ostream& s) const -> void override
-    {
-        s << '(' << f << ',' << a << ")->" << r;
-    }
-
     edge_ptr f;  // instance for the replacement
 
     bool a;  // current evaluation

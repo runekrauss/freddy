@@ -18,7 +18,7 @@ if(FREDDY_STATS)
     add_compile_definitions(BOOST_UNORDERED_ENABLE_STATS)
 endif()
 
-find_package(Boost QUIET)
+find_package(Boost QUIET NO_MODULE)
 if(NOT Boost_FOUND)
     include(FetchContent)
     FetchContent_Declare(

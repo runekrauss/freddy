@@ -52,11 +52,6 @@ class add : public detail::operation  // addition
         return (f == other.f && g == other.g) || (f == other.g && g == other.f);  // commutativity check
     }
 
-    auto print(std::ostream& s) const -> void override
-    {
-        s << '(' << f << ',' << g << ")->" << r;
-    }
-
     edge_ptr f;  // 1st summand
 
     edge_ptr g;  // 2nd summand

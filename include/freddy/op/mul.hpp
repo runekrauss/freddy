@@ -52,11 +52,6 @@ class mul : public detail::operation  // multiplication
         return (f == other.f && g == other.g) || (f == other.g && g == other.f);
     }
 
-    auto print(std::ostream& s) const -> void override
-    {
-        s << '(' << f << ',' << g << ")->" << r;
-    }
-
     edge_ptr f;  // 1st factor
 
     edge_ptr g;  // 2nd factor

@@ -17,18 +17,18 @@
 
 #include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
 
-#include <algorithm>      // std::ranges::max_element
-#include <array>          // std::array
-#include <cassert>        // assert
-#include <concepts>       // std::same_as
-#include <cstdint>        // std::int32_t
-#include <memory>         // std::unique_ptr
-#include <numeric>        // std::accumulate
-#include <ostream>        // std::ostream
-#include <string>         // std::string
-#include <string_view>    // std::string_view
-#include <utility>        // std::move
-#include <vector>         // std::vector
+#include <algorithm>    // std::ranges::max_element
+#include <array>        // std::array
+#include <cassert>      // assert
+#include <concepts>     // std::same_as
+#include <cstdint>      // std::int32_t
+#include <memory>       // std::unique_ptr
+#include <numeric>      // std::accumulate
+#include <ostream>      // std::ostream
+#include <string>       // std::string
+#include <string_view>  // std::string_view
+#include <utility>      // std::move
+#include <vector>       // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -84,27 +84,43 @@ class manager
         {
             auto const et_stats = var.et.get_stats();
             auto const nt_stats = var.nt.get_stats();
-            
+
             a += (et_stats.insertion.probe_length.average + nt_stats.insertion.probe_length.average) / 2.0;
-            b += (et_stats.successful_lookup.probe_length.average + nt_stats.successful_lookup.probe_length.average) / 2.0;
-            c += (et_stats.successful_lookup.num_comparisons.average + nt_stats.successful_lookup.num_comparisons.average) / 2.0;
-            d += (et_stats.unsuccessful_lookup.probe_length.average + nt_stats.unsuccessful_lookup.probe_length.average) / 2.0;
-            e += (et_stats.unsuccessful_lookup.num_comparisons.average + nt_stats.unsuccessful_lookup.num_comparisons.average) / 2.0;
+            b += (et_stats.successful_lookup.probe_length.average + nt_stats.successful_lookup.probe_length.average) /
+                 2.0;
+            c += (et_stats.successful_lookup.num_comparisons.average +
+                  nt_stats.successful_lookup.num_comparisons.average) /
+                 2.0;
+            d += (et_stats.unsuccessful_lookup.probe_length.average +
+                  nt_stats.unsuccessful_lookup.probe_length.average) /
+                 2.0;
+            e += (et_stats.unsuccessful_lookup.num_comparisons.average +
+                  nt_stats.unsuccessful_lookup.num_comparisons.average) /
+                 2.0;
         }
-        s << "\nUT insertion probe length = " << a / var_count();
-        s << "\nUT successful lookup probe length = " << b / var_count();
-        s << "\nUT successful lookup num comparisons = " << c / var_count();
-        s << "\nUT unsuccessful lookup probe length = " << d / var_count();
-        s << "\nUT unsuccessful lookup num comparisons = " << e / var_count();
-        
+        s << "\nUT insertion probe length = " << a / mgr.var_count();
+        s << "\nUT successful lookup probe length = " << b / mgr.var_count();
+        s << "\nUT successful lookup num comparisons = " << c / mgr.var_count();
+        s << "\nUT unsuccessful lookup probe length = " << d / mgr.var_count();
+        s << "\nUT unsuccessful lookup num comparisons = " << e / mgr.var_count();
+
         auto const ec_stats = mgr.ec.get_stats();
         auto const nc_stats = mgr.nc.get_stats();
-        s << "\nC insertion probe length = " << (ec_stats.insertion.probe_length.average + nc_stats.insertion.probe_length.average) / 2.0;
-        s << "\nC successful lookup probe length = " << (ec_stats.successful_lookup.probe_length.average + nc_stats.successful_lookup.probe_length.average) / 2.0;
-        s << "\nC successful lookup num comparisons = " << (ec_stats.successful_lookup.num_comparisons.average + nc_stats.successful_lookup.num_comparisons.average) / 2.0;
-        s << "\nC unsuccessful lookup probe length = " << (ec_stats.unsuccessful_lookup.probe_length.average + nc_stats.unsuccessful_lookup.probe_length.average) / 2.0;
-        s << "\nC unsuccessful lookup num comparisons = " << (ec_stats.unsuccessful_lookup.num_comparisons.average + nc_stats.unsuccessful_lookup.num_comparisons.average) / 2.0;
-        
+        s << "\nC insertion probe length = "
+          << (ec_stats.insertion.probe_length.average + nc_stats.insertion.probe_length.average) / 2.0;
+        s << "\nC successful lookup probe length = "
+          << (ec_stats.successful_lookup.probe_length.average + nc_stats.successful_lookup.probe_length.average) / 2.0;
+        s << "\nC successful lookup num comparisons = "
+          << (ec_stats.successful_lookup.num_comparisons.average + nc_stats.successful_lookup.num_comparisons.average) /
+                 2.0;
+        s << "\nC unsuccessful lookup probe length = "
+          << (ec_stats.unsuccessful_lookup.probe_length.average + nc_stats.unsuccessful_lookup.probe_length.average) /
+                 2.0;
+        s << "\nC unsuccessful lookup num comparisons = "
+          << (ec_stats.unsuccessful_lookup.num_comparisons.average +
+              nc_stats.unsuccessful_lookup.num_comparisons.average) /
+                 2.0;
+
         auto const ct_stats = mgr.ct.get_stats();
         s << "\nCT insertion probe length = " << ct_stats.insertion.probe_length.average;
         s << "\nCT successful lookup probe length = " << ct_stats.successful_lookup.probe_length.average;
@@ -514,8 +530,8 @@ class manager
     }
     // NOLINTEND
 
-    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs,
-                        std::ostream& s) const -> void
+    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
+        -> void
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -704,7 +720,7 @@ class manager
 
         std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
         std::swap(var2lvl[x], var2lvl[y]);
-        
+
         gc();  // clean up possible dead nodes
     }
 

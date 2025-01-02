@@ -50,11 +50,6 @@ class sharpsat : public detail::operation  // sharp satisfiability problem
         return f == other.f;
     }
 
-    auto print(std::ostream& s) const -> void override
-    {
-        s << '(' << f << ")->" << r;
-    }
-
     edge_ptr f;  // #SAT instance
 };
 

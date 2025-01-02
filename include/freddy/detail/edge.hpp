@@ -7,7 +7,6 @@
 #include <cassert>     // assert
 #include <functional>  // std::hash
 #include <memory>      // std::shared_ptr
-#include <ostream>     // std::ostream
 #include <utility>     // std::move
 
 // *********************************************************************************************************************
@@ -44,12 +43,6 @@ struct edge
     auto friend operator==(edge const& lhs, edge const& rhs)
     {
         return lhs.w == rhs.w && lhs.v == rhs.v;
-    }
-
-    auto friend operator<<(std::ostream& s, edge const& e) -> std::ostream&
-    {
-        s << '(' << e.w << ',' << e.v << ')';
-        return s;
     }
 
     E w;  // weight
