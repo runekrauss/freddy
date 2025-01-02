@@ -75,58 +75,63 @@ class manager
         s << "\nMax. load = " << mgr.ct.max_load();
 
 #ifdef FREDDY_STATS
-        auto a = 0.0;
-        auto b = 0.0;
-        auto c = 0.0;
-        auto d = 0.0;
-        auto e = 0.0;
+        auto succlookup_probelen = 0.0;   // average number of bucket groups accessed during lookup (found)
+        auto succlookup_compcount = 0.0;  // average number of nodes/edges compared during lookup
+        auto unsucclookup_probelen = 0.0;
+        auto unsucclookup_compcount = 0.0;
+        auto insert_probelen = 0.0;
         for (auto const& var : mgr.vl)
         {
-            auto const et_stats = var.et.get_stats();
-            auto const nt_stats = var.nt.get_stats();
+            auto const& et_stats = var.et.get_stats();
+            auto const& nt_stats = var.nt.get_stats();
 
-            a += (et_stats.insertion.probe_length.average + nt_stats.insertion.probe_length.average) / 2.0;
-            b += (et_stats.successful_lookup.probe_length.average + nt_stats.successful_lookup.probe_length.average) /
-                 2.0;
-            c += (et_stats.successful_lookup.num_comparisons.average +
-                  nt_stats.successful_lookup.num_comparisons.average) /
-                 2.0;
-            d += (et_stats.unsuccessful_lookup.probe_length.average +
-                  nt_stats.unsuccessful_lookup.probe_length.average) /
-                 2.0;
-            e += (et_stats.unsuccessful_lookup.num_comparisons.average +
-                  nt_stats.unsuccessful_lookup.num_comparisons.average) /
-                 2.0;
+            succlookup_probelen +=
+                (et_stats.successful_lookup.probe_length.average + nt_stats.successful_lookup.probe_length.average) /
+                2.0;
+            succlookup_compcount += (et_stats.successful_lookup.num_comparisons.average +
+                                     nt_stats.successful_lookup.num_comparisons.average) /
+                                    2.0;
+            unsucclookup_probelen += (et_stats.unsuccessful_lookup.probe_length.average +
+                                      nt_stats.unsuccessful_lookup.probe_length.average) /
+                                     2.0;
+            unsucclookup_compcount += (et_stats.unsuccessful_lookup.num_comparisons.average +
+                                       nt_stats.unsuccessful_lookup.num_comparisons.average) /
+                                      2.0;
+            insert_probelen +=
+                (et_stats.insertion.probe_length.average + nt_stats.insertion.probe_length.average) / 2.0;
         }
-        s << "\nUT insertion probe length = " << a / mgr.var_count();
-        s << "\nUT successful lookup probe length = " << b / mgr.var_count();
-        s << "\nUT successful lookup num comparisons = " << c / mgr.var_count();
-        s << "\nUT unsuccessful lookup probe length = " << d / mgr.var_count();
-        s << "\nUT unsuccessful lookup num comparisons = " << e / mgr.var_count();
+        s << "\nUT Stats:";
+        s << "\nSuccessful lookup probe length = " << succlookup_probelen / mgr.var_count();
+        s << "\nSuccessful lookup comparison count = " << succlookup_compcount / mgr.var_count();
+        s << "\nUnsuccessful lookup probe length = " << unsucclookup_probelen / mgr.var_count();
+        s << "\nUnsuccessful lookup comparison count = " << unsucclookup_compcount / mgr.var_count();
+        s << "\nInsertion probe length = " << insert_probelen / mgr.var_count();
 
-        auto const ec_stats = mgr.ec.get_stats();
-        auto const nc_stats = mgr.nc.get_stats();
-        s << "\nC insertion probe length = "
-          << (ec_stats.insertion.probe_length.average + nc_stats.insertion.probe_length.average) / 2.0;
-        s << "\nC successful lookup probe length = "
+        auto const& ec_stats = mgr.ec.get_stats();
+        auto const& nc_stats = mgr.nc.get_stats();
+        s << "\nConstant Stats:";
+        s << "\nSuccessful lookup probe length = "
           << (ec_stats.successful_lookup.probe_length.average + nc_stats.successful_lookup.probe_length.average) / 2.0;
-        s << "\nC successful lookup num comparisons = "
+        s << "\nSuccessful lookup comparison count = "
           << (ec_stats.successful_lookup.num_comparisons.average + nc_stats.successful_lookup.num_comparisons.average) /
                  2.0;
-        s << "\nC unsuccessful lookup probe length = "
+        s << "\nUnsuccessful lookup probe length = "
           << (ec_stats.unsuccessful_lookup.probe_length.average + nc_stats.unsuccessful_lookup.probe_length.average) /
                  2.0;
-        s << "\nC unsuccessful lookup num comparisons = "
+        s << "\nUnsuccessful lookup comparison count = "
           << (ec_stats.unsuccessful_lookup.num_comparisons.average +
               nc_stats.unsuccessful_lookup.num_comparisons.average) /
                  2.0;
+        s << "\nInsertion probe length = "
+          << (ec_stats.insertion.probe_length.average + nc_stats.insertion.probe_length.average) / 2.0;
 
-        auto const ct_stats = mgr.ct.get_stats();
-        s << "\nCT insertion probe length = " << ct_stats.insertion.probe_length.average;
-        s << "\nCT successful lookup probe length = " << ct_stats.successful_lookup.probe_length.average;
-        s << "\nCT successful lookup num comparisons = " << ct_stats.successful_lookup.num_comparisons.average;
-        s << "\nCT unsuccessful lookup probe length = " << ct_stats.unsuccessful_lookup.probe_length.average;
-        s << "\nCT unsuccessful lookup num comparisons = " << ct_stats.unsuccessful_lookup.num_comparisons.average;
+        auto const& ct_stats = mgr.ct.get_stats();
+        s << "\nCT Stats:";
+        s << "\nSuccessful lookup probe length = " << ct_stats.successful_lookup.probe_length.average;
+        s << "\nSuccessful lookup comparison count = " << ct_stats.successful_lookup.num_comparisons.average;
+        s << "\nUnsuccessful lookup probe length = " << ct_stats.unsuccessful_lookup.probe_length.average;
+        s << "\nUnsuccessful lookup comparison count = " << ct_stats.unsuccessful_lookup.num_comparisons.average;
+        s << "\nInsertion probe length = " << ct_stats.insertion.probe_length.average;
 #endif
 
         return s;
