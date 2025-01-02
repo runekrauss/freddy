@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(WIN32)
-   add_compile_options(/W4 /permissive-)
+    add_compile_options(/W4 /permissive-)
 else()
     add_compile_options(-Wall -Wextra -pedantic)
 endif()
