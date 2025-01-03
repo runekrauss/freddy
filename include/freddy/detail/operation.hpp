@@ -4,8 +4,7 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "common.hpp"  // considering primes typically results in few hash ranges with an accumulation of similarities
-#include "edge.hpp"    // since DD operations are usually implemented using edges
+#include "edge.hpp"  // as DD operations are normally implemented using edges
 
 #include <cstddef>   // std::size_t
 #include <typeinfo>  // typeid

@@ -41,7 +41,7 @@ class repl : public detail::operation  // 1-path replacement
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<edge_ptr>()(f) + std::hash<bool>()(a);
+        return std::hash<edge_ptr>()(f) * detail::P1 + std::hash<bool>()(a) * detail::P2;
     }
 
     [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override

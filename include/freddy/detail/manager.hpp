@@ -22,6 +22,7 @@
 #include <cassert>      // assert
 #include <concepts>     // std::same_as
 #include <cstdint>      // std::int32_t
+#include <format>       // std::format
 #include <memory>       // std::unique_ptr
 #include <numeric>      // std::accumulate
 #include <ostream>      // std::ostream
@@ -43,38 +44,27 @@ class manager
   public:  // methods that do not need to be wrapped
     auto friend operator<<(std::ostream& s, manager const& mgr) -> std::ostream&
     {
-        for (auto const& var : mgr.vl)
-        {
-            s << "Variable: " << var << '\n';
+        for (auto const x : mgr.lvl2var)
+        {  // variable with respect to the order
+            s << mgr.vl[x] << "\n\n";
         }
 
-        s << "Ordering: ";
-        for (auto lvl = 0; lvl < static_cast<std::int32_t>(mgr.lvl2var.size()); ++lvl)
-        {
-            s << mgr.vl[mgr.lvl2var[lvl]].l;
+        s << "Constants\n";
+        s << std::format("{:-<34}\n", '-');
+        s << std::format("{:12} | {:>19}\n", "EC #Buckets", mgr.ec.bucket_count());
+        s << std::format("{:12} | {:>19}\n", "EC #Edges", mgr.ec.size());
+        s << std::format("{:12} | {:>19}\n", "EC Max. load", mgr.ec.max_load());
+        s << std::format("{:12} | {:>19}\n", "NC #Buckets", mgr.nc.bucket_count());
+        s << std::format("{:12} | {:>19}\n", "NC #Nodes", mgr.nc.size());
+        s << std::format("{:12} | {:>19}\n\n", "NC Max. load", mgr.nc.max_load());
 
-            if (lvl + 1 < static_cast<std::int32_t>(mgr.lvl2var.size()))
-            {  // there is at least one more iteration
-                s << " < ";
-            }
-        }
+        s << "Cache\n";
+        s << std::format("{:-<34}\n", '-');
+        s << std::format("{:12} | {:>19}\n", "CT #Buckets", mgr.ct.bucket_count());
+        s << std::format("{:12} | {:>19}\n", "CT #OPs", mgr.ct.size());
+        s << std::format("{:12} | {:>19}", "CT Max. load", mgr.ct.max_load());
 
-        s << "\nEC:";
-        s << "\n#Buckets = " << mgr.ec.bucket_count();
-        s << "\n#Edges = " << mgr.ec.size();
-        s << "\nMax. load = " << mgr.ec.max_load();
-
-        s << "\nNC:";
-        s << "\n#Buckets = " << mgr.nc.bucket_count();
-        s << "\n#Edges = " << mgr.nc.size();
-        s << "\nMax. load = " << mgr.nc.max_load();
-
-        s << "\nCT:";
-        s << "\n#Buckets = " << mgr.ct.bucket_count();
-        s << "\n#Operations = " << mgr.ct.size();
-        s << "\nMax. load = " << mgr.ct.max_load();
-
-#ifdef FREDDY_STATS
+#ifdef BOOST_UNORDERED_ENABLE_STATS
         auto succlookup_probelen = 0.0;   // average number of bucket groups accessed during lookup (found)
         auto succlookup_compcount = 0.0;  // average number of nodes/edges compared during lookup
         auto unsucclookup_probelen = 0.0;
@@ -100,16 +90,18 @@ class manager
             insert_probelen +=
                 (et_stats.insertion.probe_length.average + nt_stats.insertion.probe_length.average) / 2.0;
         }
-        s << "\nUT Stats:";
+        s << "\n\nUT Stats:";
         s << "\nSuccessful lookup probe length = " << succlookup_probelen / mgr.var_count();
+        // should be close to 1.0
         s << "\nSuccessful lookup comparison count = " << succlookup_compcount / mgr.var_count();
         s << "\nUnsuccessful lookup probe length = " << unsucclookup_probelen / mgr.var_count();
+        // should be close to 0.0
         s << "\nUnsuccessful lookup comparison count = " << unsucclookup_compcount / mgr.var_count();
-        s << "\nInsertion probe length = " << insert_probelen / mgr.var_count();
+        s << "\nInsertion probe length = " << insert_probelen / mgr.var_count();  // should be close to 1.0
 
         auto const& ec_stats = mgr.ec.get_stats();
         auto const& nc_stats = mgr.nc.get_stats();
-        s << "\nConstant Stats:";
+        s << "\n\nConstant Stats:";
         s << "\nSuccessful lookup probe length = "
           << (ec_stats.successful_lookup.probe_length.average + nc_stats.successful_lookup.probe_length.average) / 2.0;
         s << "\nSuccessful lookup comparison count = "
@@ -126,7 +118,7 @@ class manager
           << (ec_stats.insertion.probe_length.average + nc_stats.insertion.probe_length.average) / 2.0;
 
         auto const& ct_stats = mgr.ct.get_stats();
-        s << "\nCT Stats:";
+        s << "\n\nCT Stats:";
         s << "\nSuccessful lookup probe length = " << ct_stats.successful_lookup.probe_length.average;
         s << "\nSuccessful lookup comparison count = " << ct_stats.successful_lookup.num_comparisons.average;
         s << "\nUnsuccessful lookup probe length = " << ct_stats.unsuccessful_lookup.probe_length.average;
@@ -195,9 +187,9 @@ class manager
         auto cleanup = [](auto& ut) {
             for (auto it = ut.begin(); it != ut.end();)
             {
-                if (it->use_count() == 1)
-                {  // only the UT references this node/edge => node/edge is dead
-                    it = ut.erase(it);
+                if (it->use_count() == 1)  // only the UT references this node/edge => node/edge is dead
+                {
+                    it = ut.erase(it);  // using an anti-drift mechanism
                 }
                 else
                 {
@@ -205,10 +197,10 @@ class manager
                 }
             }
         };
-        for (auto const var : lvl2var)
+        for (auto const x : lvl2var)
         {  // an increased chance of deleting nodes/edges
-            cleanup(vl[var].et);
-            cleanup(vl[var].nt);
+            cleanup(vl[x].et);
+            cleanup(vl[x].nt);
         }
         cleanup(ec);
         cleanup(nc);
@@ -603,8 +595,7 @@ class manager
 
     [[nodiscard]] auto virtual merge(V const&, V const&) const -> V = 0;  // evaluates aggregates (subtrees)
 
-    // combines DDs multiplicatively
-    auto virtual mul(edge_ptr, edge_ptr) -> edge_ptr = 0;
+    auto virtual mul(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs multiplicatively
 
     [[nodiscard]] auto virtual regw() const -> E = 0;  // returns the regular weight of an edge
 
@@ -613,11 +604,12 @@ class manager
     std::vector<edge_ptr> consts;  // DD constants that are never cleared
 
     std::vector<std::int32_t> var2lvl;  // for reordering
+
   private:
     template <typename T>
     auto ctrl(T& ut)
     {
-        if (ut.size() <= ut.max_load())
+        if (ut.size() < ut.max_load())
         {
             return;
         }
@@ -626,8 +618,8 @@ class manager
         gc();
 
         if (ut.load_factor() > old_lf - config::dead_factor)
-        {  // too few nodes were deleted => resize/rehash this UT
-            ut.reserve(2 * ut.bucket_count());
+        {  // too few nodes/edges were deleted
+            ut.rehash(2 * ut.bucket_count());
         }
     }
 
@@ -735,7 +727,7 @@ class manager
         auto const search = ut.find(&obj);
         if (search == ut.end())
         {
-            ctrl(ut);  // check for garbage collection and unique table expansion
+            ctrl(ut);  // check for GC and UT expansion
             return *ut.insert(std::make_shared<T>(std::forward<T>(obj))).first;
         }
         return *search;

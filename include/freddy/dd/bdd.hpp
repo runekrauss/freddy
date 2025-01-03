@@ -80,8 +80,8 @@ class bdd  // binary decision diagram
 
     auto friend operator<<(std::ostream& s, bdd const& g) -> std::ostream&
     {
-        s << "Wrapper = " << g.f;
-        s << "\nBDD manager = " << g.mgr;
+        s << "Wrapper: " << g.f;
+        s << "\nBDD manager: " << g.mgr;
         return s;
     }
 

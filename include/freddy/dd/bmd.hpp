@@ -105,8 +105,8 @@ class bmd  // binary moment diagram
 
     auto friend operator<<(std::ostream& s, bmd const& g) -> std::ostream&
     {
-        s << "Wrapper = " << g.f;
-        s << "\nBMD manager = " << g.mgr;
+        s << "Wrapper: " << g.f;
+        s << "\nBMD manager: " << g.mgr;
         return s;
     }
 

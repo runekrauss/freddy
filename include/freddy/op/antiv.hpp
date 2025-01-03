@@ -42,14 +42,14 @@ class antiv : public detail::operation  // antivalence
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<edge_ptr>()(f) * detail::p1 + std::hash<edge_ptr>()(g) * detail::p2;
+        return std::hash<edge_ptr>()(f) * detail::P1 + std::hash<edge_ptr>()(g) * detail::P2;
     }
 
     [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
     {
         auto other = static_cast<antiv const&>(op);
 
-        return (f == other.f && g == other.g) || (f == other.g && g == other.f);
+        return f == other.f && g == other.g;
     }
 
     edge_ptr f;  // 1st XOR operand

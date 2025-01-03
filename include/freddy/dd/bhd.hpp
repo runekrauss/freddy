@@ -81,8 +81,8 @@ class bhd  // binary hybrid diagram
 
     auto friend operator<<(std::ostream& s, bhd const& g) -> std::ostream&
     {
-        s << "Wrapper = " << g.f;
-        s << "\nBHD manager = " << g.mgr;
+        s << "Wrapper: " << g.f;
+        s << "\nBHD manager: " << g.mgr;
         return s;
     }
 

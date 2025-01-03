@@ -4,6 +4,8 @@
 // Includes
 // *********************************************************************************************************************
 
+#include "common.hpp"  // P1
+
 #include <cassert>     // assert
 #include <functional>  // std::hash
 #include <memory>      // std::shared_ptr
@@ -36,8 +38,8 @@ struct edge
     }
 
     auto operator()() const
-    {
-        return std::hash<node_ptr>()(v) + std::hash<E>()(w);
+    {  // considering primes typically results in few hash ranges with an accumulation of similarities
+        return std::hash<E>()(w) * P1 + std::hash<node_ptr>()(v) * P2;
     }
 
     auto friend operator==(edge const& lhs, edge const& rhs)

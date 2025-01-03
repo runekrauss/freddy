@@ -86,11 +86,11 @@ struct comp
 // Constants
 // =====================================================================================================================
 
-auto inline constexpr p1 = 12583037;  // prime
+auto inline constexpr P1 = 12583037;  // prime
 
-auto inline constexpr p2 = 4256383;
+auto inline constexpr P2 = 4256383;
 
-auto inline constexpr p3 = 741563;
+auto inline constexpr P3 = 741563;
 
 // =====================================================================================================================
 // Functions

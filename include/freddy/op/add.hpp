@@ -41,15 +41,15 @@ class add : public detail::operation  // addition
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
-    {
-        return std::hash<edge_ptr>()(f) * detail::p1 + std::hash<edge_ptr>()(g) * detail::p2;
+    {  // noncommutative due to better hash results
+        return std::hash<edge_ptr>()(f) * detail::P1 + std::hash<edge_ptr>()(g) * detail::P2;
     }
 
     [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
     {
         auto other = static_cast<add const&>(op);
 
-        return (f == other.f && g == other.g) || (f == other.g && g == other.f);  // commutativity check
+        return f == other.f && g == other.g;
     }
 
     edge_ptr f;  // 1st summand

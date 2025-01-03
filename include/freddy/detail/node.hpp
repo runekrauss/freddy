@@ -4,7 +4,7 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "common.hpp"  // p1
+#include "common.hpp"  // P1
 #include "edge.hpp"    // edge
 
 #include <cassert>     // assert
@@ -56,8 +56,8 @@ class node
     auto operator()() const  // multiplicative hash whose primes have a LCM such that few collisions occur
     {
         // x is not part of the key since several UTs are provided
-        return is_const() ? std::hash<V>()(c())  // hash forces an overflow to increase entropy
-                          : std::hash<edge_ptr>()(br().hi) * p1 + std::hash<edge_ptr>()(br().lo) * p2;
+        return is_const() ? std::hash<V>()(c())  // hash can force an overflow to increase entropy
+                          : std::hash<edge_ptr>()(br().hi) * P1 + std::hash<edge_ptr>()(br().lo) * P2;
     }
 
     auto friend operator==(node const& lhs, node const& rhs)
