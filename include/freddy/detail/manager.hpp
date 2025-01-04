@@ -64,68 +64,6 @@ class manager
         s << std::format("{:12} | {:>19}\n", "CT #OPs", mgr.ct.size());
         s << std::format("{:12} | {:>19}", "CT Max. load", mgr.ct.max_load());
 
-#ifdef BOOST_UNORDERED_ENABLE_STATS
-        auto succlookup_probelen = 0.0;   // average number of bucket groups accessed during lookup (found)
-        auto succlookup_compcount = 0.0;  // average number of nodes/edges compared during lookup
-        auto unsucclookup_probelen = 0.0;
-        auto unsucclookup_compcount = 0.0;
-        auto insert_probelen = 0.0;
-        for (auto const& var : mgr.vl)
-        {
-            auto const& et_stats = var.et.get_stats();
-            auto const& nt_stats = var.nt.get_stats();
-
-            succlookup_probelen +=
-                (et_stats.successful_lookup.probe_length.average + nt_stats.successful_lookup.probe_length.average) /
-                2.0;
-            succlookup_compcount += (et_stats.successful_lookup.num_comparisons.average +
-                                     nt_stats.successful_lookup.num_comparisons.average) /
-                                    2.0;
-            unsucclookup_probelen += (et_stats.unsuccessful_lookup.probe_length.average +
-                                      nt_stats.unsuccessful_lookup.probe_length.average) /
-                                     2.0;
-            unsucclookup_compcount += (et_stats.unsuccessful_lookup.num_comparisons.average +
-                                       nt_stats.unsuccessful_lookup.num_comparisons.average) /
-                                      2.0;
-            insert_probelen +=
-                (et_stats.insertion.probe_length.average + nt_stats.insertion.probe_length.average) / 2.0;
-        }
-        s << "\n\nUT Stats:";
-        s << "\nSuccessful lookup probe length = " << succlookup_probelen / mgr.var_count();
-        // should be close to 1.0
-        s << "\nSuccessful lookup comparison count = " << succlookup_compcount / mgr.var_count();
-        s << "\nUnsuccessful lookup probe length = " << unsucclookup_probelen / mgr.var_count();
-        // should be close to 0.0
-        s << "\nUnsuccessful lookup comparison count = " << unsucclookup_compcount / mgr.var_count();
-        s << "\nInsertion probe length = " << insert_probelen / mgr.var_count();  // should be close to 1.0
-
-        auto const& ec_stats = mgr.ec.get_stats();
-        auto const& nc_stats = mgr.nc.get_stats();
-        s << "\n\nConstant Stats:";
-        s << "\nSuccessful lookup probe length = "
-          << (ec_stats.successful_lookup.probe_length.average + nc_stats.successful_lookup.probe_length.average) / 2.0;
-        s << "\nSuccessful lookup comparison count = "
-          << (ec_stats.successful_lookup.num_comparisons.average + nc_stats.successful_lookup.num_comparisons.average) /
-                 2.0;
-        s << "\nUnsuccessful lookup probe length = "
-          << (ec_stats.unsuccessful_lookup.probe_length.average + nc_stats.unsuccessful_lookup.probe_length.average) /
-                 2.0;
-        s << "\nUnsuccessful lookup comparison count = "
-          << (ec_stats.unsuccessful_lookup.num_comparisons.average +
-              nc_stats.unsuccessful_lookup.num_comparisons.average) /
-                 2.0;
-        s << "\nInsertion probe length = "
-          << (ec_stats.insertion.probe_length.average + nc_stats.insertion.probe_length.average) / 2.0;
-
-        auto const& ct_stats = mgr.ct.get_stats();
-        s << "\n\nCT Stats:";
-        s << "\nSuccessful lookup probe length = " << ct_stats.successful_lookup.probe_length.average;
-        s << "\nSuccessful lookup comparison count = " << ct_stats.successful_lookup.num_comparisons.average;
-        s << "\nUnsuccessful lookup probe length = " << ct_stats.unsuccessful_lookup.probe_length.average;
-        s << "\nUnsuccessful lookup comparison count = " << ct_stats.unsuccessful_lookup.num_comparisons.average;
-        s << "\nInsertion probe length = " << ct_stats.insertion.probe_length.average;
-#endif
-
         return s;
     }
 

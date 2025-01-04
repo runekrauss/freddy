@@ -102,7 +102,7 @@ int main()
 }
 ```
 
-Now the multiplier can be **verified** by interpreting network outputs as a word and applying word interpretations to
+The multiplier can now be **verified** by interpreting network outputs as a word and applying word interpretations to
 network inputs:
 
 ```cpp
@@ -190,9 +190,8 @@ implemented within the `freddy::dd` namespace in the [dd](include/freddy/dd) dir
 While virtual methods such as garbage collection can be overridden if needed, both a **contradiction** and **tautology**
 must be defined using a DD edge weight `E` and node value `V`, and passed to the base constructor.
 
-> :information_source: If `E` or `V` does not correspond to a built-in type, operators must be overloaded for hashing
-purposes: `==` to compare list nodes and `<<` for outputs. A specialization for
-[std::hash](https://en.cppreference.com/w/cpp/utility/hash) must also be added.
+> :information_source: If `E` or `V` does not correspond to a built-in type, the operator `==` must be overloaded for
+hashing purposes. A specialization for [std::hash](https://en.cppreference.com/w/cpp/utility/hash) must also be added.
 
 Further operations can be implemented on this basis. A cache is available for so-called **first-class operations** that
 are time-sensitive and called frequently. If operations to be cached are not yet available in the
@@ -200,13 +199,12 @@ are time-sensitive and called frequently. If operations to be cached are not yet
 operations are within the `freddy::op` namespace and inherit from the **polymorphic** class `operation` contained in
 [operation.hpp](include/freddy/detail/operation.hpp) by overriding the following methods:
 
-| Method           | Description             |
-| ---------------- | ----------------------- |
-| `hash`           | Hash code computation   |
-| `has_same_input` | Comparing operands      |
-| `print`          | Output of the operation |
+| Method           | Description           |
+| ---------------- | --------------------- |
+| `hash`           | Hash code computation |
+| `has_same_input` | Comparing operands    |
 
-> :information_source: The operation name is already hashed and output by default.
+> :information_source: The operation name is already hashed by default.
 
 First-class operations are **automatically registered** with the cache, where results are written using the manager
 method `cache` and read by `cached` if they exist. Corresponding code snippets can be found in
