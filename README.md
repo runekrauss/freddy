@@ -36,7 +36,13 @@ add_subdirectory(freddy)
 target_link_libraries(<target> freddy)
 ```
 
-Depending on the location of FrEDDY, the path must be adjusted accordingly.
+> :information_source: Depending on the location of FrEDDY, the path must be adjusted accordingly.
+
+Note that this stage may take some time depending on your system configuration. For example, FrEDDY relies on the
+[boost::unordered library](https://boost.org/doc/libs) that offers a catalog of hash containers for top performance. If
+this dependency cannot be found, it is downloaded from an
+[external repository](https://github.com/MikePopoloski/boost_unordered) at configure time and identified targets will be
+automatically added to the build system.
 
 ### :computer: Usage
 
@@ -232,8 +238,8 @@ $ find . -iname '*.hpp' -o -iname '*.cpp' | xargs clang-format -i
 ```
 
 Following these standards, a [pull request](https://github.com/runekrauss/freddy/pulls) with or without an **issue** can
-be submitted according to the [Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962).
-If you address an issue from the [tracking system](https://github.com/runekrauss/freddy/issues), it is helpful to also
+be submitted according to the [Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962). If
+you address an issue from the [tracking system](https://github.com/runekrauss/freddy/issues), it is helpful to also
 specify the corresponding ID in the title. Compliance with the policies mentioned above is enforced through a
 [CI/CD pipeline](https://github.com/runekrauss/freddy/actions) that has the following **workflows**:
 
