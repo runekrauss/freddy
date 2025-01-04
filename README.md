@@ -42,7 +42,7 @@ Note that this stage may take some time depending on your system configuration. 
 [boost::unordered library](https://boost.org/doc/libs) that offers a catalog of hash containers for top performance. If
 this dependency cannot be found, it is downloaded from an
 [external repository](https://github.com/MikePopoloski/boost_unordered) at configure time and identified targets will be
-automatically added to the build system.
+added to the build system.
 
 ### :computer: Usage
 
