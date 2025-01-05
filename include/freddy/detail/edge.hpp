@@ -38,7 +38,7 @@ struct edge
     }
 
     auto operator()() const
-    {  // considering primes typically results in few hash ranges with an accumulation of similarities
+    {  // considering large primes typically results in few hash ranges with an accumulation of similarities
         return std::hash<E>()(w) * P1 + std::hash<node_ptr>()(v) * P2;
     }
 

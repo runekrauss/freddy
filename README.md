@@ -39,7 +39,7 @@ target_link_libraries(<target> freddy)
 > :information_source: Depending on the location of FrEDDY, the path must be adjusted accordingly.
 
 Note that this stage may take some time depending on your system configuration. For example, FrEDDY relies on the
-[boost::unordered library](https://boost.org/doc/libs) that offers a catalog of hash containers for top performance. If
+[boost::unordered](https://boost.org/doc/libs) library that offers a catalog of hash containers for top performance. If
 this dependency cannot be found, it is downloaded from an
 [external repository](https://github.com/MikePopoloski/boost_unordered) at configure time and identified targets will be
 added to the build system.
