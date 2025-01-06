@@ -81,8 +81,8 @@ class bhd  // binary hybrid diagram
 
     auto friend operator<<(std::ostream& s, bhd const& g) -> std::ostream&
     {
-        s << "Wrapper = " << g.f;
-        s << "\nBHD manager = " << g.mgr;
+        s << "Wrapper: " << g.f;
+        s << "\nBHD manager: " << g.mgr;
         return s;
     }
 
@@ -326,7 +326,7 @@ class bhd_manager : public detail::manager<bool, bool>
     }
 
     auto uc(edge_ptr const& f, std::vector<std::optional<bool>>& path,
-            std::vector<std::vector<std::pair<std::int32_t, bool>>>& uclauses)
+            std::vector<std::vector<std::pair<std::int32_t, bool>>>& uclauses) const
     {
         assert(f);
 

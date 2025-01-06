@@ -15,19 +15,21 @@
 #include "operation.hpp"            // operation
 #include "variable.hpp"             // variable
 
-#include <algorithm>      // std::ranges::max_element
-#include <array>          // std::array
-#include <cassert>        // assert
-#include <concepts>       // std::same_as
-#include <cstdint>        // std::int32_t
-#include <memory>         // std::unique_ptr
-#include <numeric>        // std::accumulate
-#include <ostream>        // std::ostream
-#include <string>         // std::string
-#include <string_view>    // std::string_view
-#include <unordered_set>  // std::unordered_set
-#include <utility>        // std::move
-#include <vector>         // std::vector
+#include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
+
+#include <algorithm>    // std::ranges::max_element
+#include <array>        // std::array
+#include <cassert>      // assert
+#include <concepts>     // std::same_as
+#include <cstdint>      // std::int32_t
+#include <format>       // std::format
+#include <memory>       // std::unique_ptr
+#include <numeric>      // std::accumulate
+#include <ostream>      // std::ostream
+#include <string>       // std::string
+#include <string_view>  // std::string_view
+#include <utility>      // std::move
+#include <vector>       // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -42,62 +44,25 @@ class manager
   public:  // methods that do not need to be wrapped
     auto friend operator<<(std::ostream& s, manager const& mgr) -> std::ostream&
     {
-        for (auto const& var : mgr.vl)
-        {
-            s << "Variable: " << var << '\n';
+        for (auto const x : mgr.lvl2var)
+        {  // variable with respect to the order
+            s << mgr.vl[x] << "\n\n";
         }
 
-        s << "Ordering: ";
-        for (auto lvl = 0; lvl < static_cast<std::int32_t>(mgr.lvl2var.size()); ++lvl)
-        {
-            s << mgr.vl[mgr.lvl2var[lvl]].l;
+        s << "Constants\n";
+        s << std::format("{:-<34}\n", '-');
+        s << std::format("{:12} | {:>19}\n", "EC #Buckets", mgr.ec.bucket_count());
+        s << std::format("{:12} | {:>19}\n", "EC #Edges", mgr.ec.size());
+        s << std::format("{:12} | {:>19}\n", "EC Max. load", mgr.ec.max_load());
+        s << std::format("{:12} | {:>19}\n", "NC #Buckets", mgr.nc.bucket_count());
+        s << std::format("{:12} | {:>19}\n", "NC #Nodes", mgr.nc.size());
+        s << std::format("{:12} | {:>19}\n\n", "NC Max. load", mgr.nc.max_load());
 
-            if (lvl + 1 < static_cast<std::int32_t>(mgr.lvl2var.size()))
-            {  // there is at least one more iteration
-                s << " < ";
-            }
-        }
-
-        auto print = [&s](auto const& uc) {
-            for (auto i = 0; i < static_cast<std::int32_t>(uc.bucket_count()); ++i)
-            {
-                if (uc.bucket_size(i) > 0)
-                {
-                    s << "| " << i << " | ";
-                    for (auto it = uc.begin(i); it != uc.end(i); ++it)
-                    {
-                        s << *it << *(*it) << '[' << it->use_count() << "] ";
-                    }
-                    s << "|\n";
-                }
-            }
-        };
-
-        s << "\nEC:\n";
-        print(mgr.ec);
-        s << "#Edges = " << mgr.ec.size();
-        s << "\nOccupancy = " << mgr.ec.load_factor();
-
-        s << "\nNC:\n";
-        print(mgr.nc);
-        s << "#Constants = " << mgr.nc.size();
-        s << "\nOccupancy = " << mgr.nc.load_factor();
-
-        s << "\nCT:\n";
-        for (auto i = 0; i < static_cast<std::int32_t>(mgr.ct.bucket_count()); ++i)
-        {
-            if (mgr.ct.bucket_size(i) > 0)
-            {
-                s << "| " << i << " | ";
-                for (auto it = mgr.ct.begin(i); it != mgr.ct.end(i); ++it)
-                {
-                    s << *(*it) << ' ';
-                }
-                s << "|\n";
-            }
-        }
-        s << "#Operations = " << mgr.ct.size();
-        s << "\nOccupancy = " << mgr.ct.load_factor();
+        s << "Cache\n";
+        s << std::format("{:-<34}\n", '-');
+        s << std::format("{:12} | {:>19}\n", "CT #Buckets", mgr.ct.bucket_count());
+        s << std::format("{:12} | {:>19}\n", "CT #OPs", mgr.ct.size());
+        s << std::format("{:12} | {:>19}", "CT Max. load", mgr.ct.max_load());
 
         return s;
     }
@@ -160,9 +125,9 @@ class manager
         auto cleanup = [](auto& ut) {
             for (auto it = ut.begin(); it != ut.end();)
             {
-                if (it->use_count() == 1)
-                {  // only the UT references this node/edge => node/edge is dead
-                    it = ut.erase(it);
+                if (it->use_count() == 1)  // only the UT references this node/edge => node/edge is dead
+                {
+                    it = ut.erase(it);  // using an anti-drift mechanism
                 }
                 else
                 {
@@ -170,10 +135,10 @@ class manager
                 }
             }
         };
-        for (auto const lvl : lvl2var)
+        for (auto const x : lvl2var)
         {  // an increased chance of deleting nodes/edges
-            cleanup(vl[lvl].et);
-            cleanup(vl[lvl].nt);
+            cleanup(vl[x].et);
+            cleanup(vl[x].nt);
         }
         cleanup(ec);
         cleanup(nc);
@@ -250,8 +215,8 @@ class manager
 
     [[nodiscard]] auto node_count(std::vector<edge_ptr> const& fs) const
     {
-        std::unordered_set<node_ptr, hash, comp> marks;
-        marks.max_load_factor(0.7f);
+        boost::unordered_flat_set<node_ptr, hash, comp> marks;
+        marks.reserve(config::ut_size);
 
         for (auto const& f : fs)
         {  // (shared) number of nodes
@@ -532,8 +497,8 @@ class manager
             }
         }
 
-        std::unordered_set<node_ptr, hash, comp> marks;
-        marks.max_load_factor(0.7f);
+        boost::unordered_flat_set<node_ptr, hash, comp> marks;
+        marks.reserve(config::ut_size);
 
         for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
         {
@@ -568,8 +533,7 @@ class manager
 
     [[nodiscard]] auto virtual merge(V const&, V const&) const -> V = 0;  // evaluates aggregates (subtrees)
 
-    // combines DDs multiplicatively
-    auto virtual mul(edge_ptr, edge_ptr) -> edge_ptr = 0;
+    auto virtual mul(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs multiplicatively
 
     [[nodiscard]] auto virtual regw() const -> E = 0;  // returns the regular weight of an edge
 
@@ -578,11 +542,12 @@ class manager
     std::vector<edge_ptr> consts;  // DD constants that are never cleared
 
     std::vector<std::int32_t> var2lvl;  // for reordering
+
   private:
     template <typename T>
     auto ctrl(T& ut)
     {
-        if (ut.load_factor() < config::load_factor)
+        if (ut.size() < ut.max_load())
         {
             return;
         }
@@ -591,8 +556,8 @@ class manager
         gc();
 
         if (ut.load_factor() > old_lf - config::dead_factor)
-        {  // too few nodes were deleted => resize/rehash this UT
-            ut.reserve(2 * ut.bucket_count());
+        {  // too few nodes/edges were deleted
+            ut.rehash(2 * ut.bucket_count());
         }
     }
 
@@ -688,19 +653,19 @@ class manager
             }
         }
 
-        gc();  // clean up possible dead nodes
-
         std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
         std::swap(var2lvl[x], var2lvl[y]);
+
+        gc();  // clean up possible dead nodes
     }
 
     template <typename T>
-    auto foa(T&& obj, std::unordered_set<std::shared_ptr<T>, hash, comp>& ut)
+    auto foa(T&& obj, boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>& ut)
     {  // find or add node/edge
         auto const search = ut.find(&obj);
         if (search == ut.end())
         {
-            ctrl(ut);  // check for garbage collection and unique table expansion
+            ctrl(ut);  // check for GC and UT expansion
             return *ut.insert(std::make_shared<T>(std::forward<T>(obj))).first;
         }
         return *search;
@@ -713,7 +678,7 @@ class manager
         return f->v->is_const() ? 1 : std::max(longest_path_rec(f->v->br().hi), longest_path_rec(f->v->br().lo)) + 1;
     }
 
-    auto node_count(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks) const
+    auto node_count(edge_ptr const& f, boost::unordered_flat_set<node_ptr, hash, comp>& marks) const
     {
         assert(f);
 
@@ -800,7 +765,7 @@ class manager
         return ++lvl;
     }
 
-    auto to_dot(edge_ptr const& f, std::unordered_set<node_ptr, hash, comp>& marks, std::ostream& s) const
+    auto to_dot(edge_ptr const& f, boost::unordered_flat_set<node_ptr, hash, comp>& marks, std::ostream& s) const
     {
         assert(f);
 
@@ -831,13 +796,13 @@ class manager
         to_dot(f->v->br().lo, marks, s);
     }
 
-    std::unordered_set<std::unique_ptr<operation>, hash, comp> ct;  // to cache operations
+    boost::unordered_flat_set<std::unique_ptr<operation>, hash, comp> ct;  // to cache operations
 
-    std::unordered_set<edge_ptr, hash, comp> ec;
+    boost::unordered_flat_set<edge_ptr, hash, comp> ec;
 
     std::vector<std::int32_t> lvl2var;
 
-    std::unordered_set<node_ptr, hash, comp> nc;  // constants
+    boost::unordered_flat_set<node_ptr, hash, comp> nc;  // constants
 
     std::vector<variable<E, V>> vl;
 };

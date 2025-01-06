@@ -41,10 +41,12 @@ class compose : public detail::operation  // function substitution
     }
 
     edge_ptr r;  // composition result
+
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<edge_ptr>()(f) ^ std::hash<std::int32_t>()(x) ^ std::hash<edge_ptr>()(g);
+        return (std::hash<edge_ptr>()(f) + std::hash<std::int32_t>()(x)) * detail::P1 +
+               std::hash<edge_ptr>()(g) * detail::P2;
     }
 
     [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
@@ -52,11 +54,6 @@ class compose : public detail::operation  // function substitution
         auto other = static_cast<compose const&>(op);
 
         return f == other.f && x == other.x && g == other.g;
-    }
-
-    auto print(std::ostream& s) const -> void override
-    {
-        s << '(' << f << ',' << x << ',' << g << ")->" << r;
     }
 
     edge_ptr f;  // composition operand

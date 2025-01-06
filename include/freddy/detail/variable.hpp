@@ -10,13 +10,14 @@
 #include "freddy/expansion.hpp"  // expansion
 #include "node.hpp"              // node
 
-#include <cassert>        // assert
-#include <cstdint>        // std::int32_t
-#include <memory>         // std::shared_ptr
-#include <ostream>        // std::ostream
-#include <string>         // std::string
-#include <string_view>    // std::string_view
-#include <unordered_set>  // std::unordered_set
+#include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
+
+#include <cassert>      // assert
+#include <format>       // std::format
+#include <memory>       // std::shared_ptr
+#include <ostream>      // std::ostream
+#include <string>       // std::string
+#include <string_view>  // std::string_view
 
 // *********************************************************************************************************************
 // Namespaces
@@ -38,46 +39,30 @@ struct variable
     {
         assert(!l.empty());  // for presentation reasons
 
-        et.reserve(config::ut_size);
+        et.reserve(config::ut_size);  // rehash(ceil(config::ut_size / 0.875))
         nt.reserve(config::ut_size);
     }
 
     auto friend operator<<(std::ostream& s, variable const& var) -> std::ostream&
     {
-        s << var.l;
-
-        s << "\nDT = ";
+        // table head
+        s << "Variable '" << var.l << "' [";
         switch (var.t)
         {
             case expansion::PD: s << "pD"; break;
             case expansion::S: s << 'S'; break;
             default: assert(false);
         }
+        s << "]\n";
+        s << std::format("{:-<34}\n", '-');
 
-        auto print = [&s](auto const& ut) {
-            for (auto i = 0; i < static_cast<std::int32_t>(ut.bucket_count()); ++i)
-            {
-                if (ut.bucket_size(i) > 0)
-                {
-                    s << "| " << i << " | ";
-                    for (auto it = ut.begin(i); it != ut.end(i); ++it)
-                    {
-                        s << *it << *(*it) << '[' << it->use_count() << "] ";
-                    }
-                    s << "|\n";
-                }
-            }
-        };
-
-        s << "\nET:\n";
-        print(var.et);
-        s << "#Edges = " << var.et.size();
-        s << "\nOccupancy = " << var.et.load_factor();
-
-        s << "\nNT:\n";
-        print(var.nt);
-        s << "#Nodes = " << var.nt.size();
-        s << "\nOccupancy = " << var.nt.load_factor();
+        // body content
+        s << std::format("{:12} | {:>19}\n", "ET #Buckets", var.et.bucket_count());
+        s << std::format("{:12} | {:>19}\n", "ET #Edges", var.et.size());
+        s << std::format("{:12} | {:>19}\n", "ET Max. load", var.et.max_load());
+        s << std::format("{:12} | {:>19}\n", "NT #Buckets", var.nt.bucket_count());
+        s << std::format("{:12} | {:>19}\n", "NT #Nodes", var.nt.size());
+        s << std::format("{:12} | {:>19}", "NT Max. load", var.nt.max_load());
 
         return s;
     }
@@ -86,9 +71,9 @@ struct variable
 
     std::string l;  // name
 
-    std::unordered_set<std::shared_ptr<edge<E, V>>, hash, comp> et;
+    boost::unordered_flat_set<std::shared_ptr<edge<E, V>>, hash, comp> et;
 
-    std::unordered_set<std::shared_ptr<node<E, V>>, hash, comp> nt;
+    boost::unordered_flat_set<std::shared_ptr<node<E, V>>, hash, comp> nt;
 };
 
 }  // namespace freddy::detail

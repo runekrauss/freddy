@@ -36,6 +36,7 @@ class sharpsat : public detail::operation  // sharp satisfiability problem
     }
 
     double r{};  // #SAT result
+
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
@@ -47,11 +48,6 @@ class sharpsat : public detail::operation  // sharp satisfiability problem
         auto other = static_cast<sharpsat const&>(op);
 
         return f == other.f;
-    }
-
-    auto print(std::ostream& s) const -> void override
-    {
-        s << '(' << f << ")->" << r;
     }
 
     edge_ptr f;  // #SAT instance

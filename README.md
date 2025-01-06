@@ -36,7 +36,13 @@ add_subdirectory(freddy)
 target_link_libraries(<target> freddy)
 ```
 
-Depending on the location of FrEDDY, the path must be adjusted accordingly.
+> :information_source: Depending on the location of FrEDDY, the path must be adjusted accordingly.
+
+Note that this stage may take some time depending on your system configuration. For example, FrEDDY relies on the
+[boost::unordered](https://boost.org/doc/libs) library that offers a catalog of hash containers for top performance. If
+this dependency cannot be found, it is downloaded from an
+[external repository](https://github.com/MikePopoloski/boost_unordered) at configure time and identified targets will be
+added to the build system.
 
 ### :computer: Usage
 
@@ -102,7 +108,7 @@ int main()
 }
 ```
 
-Now the multiplier can be **verified** by interpreting network outputs as a word and applying word interpretations to
+The multiplier can now be **verified** by interpreting network outputs as a word and applying word interpretations to
 network inputs:
 
 ```cpp
@@ -190,9 +196,8 @@ implemented within the `freddy::dd` namespace in the [dd](include/freddy/dd) dir
 While virtual methods such as garbage collection can be overridden if needed, both a **contradiction** and **tautology**
 must be defined using a DD edge weight `E` and node value `V`, and passed to the base constructor.
 
-> :information_source: If `E` or `V` does not correspond to a built-in type, operators must be overloaded for hashing
-purposes: `==` to compare list nodes and `<<` for outputs. A specialization for
-[std::hash](https://en.cppreference.com/w/cpp/utility/hash) must also be added.
+> :information_source: If `E` or `V` does not correspond to a built-in type, the operator `==` must be overloaded for
+hashing purposes. A specialization for [std::hash](https://en.cppreference.com/w/cpp/utility/hash) must also be added.
 
 Further operations can be implemented on this basis. A cache is available for so-called **first-class operations** that
 are time-sensitive and called frequently. If operations to be cached are not yet available in the
@@ -200,13 +205,12 @@ are time-sensitive and called frequently. If operations to be cached are not yet
 operations are within the `freddy::op` namespace and inherit from the **polymorphic** class `operation` contained in
 [operation.hpp](include/freddy/detail/operation.hpp) by overriding the following methods:
 
-| Method           | Description             |
-| ---------------- | ----------------------- |
-| `hash`           | Hash code computation   |
-| `has_same_input` | Comparing operands      |
-| `print`          | Output of the operation |
+| Method           | Description           |
+| ---------------- | --------------------- |
+| `hash`           | Hash code computation |
+| `has_same_input` | Comparing operands    |
 
-> :information_source: The operation name is already hashed and output by default.
+> :information_source: The operation name is already hashed by default.
 
 First-class operations are **automatically registered** with the cache, where results are written using the manager
 method `cache` and read by `cached` if they exist. Corresponding code snippets can be found in
@@ -234,8 +238,8 @@ $ find . -iname '*.hpp' -o -iname '*.cpp' | xargs clang-format -i
 ```
 
 Following these standards, a [pull request](https://github.com/runekrauss/freddy/pulls) with or without an **issue** can
-be submitted according to the [Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962).
-If you address an issue from the [tracking system](https://github.com/runekrauss/freddy/issues), it is helpful to also
+be submitted according to the [Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962). If
+you address an issue from the [tracking system](https://github.com/runekrauss/freddy/issues), it is helpful to also
 specify the corresponding ID in the title. Compliance with the policies mentioned above is enforced through a
 [CI/CD pipeline](https://github.com/runekrauss/freddy/actions) that has the following **workflows**:
 

@@ -50,9 +50,25 @@ struct unique_ptr<std::unique_ptr<T>> : std::true_type
 template <typename T>
 concept is_unique_ptr = unique_ptr<T>::value;
 
+struct hash
+{
+    using is_avalanching = std::true_type;  // do not use post-mixing
+
+    using is_transparent = void;  // activate searches with a type other than the key
+
+    template <typename T>
+        requires is_shared_ptr<T> || is_unique_ptr<T> || std::is_pointer_v<T>
+    auto operator()(T const& p) const
+    {
+        assert(p);
+
+        return p->operator()();
+    }
+};
+
 struct comp
 {
-    using is_transparent = void;  // activate searches with a type other than the key
+    using is_transparent = void;
 
     template <typename T1, typename T2>
         requires(is_shared_ptr<T1> || is_unique_ptr<T1> || std::is_pointer_v<T1>) &&
@@ -66,19 +82,15 @@ struct comp
     }
 };
 
-struct hash
-{
-    using is_transparent = void;
+// =====================================================================================================================
+// Constants
+// =====================================================================================================================
 
-    template <typename T>
-        requires is_shared_ptr<T> || is_unique_ptr<T> || std::is_pointer_v<T>
-    auto operator()(T const& p) const
-    {
-        assert(p);
+auto inline constexpr P1 = 12583037;  // prime
 
-        return p->operator()();
-    }
-};
+auto inline constexpr P2 = 4256383;
+
+auto inline constexpr P3 = 741563;
 
 // =====================================================================================================================
 // Functions

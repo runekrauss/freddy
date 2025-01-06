@@ -40,10 +40,12 @@ class ite : public detail::operation  // if-then-else
     }
 
     edge_ptr r;  // conditional result
+
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<edge_ptr>()(f) ^ std::hash<edge_ptr>()(g) ^ std::hash<edge_ptr>()(h);
+        return std::hash<edge_ptr>()(f) * detail::P1 + std::hash<edge_ptr>()(g) * detail::P2 +
+               std::hash<edge_ptr>()(h) * detail::P3;
     }
 
     [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
@@ -51,11 +53,6 @@ class ite : public detail::operation  // if-then-else
         auto other = static_cast<ite const&>(op);
 
         return f == other.f && g == other.g && h == other.h;
-    }
-
-    auto print(std::ostream& s) const -> void override
-    {
-        s << '(' << f << ',' << g << ',' << h << ")->" << r;
     }
 
     edge_ptr f;  // if

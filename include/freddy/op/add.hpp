@@ -38,22 +38,18 @@ class add : public detail::operation  // addition
     }
 
     edge_ptr r;  // sum result
+
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
-    {
-        return std::hash<edge_ptr>()(f) ^ std::hash<edge_ptr>()(g);
+    {  // noncommutative due to better hash results
+        return std::hash<edge_ptr>()(f) * detail::P1 + std::hash<edge_ptr>()(g) * detail::P2;
     }
 
     [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
     {
         auto other = static_cast<add const&>(op);
 
-        return (f == other.f && g == other.g) || (f == other.g && g == other.f);  // commutativity check
-    }
-
-    auto print(std::ostream& s) const -> void override
-    {
-        s << '(' << f << ',' << g << ")->" << r;
+        return f == other.f && g == other.g;
     }
 
     edge_ptr f;  // 1st summand

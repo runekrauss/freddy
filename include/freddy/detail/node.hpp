@@ -4,13 +4,13 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "edge.hpp"  // edge
+#include "common.hpp"  // P1
+#include "edge.hpp"    // edge
 
 #include <cassert>     // assert
 #include <cstdint>     // std::int32_t
 #include <functional>  // std::hash
 #include <memory>      // std::shared_ptr
-#include <ostream>     // std::ostream
 #include <utility>     // std::move
 #include <variant>     // std::variant
 
@@ -53,11 +53,11 @@ class node
             val{std::move(c)}
     {}
 
-    auto operator()() const
+    auto operator()() const  // multiplicative hash whose primes have a LCM such that few collisions occur
     {
-        return is_const() ? std::hash<V>()(c())
-                          : std::hash<std::int32_t>()(br().x) ^ std::hash<edge_ptr>()(br().hi) ^
-                                std::hash<edge_ptr>()(br().lo);
+        // x is not part of the key since several UTs are provided
+        return is_const() ? std::hash<V>()(c())  // hash can force an overflow to increase entropy
+                          : std::hash<edge_ptr>()(br().hi) * P1 + std::hash<edge_ptr>()(br().lo) * P2;
     }
 
     auto friend operator==(node const& lhs, node const& rhs)
@@ -71,22 +71,6 @@ class node
             return lhs.c() == rhs.c();
         }
         return lhs.br().x == rhs.br().x && lhs.br().hi == rhs.br().hi && lhs.br().lo == rhs.br().lo;
-    }
-
-    auto friend operator<<(std::ostream& s, node const& v) -> std::ostream&
-    {
-        s << '(';
-        if (v.is_const())
-        {
-            s << v.c();
-        }
-        else
-        {
-            s << v.br().x << ',' << v.br().hi << ',' << v.br().lo;
-        }
-        s << ')';
-
-        return s;
     }
 
     [[nodiscard]] auto is_const() const -> bool

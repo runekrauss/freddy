@@ -4,10 +4,9 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "edge.hpp"  // since DD operations are usually implemented using edges
+#include "edge.hpp"  // as DD operations are normally implemented using edges
 
 #include <cstddef>   // std::size_t
-#include <ostream>   // std::ostream
 #include <typeinfo>  // typeid
 
 // *********************************************************************************************************************
@@ -34,14 +33,6 @@ class operation  // for caching
         return typeid(lhs) == typeid(rhs) && lhs.has_same_input(rhs);
     }
 
-    auto friend operator<<(std::ostream& s, operation const& op) -> std::ostream&
-    {
-        s << typeid(op).name();
-        op.print(s);
-
-        return s;
-    }
-
     virtual ~operation() noexcept = default;
 
   protected:
@@ -58,8 +49,6 @@ class operation  // for caching
     [[nodiscard]] auto virtual hash() const -> std::size_t = 0;  // computes the hash code
 
     [[nodiscard]] auto virtual has_same_input(operation const&) const -> bool = 0;  // compares inputs
-
-    auto virtual print(std::ostream&) const -> void = 0;  // outputs the operation
 };
 
 }  // namespace freddy::detail
