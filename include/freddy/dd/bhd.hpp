@@ -377,7 +377,7 @@ class bhd_manager : public detail::manager<bool, bool>
     }
 
     auto repl(edge_ptr const& f, bool const m = false)  // works with AND
-    {  // redirect 1-paths in f to exp for compacting reasons
+    {                                                   // redirect 1-paths in f to exp for compacting reasons
         assert(f);
 
         if (is_exp(f))
@@ -532,7 +532,8 @@ class bhd_manager : public detail::manager<bool, bool>
             {
                 return f;
             }
-            if (!has_const(f, true)){
+            if (!has_const(f, true))
+            {
                 std::cout << "hat keine exp\n";
                 return consts[0];
             }
@@ -540,10 +541,14 @@ class bhd_manager : public detail::manager<bool, bool>
         }
 
         // EXP terminal cases
-        if (is_exp(f)){
+        if (is_exp(f))
+        {
             return is_exp(g) ? consts[2] : repl(g);
         }
-        if (is_exp(g)) { return repl(f); }
+        if (is_exp(g))
+        {
+            return repl(f);
+        }
 
         op::conj op{f, g};
         if (auto const* const ent = cached(op))

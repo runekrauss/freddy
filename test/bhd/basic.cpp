@@ -277,7 +277,7 @@ TEST_CASE("BHD EXP are never deleted", "[basic]")
     {
         dd::bhd_manager mgr{dd::bhd_heuristic::LVL, 3};
         auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var(), x4 = mgr.var(), x5 = mgr.var();
-        auto const f =  (x2 | x3) & (x4 | x5) & (x0 | x1);
+        auto const f = (x2 | x3) & (x4 | x5) & (x0 | x1);
         auto const sols = f.sat();
         CHECK(sols.empty());
     }
