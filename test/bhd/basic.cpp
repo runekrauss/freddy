@@ -90,6 +90,11 @@ TEST_CASE("BHD is constructed", "[basic]")
 
         CHECK((f & x1) == f);
     }
+
+    SECTION("Computing with EXP")
+    {
+        CHECK((mgr.exp() & ~mgr.exp()) == mgr.exp());
+    }
 }
 
 TEST_CASE("BHD can be characterized", "[basic]")
@@ -268,17 +273,5 @@ TEST_CASE("BHD heuristics restrict solution space", "[basic]")
         CHECK(f.depth() == 4);
         CHECK(f.has_const(true));
         CHECK_FALSE(f.eval(std::vector(6, true)).has_value());
-    }
-}
-
-TEST_CASE("BHD EXP are never deleted", "[basic]")
-{
-    SECTION("exp and ~exp will result in exp")
-    {
-        dd::bhd_manager mgr{dd::bhd_heuristic::LVL, 3};
-        auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var(), x4 = mgr.var(), x5 = mgr.var();
-        auto const f = (x2 | x3) & (x4 | x5) & (x0 | x1);
-        auto const sols = f.sat();
-        CHECK(sols.empty());
     }
 }

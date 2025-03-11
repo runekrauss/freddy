@@ -403,7 +403,6 @@ class bhd_manager : public detail::manager<bool, bool>
 
         auto hi = f->w ? repl(f->v->br().hi, !m) : repl(f->v->br().hi, m);
         auto lo = f->w ? repl(f->v->br().lo, !m) : repl(f->v->br().lo, m);
-
         if (hi == lo)
         {
             op.r = hi;
@@ -533,11 +532,9 @@ class bhd_manager : public detail::manager<bool, bool>
                 return f;
             }
             if (!has_const(f, true))
-            {
-                std::cout << "hat keine exp\n";
+            { // f & !f = 0
                 return consts[0];
-            }
-            std::cout << "hat exp\n";
+            } // EXP is never removed
         }
 
         // EXP terminal cases
