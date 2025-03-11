@@ -532,9 +532,9 @@ class bhd_manager : public detail::manager<bool, bool>
                 return f;
             }
             if (!has_const(f, true))
-            { // f & !f = 0
+            {  // f & !f = 0
                 return consts[0];
-            } // EXP is never removed
+            }  // EXP is never removed
         }
 
         // EXP terminal cases
