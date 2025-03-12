@@ -72,23 +72,13 @@ TEST_CASE("BHD is constructed", "[basic]")
         CHECK_FALSE(f.eval({true, true}).value());
     }
 
-    SECTION("Complement bit is overwritten")
-    {
-        auto const f = x0 & mgr.exp();
-#ifndef NDEBUG
-        std::cout << mgr << '\n';
-        std::cout << f << '\n';
-        f.print();
-#endif
-        CHECK(f.high().is_exp());
-        CHECK(f.low().is_zero());
-    }
-
     SECTION("EXP maintains its level")
     {
         auto const f = x0 & mgr.exp();
-
         CHECK((f & x1) == f);
+
+        CHECK(f.high().is_exp()); //complement bit is overwritten
+        CHECK(f.low().is_zero());
     }
 
     SECTION("Computing with EXP")
