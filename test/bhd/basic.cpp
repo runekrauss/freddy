@@ -75,8 +75,6 @@ TEST_CASE("BHD is constructed", "[basic]")
     SECTION("EXP maintains its level")
     {
         auto const f = x0 & mgr.exp();
-        CHECK((f & x1) == f);
-
 #ifndef NDEBUG
         std::cout << mgr << '\n';
         std::cout << f << '\n';
@@ -84,6 +82,7 @@ TEST_CASE("BHD is constructed", "[basic]")
 #endif
         CHECK(f.high().is_exp());
         CHECK(f.low().is_zero());
+        CHECK((f & x1) == f);
     }
 
     SECTION("Computing with EXP")
