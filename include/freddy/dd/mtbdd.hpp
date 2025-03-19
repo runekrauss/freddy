@@ -33,59 +33,59 @@ namespace freddy::dd
 // Types
 // =====================================================================================================================
 
-class bruh_manager;
+class mtbdd_manager;
 
-class bruh  // binary decision diagram
+class mtbdd  // binary decision diagram
 {
   public:
-    bruh() = default;  // so that BRUHs initially work with standard containers
+    mtbdd() = default;
 
     auto operator~() const;
 
-    auto operator&=(bruh const&) -> bruh&;
+    auto operator&=(mtbdd const&) -> mtbdd&;
 
-    auto operator|=(bruh const&) -> bruh&;
+    auto operator|=(mtbdd const&) -> mtbdd&;
 
-    auto operator^=(bruh const&) -> bruh&;
+    auto operator^=(mtbdd const&) -> mtbdd&;
 
-    auto friend operator&(bruh lhs, bruh const& rhs)
+    auto friend operator&(mtbdd lhs, mtbdd const& rhs)
     {
         lhs &= rhs;
         return lhs;
     }
 
-    auto friend operator|(bruh lhs, bruh const& rhs)
+    auto friend operator|(mtbdd lhs, mtbdd const& rhs)
     {
         lhs |= rhs;
         return lhs;
     }
 
-    auto friend operator^(bruh lhs, bruh const& rhs)
+    auto friend operator^(mtbdd lhs, mtbdd const& rhs)
     {
         lhs ^= rhs;
         return lhs;
     }
 
-    auto friend operator==(bruh const& lhs, bruh const& rhs) noexcept
+    auto friend operator==(mtbdd const& lhs, mtbdd const& rhs) noexcept
     {
-        assert(lhs.mgr == rhs.mgr);  // check for the same BRUH manager
+        assert(lhs.mgr == rhs.mgr);
 
         return lhs.f == rhs.f;
     }
 
-    auto friend operator!=(bruh const& lhs, bruh const& rhs) noexcept
+    auto friend operator!=(mtbdd const& lhs, mtbdd const& rhs) noexcept
     {
         return !(lhs == rhs);
     }
 
-    auto friend operator<<(std::ostream& s, bruh const& g) -> std::ostream&
+    auto friend operator<<(std::ostream& s, mtbdd const& g) -> std::ostream&
     {
         s << "Wrapper: " << g.f;
-        s << "\nBRUH manager: " << g.mgr;
+        s << "\nMTBDD manager: " << g.mgr;
         return s;
     }
 
-    [[nodiscard]] auto same_node(bruh const& g) const noexcept
+    [[nodiscard]] auto same_node(mtbdd const& g) const noexcept
     {
         assert(f);
 
@@ -136,15 +136,14 @@ class bruh  // binary decision diagram
 
     [[nodiscard]] auto is_essential(std::int32_t) const;
 
-    [[nodiscard]] auto compose(std::int32_t, bruh const&) const;
+    [[nodiscard]] auto compose(std::int32_t, mtbdd const&) const;
 
     auto print(std::ostream& = std::cout) const;
 
   private:
-    friend bruh_manager;
+    friend mtbdd_manager;
 
-    // wrapper is controlled by its BRUH manager
-    bruh(std::shared_ptr<detail::edge<bool, std::int32_t>> f, bruh_manager* const mgr) :
+    mtbdd(std::shared_ptr<detail::edge<bool, std::int32_t>> f, mtbdd_manager* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
@@ -154,21 +153,21 @@ class bruh  // binary decision diagram
 
     std::shared_ptr<detail::edge<bool, std::int32_t>> f;  // DD handle
 
-    bruh_manager* mgr{};  // must be destroyed after this wrapper
+    mtbdd_manager* mgr{};  // must be destroyed after this wrapper
 };
 
-class bruh_manager : public detail::manager<bool, std::int32_t>
+class mtbdd_manager : public detail::manager<bool, std::int32_t>
 {
   public:
-    friend bruh;
+    friend mtbdd;
 
-    bruh_manager() :
+    mtbdd_manager() :
             manager{tmls()}
     {}
 
     auto var(std::string_view l = {})
     {
-        return bruh{make_var(expansion::S, l), this};
+        return mtbdd{make_var(expansion::S, l), this};
     }
 
     auto var(std::int32_t const i) noexcept
@@ -176,36 +175,36 @@ class bruh_manager : public detail::manager<bool, std::int32_t>
         assert(i >= 0);
         assert(i < var_count());
 
-        return bruh{vars[i], this};
+        return mtbdd{vars[i], this};
     }
 
     auto zero() noexcept
     {
-        return bruh{consts[0], this};
+        return mtbdd{consts[0], this};
     }
 
     auto one() noexcept
     {
-        return bruh{consts[1], this};
+        return mtbdd{consts[1], this};
     }
 
     auto new_const(std::int32_t val){
-        return bruh{make_const(false, val), this};
+        return mtbdd{make_const(false, val), this};
     }
 
-    [[nodiscard]] auto size(std::vector<bruh> const& fs) const
+    [[nodiscard]] auto size(std::vector<mtbdd> const& fs) const
     {
         return node_count(transform(fs));
     }
 
-    [[nodiscard]] auto depth(std::vector<bruh> const& fs) const
+    [[nodiscard]] auto depth(std::vector<mtbdd> const& fs) const
     {
         assert(!fs.empty());
 
         return longest_path(transform(fs));
     }
 
-    auto print(std::vector<bruh> const& fs, std::vector<std::string> const& outputs = {},
+    auto print(std::vector<mtbdd> const& fs, std::vector<std::string> const& outputs = {},
                std::ostream& s = std::cout) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
@@ -229,7 +228,7 @@ class bruh_manager : public detail::manager<bool, std::int32_t>
                                        std::make_shared<detail::edge<bool, std::int32_t>>(false, two)};
     }
 
-    auto static transform(std::vector<bruh> const& fs) -> std::vector<edge_ptr>
+    auto static transform(std::vector<mtbdd> const& fs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> gs;
         gs.reserve(fs.size());
@@ -359,14 +358,14 @@ class bruh_manager : public detail::manager<bool, std::int32_t>
     }
 };
 
-auto inline bruh::operator~() const
+auto inline mtbdd::operator~() const
 {
     assert(mgr);
 
-    return bruh{mgr->complement(f), mgr};
+    return mtbdd{mgr->complement(f), mgr};
 }
 
-auto inline bruh::operator&=(bruh const& rhs) -> bruh&
+auto inline mtbdd::operator&=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -375,7 +374,7 @@ auto inline bruh::operator&=(bruh const& rhs) -> bruh&
     return *this;
 }
 
-auto inline bruh::operator|=(bruh const& rhs) -> bruh&
+auto inline mtbdd::operator|=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -384,66 +383,66 @@ auto inline bruh::operator|=(bruh const& rhs) -> bruh&
     return *this;
 }
 
-auto inline bruh::is_zero() const noexcept
+auto inline mtbdd::is_zero() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->zero();
 }
 
-auto inline bruh::is_one() const noexcept
+auto inline mtbdd::is_one() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->one();
 }
 
-auto inline bruh::high() const
+auto inline mtbdd::high() const
 {
     assert(mgr);
     assert(!f->v->is_const());
 
-    return bruh{f->v->br().hi, mgr};
+    return mtbdd{f->v->br().hi, mgr};
 }
 
-auto inline bruh::low() const
+auto inline mtbdd::low() const
 {
     assert(mgr);
     assert(!f->v->is_const());
 
-    return bruh{f->v->br().lo, mgr};
+    return mtbdd{f->v->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>
-auto inline bruh::fn(T const a, Ts... args) const
+auto inline mtbdd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
-    return bruh{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
+    return mtbdd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
-auto inline bruh::size() const
+auto inline mtbdd::size() const
 {
     assert(mgr);
 
     return mgr->size({*this});
 }
 
-auto inline bruh::depth() const
+auto inline mtbdd::depth() const
 {
     assert(mgr);
 
     return mgr->depth({*this});
 }
 
-auto inline bruh::path_count() const noexcept
+auto inline mtbdd::path_count() const noexcept
 {
     assert(mgr);
 
     return mgr->path_count(f);
 }
 
-auto inline bruh::eval(std::vector<bool> const& as) const noexcept
+auto inline mtbdd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
     assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
@@ -451,29 +450,29 @@ auto inline bruh::eval(std::vector<bool> const& as) const noexcept
     return mgr->eval(f, as);
 }
 
-auto inline bruh::has_const(bool const c) const
+auto inline mtbdd::has_const(bool const c) const
 {
     assert(mgr);
 
     return mgr->has_const(f, c);
 }
 
-auto inline bruh::is_essential(std::int32_t const x) const
+auto inline mtbdd::is_essential(std::int32_t const x) const
 {
     assert(mgr);
 
     return mgr->is_essential(f, x);
 }
 
-auto inline bruh::compose(std::int32_t const x, bruh const& g) const
+auto inline mtbdd::compose(std::int32_t const x, mtbdd const& g) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
 
-    return bruh{mgr->compose(f, x, g.f), mgr};
+    return mtbdd{mgr->compose(f, x, g.f), mgr};
 }
 
-auto inline bruh::print(std::ostream& s) const
+auto inline mtbdd::print(std::ostream& s) const
 {
     assert(mgr);
 

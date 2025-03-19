@@ -4,7 +4,7 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/bruh.hpp>  // dd::bdd_manager
+#include <freddy/dd/mtbdd.hpp>  // dd::bdd_manager
 
 #ifndef NDEBUG
 #include <iostream>  // std::cout
@@ -20,21 +20,24 @@ using namespace freddy;
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("ADD test", "[basic]")
+TEST_CASE("MTBDD test", "[basic]")
 {
-    dd::bruh_manager mgr;
-    auto const x0 = mgr.var(), x1 = mgr.var();
+    dd::mtbdd_manager mgr;
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var();
 
     SECTION("test")
     {
-        auto three = mgr.new_const(3);
+
+        auto two = mgr.new_const(2);
         auto four = mgr.new_const(4);
 
-        auto f = x0 & four;
-        auto g = x1 & three;
-        auto h = f | ~g;
+        auto b = two & x2;
+        auto c = four & x3;
 
-        h.print();
+
+        auto f = x1 | b | c;
+
+        f.print();
 
         CHECK_FALSE(f.is_complemented());
     }
