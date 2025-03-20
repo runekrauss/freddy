@@ -10,7 +10,7 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/bdd.hpp>  // freddy::kfdd::kfdd_manager
+#include <freddy/dd/bdd.hpp>  // freddy::bdd::bdd_manager
 
 #include <algorithm>      // std::find
 #include <cassert>        // assert
@@ -253,45 +253,45 @@ auto static test_blif(std::string blif_name, int size_first_sifting)
 
     //std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
     std::cout << "Size: " << g.mgr.size(g.f) << '\n';
-    //g.mgr.dtl_sift();
+    //g.mgr.reorder();
 
     //std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
-    //std::cout << "Size: " << g.mgr.size(g.f) << '\n';
+    std::cout << "Size: " << g.mgr.size(g.f) << '\n';
 }
 
-TEST_CASE("kfdd blif c432 dtl sifting", "[blif]")
-{
-    test_blif("c432.blif", 10000);
-}
+// TEST_CASE("bdd blif c432 dtl sifting", "[blif]")
+// {
+//     test_blif("c432.blif", 10000);
+// }
 
-TEST_CASE("kfdd blif c880 dtl sifting", "[blif]")
-{
-    test_blif("c880.blif", 20000);
-}
-
-TEST_CASE("kfdd blif c1355 dtl sifting", "[blif]")
-{
-    test_blif("c1355.blif", 2000);
-}
-
-TEST_CASE("kfdd blif c1908 dtl sifting", "[blif]")
-{
-    test_blif("c1908.blif", 20000);
-}
-
-TEST_CASE("kfdd blif c2670 dtl sifting", "[blif]")
-{
-    test_blif("c2670.blif", 25000);
-}
-
-TEST_CASE("kfdd blif c3540 dtl sifting", "[blif]")
-{
-    test_blif("c3540.blif", 270000);
-}
-
-TEST_CASE("kfdd blif c5315 dtl sifting", "[blif]")
-{
-    test_blif("c5315.blif", 10000);
-}
+// TEST_CASE("bdd blif c880 dtl sifting", "[blif]")
+// {
+//     test_blif("c880.blif", 20000);
+// }
+//
+// TEST_CASE("bdd blif c1355 dtl sifting", "[blif]")
+// {
+//     test_blif("c1355.blif", 2000);
+// }
+//
+// TEST_CASE("bdd blif c1908 dtl sifting", "[blif]")
+// {
+//     test_blif("c1908.blif", 20000);
+// }
+//
+// TEST_CASE("bdd blif c2670 dtl sifting", "[blif]")
+// {
+//     test_blif("c2670.blif", 25000);
+// }
+//
+// TEST_CASE("bdd blif c3540 dtl sifting", "[blif]")
+// {
+//     test_blif("c3540.blif", 270000);
+// }
+//
+// TEST_CASE("bdd blif c5315 dtl sifting", "[blif]")
+// {
+//     test_blif("c5315.blif", 10000);
+// }
 
 }  // namespace

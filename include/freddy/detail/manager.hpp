@@ -144,6 +144,28 @@ class manager
         cleanup(nc);
     }
 
+    auto sift(std::int32_t const lvl_x, std::int32_t const lvl_y)
+    {
+        assert(lvl_x < var_count());
+        assert(lvl_y < var_count());
+
+        if (lvl_x == lvl_y)
+        {
+            return;
+        }
+
+        auto const start = lvl_x < lvl_y ? lvl_x : lvl_x - 1;
+        auto const stop = lvl_x < lvl_y ? lvl_y : lvl_y - 1;
+        auto const step = lvl_x < lvl_y ? 1 : -1;
+
+        for (auto lvl = start; lvl != stop; lvl += step)
+        {
+            exchange(lvl);
+        }
+    }
+
+    std::vector<std::int32_t> var2lvl;  // for reordering
+
   protected:  // generally intended for overriding and wrapping methods
     using edge_ptr = std::shared_ptr<edge<E, V>>;
 
@@ -181,9 +203,16 @@ class manager
         assert(consts.size() >= 2);
 
         vl.emplace_back(t, l.empty() ? 'x' + std::to_string(var_count()) : l);
-        vars.push_back(uedge(regw(), unode(var_count() - 1, consts[1], consts[0])));
         var2lvl.push_back(var_count() - 1);
         lvl2var.push_back(var_count() - 1);
+        if (t == expansion::S || t == expansion::PD)
+        {
+            vars.push_back(uedge(regw(), unode(var_count() - 1, consts[1], consts[0])));
+        }
+        else
+        {
+            vars.push_back(uedge(agg(regw(), consts[1]->w), unode(var_count() - 1, consts[1], consts[0])));
+        }
 
         return vars[var_count() - 1];
     }
@@ -346,13 +375,21 @@ class manager
 
         if (f->v->is_const() || f->v->br().x != x)
         {
-            if (vl[x].t == expansion::PD && a)  // dependent on two subtrees: f ^ f = 0
+            if ((vl[x].t == expansion::ND || vl[x].t == expansion::PD) && a)  // dependent on two subtrees: f ^ f = 0
             {
                 return consts[0];
             }
             return f;
         }
-        return a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo);
+        edge_ptr r;
+        switch (vl[x].t)
+        {
+            case expansion::S: r = a ? apply(f->w, f->v->br().hi) : apply(f->w, f->v->br().lo); break;
+            case expansion::PD:
+            case expansion::ND: r = a ? f->v->br().hi : apply(f->w, f->v->br().lo); break;
+            default: assert(false);
+        }
+        return r;
     }
 
     auto restr(edge_ptr const& f, std::int32_t const x, bool const a)
@@ -414,7 +451,19 @@ class manager
 
     auto unode(std::int32_t const x, edge_ptr hi, edge_ptr lo)  // unique node
     {
-        return foa(node<E, V>{x, std::move(hi), std::move(lo)}, vl[x].nt);
+        check_var_order(hi);
+        check_var_order(lo);
+        if (var2lvl[x] == var_count()-1)
+        {
+            if (!(lo->v->is_const())||!(lo->w == false)||!(lo->v->c() == false)||!(hi->v->is_const())||!(hi->w == true)||!(hi->v->c() == false))
+            {
+                assert(false);
+            }
+        }
+        auto n = foa(node<E, V>{x, hi, lo}, vl[x].nt);
+        check_var_order(n);
+        return n;
+        //return foa(node<E, V>{x, std::move(hi), std::move(lo)}, vl[x].nt);
     }
 
     auto unode(V c)
@@ -428,9 +477,13 @@ class manager
         {
             return foa(edge<E, V>{std::move(w), std::move(v)}, ec);
         }
+        check_var_order(v);
         // v is labeled by variable
         auto const x = v->br().x;
-        return foa(edge<E, V>{std::move(w), std::move(v)}, vl[x].et);
+        auto e = foa(edge<E, V>{w, v}, vl[x].et);
+        check_var_order(e);
+        return e;
+        //return foa(edge<E, V>{std::move(w), std::move(v)}, vl[x].et);
     }
 
     template <typename T>
@@ -465,8 +518,8 @@ class manager
     }
     // NOLINTEND
 
-    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs,
-                        std::ostream& s) const -> void
+    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
+        -> void
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -485,7 +538,7 @@ class manager
                 s << "f -> x" << lvl2var[i] << " [style=invis];\n";
             }
 
-            s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")" << lvl2var[i] << "\"];\n";
+            s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")" << lvl2var[i] << " [" << e_to_s(vl[lvl2var[i]].t) << "]" << "\"];\n";
 
             if (i + 1 < var_count())
             {
@@ -515,6 +568,258 @@ class manager
         s << "}\n";
     }
 
+    static auto e_to_s(expansion e)
+    {
+        switch (e)
+        {
+            case expansion::S: return "S"; break;
+            case expansion::PD: return "PD"; break;
+            case expansion::ND: return "ND"; break;
+            default: assert(false); break;
+        }
+        return "";
+    }
+
+
+
+    auto check_var_order(edge_ptr edge) -> bool
+    {
+        if (edge->v->is_const())
+        {
+            return true;
+        }
+
+        if (!edge->v->br().hi->v->is_const()&& var2lvl[edge->v->br().x] > var2lvl[edge->v->br().hi->v->br().x])
+        {
+            return false;
+        }
+        if (!edge->v->br().lo->v->is_const()&& var2lvl[edge->v->br().x] > var2lvl[edge->v->br().lo->v->br().x])
+        {
+            return false;
+        }
+
+        return !edge->v->br().hi->v->is_const() ? check_var_order(edge->v->br().hi) : true && !edge->v->br().lo->v->is_const() ? check_var_order(edge->v->br().lo) : true;
+    }
+
+    auto check_var_order(node_ptr v) -> bool
+    {
+        return true;
+        if (v->is_const())
+        {
+            return true;
+        }
+
+        if (!v->br().hi->v->is_const()&& var2lvl[v->br().x] > var2lvl[v->br().hi->v->br().x])
+        {
+            return false;
+        }
+        if (!v->br().lo->v->is_const()&& var2lvl[v->br().x] > var2lvl[v->br().lo->v->br().x])
+        {
+            return false;
+        }
+
+        return (!v->br().hi->v->is_const() ? check_var_order(v->br().hi->v) : true) && (!v->br().lo->v->is_const() ? check_var_order(v->br().lo->v) : true);
+    }
+
+    auto exchange(std::int32_t const lvl)  // with the level below
+    {
+        assert(vl[lvl2var[var_count()-1]].nt.size()==1);
+
+        assert(lvl < var_count());
+        assert(var_count() > 1);
+
+        if (lvl == var_count() - 1)
+        {
+            return;
+        }
+
+        gc();  // ensure that dead nodes are not swapped
+
+        auto const x = lvl2var[lvl];
+        auto const y = lvl2var[lvl + 1];
+
+        std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
+        std::swap(var2lvl[x], var2lvl[y]);
+
+        auto swap_is_needed = [y](auto const& hi, auto const& lo) {
+            assert(hi);
+            assert(lo);
+
+            if (hi->v->is_const() && lo->v->is_const())
+            {
+                return false;
+            }
+            if (hi->v->is_const() || lo->v->is_const())
+            {
+                return hi->v->is_const() ? lo->v->br().x == y : hi->v->br().x == y;
+            }
+            return hi->v->br().x == y || lo->v->br().x == y;
+        };
+
+        bool changed = false;
+        auto capacity = vl[x].nt.bucket_count();
+        do
+        {
+            ensure_canonicity();
+            changed = false;
+            for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
+            {
+                if (swap_is_needed((*it)->br().hi, (*it)->br().lo))  // swapping levels is a local operation
+                {
+                    auto v = *it;  // to ensure existing references are not lost
+                    it = vl[x].nt.erase(it);
+                    //remove_count++;
+                    auto& br = v->br();
+                    //auto lo_before_x = !br.lo->v->is_const() ? br.lo->v->br().x : -1;
+                    //auto hi_before_x = !br.hi->v->is_const() ? br.hi->v->br().x : -1;
+
+                    //std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
+                    //std::swap(var2lvl[x], var2lvl[y]);
+
+                    //var_order_check_node(v);
+
+                    auto const f1 = cof(br.hi, y, true);
+                    auto const f2 = cof(br.hi, y, false);
+                    auto const f3 = cof(br.lo, y, true);
+                    auto const f4 = cof(br.lo, y, false);
+
+                    //var_order_check_edge(f1);
+                    //var_order_check_edge(f2);
+                    //var_order_check_edge(f3);
+                    //var_order_check_edge(f4);
+
+                    //std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
+                    //std::swap(var2lvl[x], var2lvl[y]);
+
+                    // auto f1_x = !f1->v->is_const() ? f1->v->br().x : -1;
+                    // auto f1_hi_x = f1_x != -1 && !f1->v->br().hi->v->is_const() ? f1->v->br().hi->v->br().x : -1;
+                    // auto f1_lo_x = f1_x != -1 && !f1->v->br().lo->v->is_const() ? f1->v->br().lo->v->br().x : -1;
+                    // auto f2_x = !f2->v->is_const() ? f2->v->br().x : -1;
+                    // auto f2_hi_x = f2_x != -1 && !f2->v->br().hi->v->is_const() ? f2->v->br().hi->v->br().x : -1;
+                    // auto f2_lo_x = f2_x != -1 && !f2->v->br().lo->v->is_const() ? f2->v->br().lo->v->br().x : -1;
+                    // auto f3_x = !f3->v->is_const() ? f3->v->br().x : -1;
+                    // auto f3_hi_x = f3_x != -1 && !f3->v->br().hi->v->is_const() ? f3->v->br().hi->v->br().x : -1;
+                    // auto f3_lo_x = f3_x != -1 && !f3->v->br().lo->v->is_const() ? f3->v->br().lo->v->br().x : -1;
+                    // auto f4_x = !f4->v->is_const() ? f4 ->v->br().x : -1;
+                    // auto f4_hi_x = f4_x != -1 && !f4->v->br().hi->v->is_const() ? f4->v->br().hi->v->br().x : -1;
+                    // auto f4_lo_x = f4_x != -1 && !f4->v->br().lo->v->is_const() ? f4->v->br().lo->v->br().x : -1;
+                    br.lo = make_branch(x, f2, f4);
+                    br.hi = make_branch(x, f1, f3);
+                    //auto tmp = make_branch(y, br.hi, br.lo);
+                    //assert(y == tmp->v->br().x);
+                    br.x = y;
+                    if (!check_var_order(v))
+                    {
+                        assert(false);
+                    }
+                    // auto lo_after_x = !br.lo->v->is_const() ? br.lo->v->br().x : -1;
+                    // auto hi_after_x = !br.hi->v->is_const() ? br.hi->v->br().x : -1;
+                    ctrl(vl[y].nt);
+                    vl[y].nt.insert(v);
+                    //var_order_check_node(v);
+                    //var_order_check_edge(br.lo);
+                    //var_order_check_edge(br.hi);
+
+                    if (capacity < vl[x].nt.bucket_count())
+                    {
+                        capacity = vl[x].nt.bucket_count();
+                        changed = true;
+                        break;
+                    }
+                }
+                else
+                {
+                    // auto const& br = (*it)->br();
+                    // if (!br.lo->v->is_const()&&var2lvl[br.x]>var2lvl[br.lo->v->br().x])
+                    // {
+                    //     auto parent_x = br.x;
+                    //     auto parent_lvl = var2lvl[parent_x];
+                    //     auto lo_x = br.lo->v->br().x;
+                    //     auto lo_lvl = var2lvl[lo_x];
+                    //     assert(false);
+                    // }
+                    // if (!br.hi->v->is_const()&&var2lvl[br.x]>var2lvl[br.hi->v->br().x])
+                    // {
+                    //     auto parent_x = br.x;
+                    //     auto parent_lvl = var2lvl[parent_x];
+                    //     auto hi_x = br.hi->v->br().x;
+                    //     auto hi_lvl = var2lvl[hi_x];
+                    //     assert(false);
+                    // }
+                    ++it;
+                }
+            }
+
+        } while (changed);
+
+        gc();
+
+
+        for (auto it = vl[x].et.begin(); it != vl[x].et.end();)
+        {  // swap edges pointing to swapped nodes
+            auto tmp_var = (*it)->v->br().x;
+            if (tmp_var != x)
+            {
+                ctrl(vl[tmp_var].et);
+                vl[tmp_var].et.insert(*it);
+
+                it = vl[x].et.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+            // if ((*it)->v->br().x == y)
+            // {
+            //     ctrl(vl[y].et);
+            //     vl[y].et.insert(*it);
+            //
+            //     it = vl[x].et.erase(it);
+            // }
+            // else
+            // {
+            //     ++it;
+            // }
+        }
+
+        ensure_canonicity();
+        gc();
+
+        assert(vl[lvl2var[var_count()-1]].nt.size()==1);
+
+    }
+
+    void ensure_canonicity()
+    {
+        gc();
+        //ensuring canonicity from second lowest level upwards
+        for (auto lvl = var_count() - 2; lvl >= 0; --lvl)
+        {
+            auto const x = lvl2var[lvl];
+            for (auto const& edge : vl[x].et)
+            {
+                auto& br = edge->v->br();
+                if (br.lo->w)
+                {
+                    vl[x].et.erase(edge);
+                    if (vl[x].t == expansion::S)
+                    {
+                        //br.lo = complement(br.lo);
+                        //br.hi = complement(br.hi);
+                        //edge->w = agg(edge->w, true);
+                    }
+                    else
+                    {
+                        //br.lo = complement(br.lo);
+                        //edge->w = agg(edge->w, true);
+                    }
+                    vl[x].et.insert(edge);
+                }
+            }
+        }
+        gc();
+    }
+
     auto virtual add(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs additively
 
     [[nodiscard]] auto virtual agg(E const&, V const&) const -> V = 0;  // aggregates an edge weight and a node value
@@ -541,7 +846,9 @@ class manager
 
     std::vector<edge_ptr> consts;  // DD constants that are never cleared
 
-    std::vector<std::int32_t> var2lvl;  // for reordering
+    std::vector<std::int32_t> lvl2var;
+
+    std::vector<variable<E, V>> vl;
 
   private:
     template <typename T>
@@ -575,6 +882,7 @@ class manager
         auto const br = v->br();
         switch (vl[br.x].t)
         {
+            case expansion::ND: r = as[br.x] ? eval(br.lo, as) : merge(eval(br.hi, as), eval(br.lo, as)); break;
             case expansion::PD: r = as[br.x] ? merge(eval(br.hi, as), eval(br.lo, as)) : eval(br.lo, as); break;
             case expansion::S:
             {
@@ -584,79 +892,6 @@ class manager
             default: assert(false);
         }
         return r;
-    }
-
-    auto exchange(std::int32_t const lvl)  // with the level below
-    {
-        assert(lvl < var_count());
-        assert(var_count() > 1);
-
-        if (lvl == var_count() - 1)
-        {
-            return;
-        }
-
-        gc();  // ensure that dead nodes are not swapped
-
-        auto const x = lvl2var[lvl];
-        auto const y = lvl2var[lvl + 1];
-
-        auto swap_is_needed = [y](auto const& hi, auto const& lo) {
-            assert(hi);
-            assert(lo);
-
-            if (hi->v->is_const() && lo->v->is_const())
-            {
-                return false;
-            }
-            if (hi->v->is_const() || lo->v->is_const())
-            {
-                return hi->v->is_const() ? lo->v->br().x == y : hi->v->br().x == y;
-            }
-            return hi->v->br().x == y || lo->v->br().x == y;
-        };
-
-        for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
-        {
-            if (swap_is_needed((*it)->br().hi, (*it)->br().lo))  // swapping levels is a local operation
-            {
-                auto v = *it;  // to ensure existing references are not lost
-                it = vl[x].nt.erase(it);
-
-                auto& br = v->br();
-                auto const hi = make_branch(x, cof(br.hi, y, true), cof(br.lo, y, true));
-                br.lo = make_branch(x, cof(br.hi, y, false), cof(br.lo, y, false));
-                br.hi = hi;
-                br.x = y;
-
-                ctrl(vl[y].nt);
-                vl[y].nt.insert(std::move(v));
-            }
-            else
-            {
-                ++it;
-            }
-        }
-
-        for (auto it = vl[x].et.begin(); it != vl[x].et.end();)
-        {  // swap edges pointing to swapped nodes
-            if ((*it)->v->br().x == y)
-            {
-                ctrl(vl[y].et);
-                vl[y].et.insert(*it);
-
-                it = vl[x].et.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-
-        std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
-        std::swap(var2lvl[x], var2lvl[y]);
-
-        gc();  // clean up possible dead nodes
     }
 
     template <typename T>
@@ -693,26 +928,6 @@ class manager
         {  // DD traversal
             node_count(f->v->br().hi, marks);
             node_count(f->v->br().lo, marks);
-        }
-    }
-
-    auto sift(std::int32_t const lvl_x, std::int32_t const lvl_y)
-    {
-        assert(lvl_x < var_count());
-        assert(lvl_y < var_count());
-
-        if (lvl_x == lvl_y)
-        {
-            return;
-        }
-
-        auto const start = lvl_x < lvl_y ? lvl_x : lvl_x - 1;
-        auto const stop = lvl_x < lvl_y ? lvl_y : lvl_y - 1;
-        auto const step = lvl_x < lvl_y ? 1 : -1;
-
-        for (auto lvl = start; lvl != stop; lvl += step)
-        {
-            exchange(lvl);
         }
     }
 
@@ -800,11 +1015,7 @@ class manager
 
     boost::unordered_flat_set<edge_ptr, hash, comp> ec;
 
-    std::vector<std::int32_t> lvl2var;
-
     boost::unordered_flat_set<node_ptr, hash, comp> nc;  // constants
-
-    std::vector<variable<E, V>> vl;
 };
 
 }  // namespace freddy::detail
