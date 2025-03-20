@@ -660,7 +660,6 @@ class manager
         auto capacity = vl[x].nt.bucket_count();
         do
         {
-            ensure_canonicity();
             changed = false;
             for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
             {
@@ -715,7 +714,33 @@ class manager
                     // auto lo_after_x = !br.lo->v->is_const() ? br.lo->v->br().x : -1;
                     // auto hi_after_x = !br.hi->v->is_const() ? br.hi->v->br().x : -1;
                     ctrl(vl[y].nt);
-                    vl[y].nt.insert(v);
+                    //assert(!vl[y].nt.contains(v));
+                    if (vl[y].nt.contains(v))
+                    {
+                        auto org_v = *(vl[y].nt.find(v));
+                        boost::unordered_flat_set<edge_ptr, hash, comp> et;
+                        for (auto it2 = vl[x].et.begin(); it2 != vl[x].et.end();)
+                        {
+                            auto edge = *it2;
+                            if ((*it2)->v == v)
+                            {
+                                it2 = vl[x].et.erase(it2);
+                                edge->v = org_v;
+                                auto result = et.insert(edge);
+                                assert(result.second == true);
+                            }
+                            else
+                            {
+                                ++it2;
+                            }
+                        }
+                        vl[x].et.merge(et);
+                    }
+                    else
+                    {
+                        auto result = vl[y].nt.insert(v);
+                        assert(result.second == true);
+                    }
                     //var_order_check_node(v);
                     //var_order_check_edge(br.lo);
                     //var_order_check_edge(br.hi);
@@ -782,7 +807,7 @@ class manager
             // }
         }
 
-        ensure_canonicity();
+        //ensure_canonicity();
         gc();
 
         assert(vl[lvl2var[var_count()-1]].nt.size()==1);
@@ -793,29 +818,56 @@ class manager
     {
         gc();
         //ensuring canonicity from second lowest level upwards
+        boost::unordered_flat_set<edge_ptr, hash, comp> et;
+        boost::unordered_flat_set<node_ptr, hash, comp> nt;
         for (auto lvl = var_count() - 2; lvl >= 0; --lvl)
         {
+            et.clear();
+            nt.clear();
             auto const x = lvl2var[lvl];
-            for (auto const& edge : vl[x].et)
+            auto const name = vl[x].l;
+
+            for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
             {
-                auto& br = edge->v->br();
+                auto v = *it;
+                auto& br = v->br();
                 if (br.lo->w)
                 {
-                    vl[x].et.erase(edge);
+                    it = vl[x].nt.erase(it);
                     if (vl[x].t == expansion::S)
                     {
-                        //br.lo = complement(br.lo);
-                        //br.hi = complement(br.hi);
-                        //edge->w = agg(edge->w, true);
+                        br.lo = complement(br.lo);
+                        br.hi = complement(br.hi);
                     }
                     else
                     {
-                        //br.lo = complement(br.lo);
-                        //edge->w = agg(edge->w, true);
+                        br.lo = complement(br.lo);
                     }
-                    vl[x].et.insert(edge);
+                    nt.insert(v);
+                }
+                else
+                {
+                    ++it;
                 }
             }
+
+            for (auto it = vl[x].et.begin(); it != vl[x].et.end(); )
+            {
+                auto edge = *it;
+                auto v = edge->v;
+                if (nt.contains(v))
+                {
+                    it = vl[x].et.erase(it);
+                    edge->w = agg(edge->w, true);
+                    et.insert(edge);
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+            vl[x].nt.merge(nt);
+            vl[x].et.merge(et);
         }
         gc();
     }
