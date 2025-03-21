@@ -376,24 +376,23 @@ class bhd_manager : public detail::manager<bool, bool>
         return uclauses;
     }
 
-    auto repl(edge_ptr const& f, edge_ptr const& exp, bool const m = false)  // works with AND
-    {  // redirect 1-paths in f to exp for compacting reasons
+    auto repl(edge_ptr const& f, bool const m = false)  // works with AND
+    {                                                   // redirect 1-paths in f to exp for compacting reasons
         assert(f);
-        assert(is_exp(exp));
 
         if (is_exp(f))
         {
-            return f == exp ? f : consts[0];
+            return f;
         }
 
         if (f->v->is_const())
         {
             if (m)
-            {  // negation => decision is up to EXP
-                return f == consts[0] ? (exp == consts[2] ? consts[3] : consts[2]) : f;
+            {
+                return f == consts[0] ? consts[2] : f;
             }
 
-            return f == consts[0] ? f : exp;  // overwriting => complement bit disappears automatically
+            return f == consts[0] ? f : consts[2];
         }
 
         op::repl op{f, m};
@@ -402,8 +401,13 @@ class bhd_manager : public detail::manager<bool, bool>
             return ent->r;
         }
 
-        auto hi = f->w ? repl(f->v->br().hi, exp, !m) : repl(f->v->br().hi, exp, m);
-        auto lo = f->w ? repl(f->v->br().lo, exp, !m) : repl(f->v->br().lo, exp, m);
+        auto hi = f->w ? repl(f->v->br().hi, !m) : repl(f->v->br().hi, m);
+        auto lo = f->w ? repl(f->v->br().lo, !m) : repl(f->v->br().lo, m);
+        if (hi == lo)
+        {
+            op.r = hi;
+            return cache(std::move(op))->r;
+        }
 
         // normalize if needed
         auto w = lo->w;
@@ -458,9 +462,9 @@ class bhd_manager : public detail::manager<bool, bool>
         {
             return g->v->is_const() || g->v->br().x < static_cast<std::int32_t>(cost)
                        ? make_branch(x, compr(f, g, x, true), compr(f, g, x, false))
-                       : repl(f, consts[2]);
+                       : repl(f);
         }
-        return g->v->is_const() || g->v->br().x < static_cast<std::int32_t>(cost) ? repl(g, consts[2]) : consts[2];
+        return g->v->is_const() || g->v->br().x < static_cast<std::int32_t>(cost) ? repl(g) : consts[2];
     }
 
     auto mem_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
@@ -473,7 +477,7 @@ class bhd_manager : public detail::manager<bool, bool>
               static_cast<float>(edge_count()) * sizeof(detail::edge<bool, bool>)) /
              1e3f) >= static_cast<float>(cost))
         {
-            return repl(f, consts[2]);  // to ensure canonicity and because f is usually larger than g
+            return repl(f);  // to ensure canonicity and because f is usually larger than g
         }
         return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
     }
@@ -527,21 +531,20 @@ class bhd_manager : public detail::manager<bool, bool>
             {
                 return f;
             }
-            return consts[0];
+            if (!has_const(f, true))
+            {  // f & !f = 0
+                return consts[0];
+            }  // EXP is never removed
         }
 
         // EXP terminal cases
-        if (is_exp(f) && is_exp(g))
-        {
-            return f == g ? f : consts[0];
-        }
         if (is_exp(f))
         {
-            return repl(g, f);
+            return is_exp(g) ? consts[2] : repl(g);
         }
         if (is_exp(g))
         {
-            return repl(f, g);
+            return repl(f);
         }
 
         op::conj op{f, g};
