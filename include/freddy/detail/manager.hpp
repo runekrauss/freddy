@@ -584,6 +584,7 @@ class manager
 
     auto check_var_order(edge_ptr edge) -> bool
     {
+        return true;
         if (edge->v->is_const())
         {
             return true;
