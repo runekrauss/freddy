@@ -20,7 +20,9 @@
 #include <algorithm>    // std::ranges::max_element
 #include <array>        // std::array
 #include <cassert>      // assert
+#include <cmath>        // std::ceil
 #include <concepts>     // std::same_as
+#include <cstddef>      // std::size_t
 #include <cstdint>      // std::int32_t
 #include <format>       // std::format
 #include <memory>       // std::unique_ptr
@@ -504,10 +506,12 @@ class manager
         {
             assert(fs[i]);
 
-            s << 'f' << fs[i] << R"( [shape=plaintext,fontname="times bold",label=")"
-              << (outputs.empty() ? 'f' + std::to_string(i) : outputs[i]) << "\"]\n";
-            s << "{ rank=same; f; f" << fs[i] << "; }\n";
-            s << 'f' << fs[i] << " -> v" << fs[i]->v << " [label=\" " << fs[i]->w << " \"];\n";
+            auto const func = 'f' + std::to_string(i);  // to prevent overriding of identical functions
+
+            s << func << R"( [shape=plaintext,fontname="times bold",label=")"
+              << (outputs.empty() ? func : outputs[i]) << "\"]\n";
+            s << "{ rank=same; f; " << func << "; }\n";
+            s << func << " -> v" << fs[i]->v << " [label=\" " << fs[i]->w << " \"];\n";
 
             to_dot(fs[i], marks, s);
         }
@@ -551,12 +555,15 @@ class manager
         {
             return;
         }
-        // collision probability is too high => clean up nodes/edges
-        auto const old_lf = ut.load_factor();
-        gc();
 
-        if (ut.load_factor() > old_lf - config::dead_factor)
-        {  // too few nodes/edges were deleted
+        // clean up nodes/edges and dynamically resize the UT
+        gc();
+        if (ut.load_factor() <= ut.max_load_factor() * (1.0f - config::dead_factor))
+        {
+            ut.rehash(std::ceil(0.5f * ut.bucket_count()));
+        }
+        else
+        {  // too few nodes/edges of this UT were deleted
             ut.rehash(2 * ut.bucket_count());
         }
     }
@@ -616,6 +623,19 @@ class manager
             return hi->v->br().x == y || lo->v->br().x == y;
         };
 
+        // look ahead to determine how many swaps need to be performed
+        auto const max_swaps_needed = std::accumulate(vl[x].nt.begin(), vl[x].nt.end(), 0,
+                                                      [swap_is_needed](auto const sum, auto const& v) {
+                                                          // two branches must be made per swap
+                                                          return swap_is_needed(v->br().hi, v->br().lo) ? sum + 2 : sum;
+                                                      });
+        if (vl[x].nt.size() + max_swaps_needed > vl[x].nt.max_load())
+        {  // prevent rehashing during swapping, as it invalidates iterators
+            vl[x].nt.rehash(std::max<std::size_t>(2 * vl[x].nt.bucket_count(), std::ceil((vl[x].nt.size() + max_swaps_needed) / vl[x].nt.max_load_factor())));
+
+            assert(vl[x].nt.size() + max_swaps_needed <= vl[x].nt.max_load());
+        }
+
         for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
         {
             if (swap_is_needed((*it)->br().hi, (*it)->br().lo))  // swapping levels is a local operation
@@ -630,7 +650,28 @@ class manager
                 br.x = y;
 
                 ctrl(vl[y].nt);
-                vl[y].nt.insert(std::move(v));
+                if (!vl[y].nt.insert(v).second)
+                {  // insertion failed (edge case) => same node already exists
+                    auto const& orig_v = *vl[y].nt.find(v);
+                    boost::unordered_flat_set<edge_ptr, hash, comp> tmp;
+                    for (auto it2 = vl[x].et.begin(); it2 != vl[x].et.end();)
+                    {
+                        if ((*it2)->v == v)
+                        {  // redirect incoming edge of duplicated node to original node
+                            auto e = *it2;
+                            it2 = vl[x].et.erase(it2);
+
+                            e->v = orig_v;
+
+                            tmp.insert(e);
+                        }
+                        else
+                        {
+                            ++it2;
+                        }
+                    }
+                    vl[x].et.merge(tmp);
+                }
             }
             else
             {
@@ -665,7 +706,7 @@ class manager
         auto const search = ut.find(&obj);
         if (search == ut.end())
         {
-            ctrl(ut);  // check for GC and UT expansion
+            ctrl(ut);  // check for GC and UT resize
             return *ut.insert(std::make_shared<T>(std::forward<T>(obj))).first;
         }
         return *search;
