@@ -508,8 +508,8 @@ class manager
 
             auto const func = 'f' + std::to_string(i);  // to prevent overriding of identical functions
 
-            s << func << R"( [shape=plaintext,fontname="times bold",label=")"
-              << (outputs.empty() ? func : outputs[i]) << "\"]\n";
+            s << func << R"( [shape=plaintext,fontname="times bold",label=")" << (outputs.empty() ? func : outputs[i])
+              << "\"]\n";
             s << "{ rank=same; f; " << func << "; }\n";
             s << func << " -> v" << fs[i]->v << " [label=\" " << fs[i]->w << " \"];\n";
 
@@ -624,14 +624,16 @@ class manager
         };
 
         // look ahead to determine how many swaps need to be performed
-        auto const max_swaps_needed = std::accumulate(vl[x].nt.begin(), vl[x].nt.end(), 0,
-                                                      [swap_is_needed](auto const sum, auto const& v) {
-                                                          // two branches must be made per swap
-                                                          return swap_is_needed(v->br().hi, v->br().lo) ? sum + 2 : sum;
-                                                      });
+        auto const max_swaps_needed =
+            std::accumulate(vl[x].nt.begin(), vl[x].nt.end(), 0, [swap_is_needed](auto const sum, auto const& v) {
+                // two branches must be made per swap
+                return swap_is_needed(v->br().hi, v->br().lo) ? sum + 2 : sum;
+            });
         if (vl[x].nt.size() + max_swaps_needed > vl[x].nt.max_load())
         {  // prevent rehashing during swapping, as it invalidates iterators
-            vl[x].nt.rehash(std::max<std::size_t>(2 * vl[x].nt.bucket_count(), std::ceil((vl[x].nt.size() + max_swaps_needed) / vl[x].nt.max_load_factor())));
+            vl[x].nt.rehash(
+                std::max<std::size_t>(2 * vl[x].nt.bucket_count(),
+                                      std::ceil((vl[x].nt.size() + max_swaps_needed) / vl[x].nt.max_load_factor())));
 
             assert(vl[x].nt.size() + max_swaps_needed <= vl[x].nt.max_load());
         }
