@@ -630,8 +630,9 @@ class manager
             });
         if (vl[x].nt.size() + max_swaps_needed > vl[x].nt.max_load())
         {  // prevent rehashing during swapping, as it invalidates iterators
-            vl[x].nt.rehash(
-                std::max(2 * vl[x].nt.bucket_count(), static_cast<std::size_t>(std::ceil((vl[x].nt.size() + max_swaps_needed) / vl[x].nt.max_load_factor()))));
+            vl[x].nt.rehash(std::max(2 * vl[x].nt.bucket_count(),
+                                     static_cast<std::size_t>(std::ceil((vl[x].nt.size() + max_swaps_needed) /
+                                                                        vl[x].nt.max_load_factor()))));
 
             assert(vl[x].nt.size() + max_swaps_needed <= vl[x].nt.max_load());
         }
