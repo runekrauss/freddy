@@ -707,7 +707,7 @@ class manager
         auto const search = ut.find(&obj);
         if (search == ut.end())
         {
-            ctrl(ut);  // check for GC and UT resize
+            ctrl(ut);  // make sure that at least one more node/edge can be inserted
             return *ut.insert(std::make_shared<T>(std::forward<T>(obj))).first;
         }
         return *search;
