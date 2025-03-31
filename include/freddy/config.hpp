@@ -25,7 +25,8 @@ auto inline vl_size = 32;  // minimum capacity of the variable list
 // Factors
 // ---------------------------------------------------------------------------------------------------------------------
 
-auto inline dead_factor = 0.3f;  // percentage of how many nodes/edges must be deleted so that UTs are not resized
+// percentage of how many nodes/edges must be deleted so that UTs are halved instead of doubled
+auto inline dead_factor = 0.75f;
 
 auto inline growth_factor = 1.2f;  // permitted growth of nodes during variable reordering
 
