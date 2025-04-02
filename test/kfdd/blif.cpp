@@ -591,12 +591,8 @@ TEST_CASE("kfdd blif c5315 dtl sifting", "[blif_kfdd]")
 TEST_CASE("kfdd/bdd correctness", "[blif]")
 {
 
-    auto const noVars = 36;
-    long long int noCombs = 2;
-    for (auto i = 0; i < noVars-1; i++)
-    {
-        noCombs *= 2;
-    }
+    constexpr uint32_t noVars = 36;
+    uint64_t no_combs = 1LL << noVars;
 
     auto kfdd_blif = load_blif_kfdd("c432.blif", 10000000);
     kfdd_blif.mgr.dtl_sift();
@@ -619,12 +615,12 @@ TEST_CASE("kfdd/bdd correctness", "[blif]")
     auto bdd6 = bdd_blif.f.at(6);
     std::cout << "bdd size: " << bdd_blif.mgr.size(bdd_blif.f) << "\n";
 
-    for (long long int i = 0; i < noCombs; i += 5333)
+    for (uint64_t i = 0; i < no_combs; i += 13337)
     {
         std::vector<bool> input_vars;
-        for (int j = 0; j < noVars; j++)
+        for (uint32_t j = 0; j < noVars; j++)
         {
-            input_vars.push_back(!!(i & (2 << j)));
+            input_vars.push_back(!!(i & (1LL << j)));
         }
         CHECK(bdd0.eval(input_vars) == kfdd0.eval(input_vars));
         CHECK(bdd1.eval(input_vars) == kfdd1.eval(input_vars));

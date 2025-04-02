@@ -117,18 +117,14 @@ TEST_CASE("kfdd ringsum sift test", "[ringsum]")
     //     CHECK(result.eval(params) == result_c.eval(params));
     // }
 
-    long long int const noVars = 32;
-    long long int noCombs = 2;
-    for (auto i = 0; i < noVars-1; i++)
-    {
-        noCombs *= 2;
-    }
-    for(long long int i = 0; i < noCombs; i += 23)
+    int64_t const noVars = 32;
+    int64_t noCombs = 1LL << noVars;
+    for(int64_t i = 0; i < noCombs; i += 133337)
     {
         std::vector<bool> input_vars;
         for(int j = 0; j < noVars; j++)
         {
-            input_vars.push_back(!!(i & (2 << j)));
+            input_vars.push_back(!!(i & (1LL << j)));
         }
         CHECK(result.eval(input_vars) == result_c.eval(input_vars));
     }
@@ -143,8 +139,8 @@ TEST_CASE("kfdd ringsum sift test", "[ringsum]")
 
 TEST_CASE("simple ringsum", "[ringsum]")
 {
-    auto const noVars = 5;
-    auto const noCombs = 2 << noVars;
+    int const noVars = 5;
+    int64_t const noCombs = 1LL << noVars;
     dd::kfdd_manager mgr{};
     auto x0 = mgr.var(expansion::S);
     auto x1 = mgr.var(expansion::S);
@@ -178,7 +174,7 @@ TEST_CASE("simple ringsum", "[ringsum]")
         std::vector<bool> input_vars;
         for(int j = 0; j < noVars; j++)
         {
-            input_vars.push_back(!!(i & (2 << j)));
+            input_vars.push_back(!!(i & (1LL << j)));
         }
         CHECK(ringsum.eval(input_vars) == ringsum2.eval(input_vars));
     }

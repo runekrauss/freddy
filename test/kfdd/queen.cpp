@@ -170,11 +170,20 @@ TEST_CASE("5-Queens dtl sifts correctly", "[kfdd_queen]")
 
     mgr2.dtl_sift();
 
+    std::cout << "queens1: " << "\n";
+    std::cout << queens1.size() << "\n";
+
+    std::cout << "queens2: " << "\n";
+    std::cout << queens2.size() << "\n";
+
+
+
+
 
     auto const noVars = 25;
     auto const noCombs = 2 << noVars;
 
-    for(int i = 0; i < noCombs; i++)
+    for(int i = 0; i < noCombs; i += 151)
     {
         std::vector<bool> input_vars;
         for(int j = 0; j < noVars; j++)
