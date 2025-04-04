@@ -179,22 +179,21 @@ class kfdd_reader : public lorina::blif_reader
                 g.gates[output] = std::make_pair(0, freddy::dd::kfdd{});
             }
         }
-        if (g.mgr.node_count() > next_sifting)
+        if (next_sifting != 0 && g.mgr.node_count() > next_sifting)
         {
-            // g.mgr.gc();
-            // if (g.mgr.node_count() > next_sifting)
-            // {
+#ifdef DEBUG
             std::cout << g.mgr.node_count() << " exceeds " << next_sifting << '\n';
             std::cout << "before sifting:" << '\n';
             std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
             std::cout << "Size: " << g.mgr.size(g.f) << '\n';
+#endif
             g.mgr.dtl_sift();
             next_sifting = next_sifting * 2;
-
+#ifdef DEBUG
             std::cout << "after sifting:" << '\n';
             std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
             std::cout << "Size: " << g.mgr.size(g.f) << '\n';
-            // }
+#endif
         }
     }
 
@@ -465,9 +464,6 @@ auto static test_blif(std::string blif_name, int size_first_sifting)
         assert(false);
     }
     file.close();
-    auto noFs = g.f.size();
-    //g.gates.clear();
-    //g.mgr.gc();
     //std::cout << g.mgr << '\n';
 
     std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
@@ -498,21 +494,10 @@ auto static load_blif_bdd(std::string blif_name, int size_first_sifting)
         assert(false);
     }
     file.close();
-    auto noFs = g.f.size();
-    //g.gates.clear();
-    //g.mgr.gc();
-    //std::cout << g.mgr << '\n';
-
-    //std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
-    //std::cout << "Size: " << g.mgr.size(g.f) << '\n';
-    //g.mgr.reorder();
-    //g.mgr.dtl_sift();
-    //std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
-    //std::cout << "Size: " << g.mgr.size(g.f) << '\n';
     return g;
 }
 
-auto static load_blif_kfdd(std::string blif_name, int size_first_sifting)
+auto static load_blif_kfdd(std::string blif_name, int size_first_sifting = 0)
 {
     std::ifstream file{blif_name};
     if (!file.is_open())
@@ -531,17 +516,6 @@ auto static load_blif_kfdd(std::string blif_name, int size_first_sifting)
         assert(false);
     }
     file.close();
-    auto noFs = g.f.size();
-    //g.gates.clear();
-    //g.mgr.gc();
-    //std::cout << g.mgr << '\n';
-
-    //std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
-    //std::cout << "Size: " << g.mgr.size(g.f) << '\n';
-    //g.mgr.reorder();
-    //g.mgr.dtl_sift();
-    //std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
-    //std::cout << "Size: " << g.mgr.size(g.f) << '\n';
     return g;
 }
 
