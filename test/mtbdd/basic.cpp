@@ -4,7 +4,7 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/mtbdd.hpp>  // dd::bdd_manager
+#include <freddy/dd/mtbdd.hpp>  // dd::mtbdd_manager
 
 #ifndef NDEBUG
 #include <iostream>  // std::cout
@@ -41,7 +41,7 @@ TEST_CASE("MTBDD is constructed", "[basic]")
 #ifndef NDEBUG
         std::cout << mgr << '\n';
         std::cout << f << '\n';
-        //f.print();
+        f.print();
 #endif
         CHECK(f.eval({false, false}) == 0);
         CHECK(f.eval({false, true}) == 1);
@@ -105,11 +105,8 @@ TEST_CASE("MTBDD can be characterized", "[basic]")
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = x0 + mgr.constant(2) * x1 + mgr.constant(4) * x2;
 
-
-
     SECTION("Variables are supported")
     {
-        f.print();
         CHECK(mgr.var_count() == 3);
     }
 
@@ -121,12 +118,12 @@ TEST_CASE("MTBDD can be characterized", "[basic]")
 
     SECTION("#Nodes is determined")
     {
-        CHECK(mgr.node_count() <= 32);
+        CHECK(mgr.node_count() == 22);
     }
 
     SECTION("#Edges is determined")
     {
-        CHECK(mgr.edge_count() <= 32);
+        CHECK(mgr.edge_count() == 22);
     }
 
     SECTION("Nodes are counted")
@@ -180,16 +177,15 @@ TEST_CASE("MTBDD is substituted", "[basic]")
 
     SECTION("Variable is removed by existential quantification")
     {
-        f.print();
         auto const g = f.exist(0);
 
         CHECK_FALSE(g.is_essential(0));
-        CHECK(g == mgr.constant(148) + mgr.constant(6) * x1);
+        CHECK(g == mgr.constant(92) -mgr.constant(16) * x1 -mgr.constant(12) * x1 * x1);
     }
 
     SECTION("Variable is removed by universal quantification")
     {
-        CHECK(f.forall(1) == mgr.constant(16) - mgr.constant(88) * x0);
+        CHECK(f.forall(1) == mgr.constant(80) - mgr.constant(328) * x0 + mgr.constant(320) * x0 * x0);
     }
 }
 
@@ -222,19 +218,5 @@ TEST_CASE("MTBDD variable order is changeable", "[basic]")
         CHECK(f.eval({true, false, false, true, false, false}));
         CHECK(f.eval({false, true, false, false, true, false}));
         CHECK(f.eval({false, false, true, false, false, true}));
-    }
-}
-
-TEST_CASE("MTBDD test", "[basic]")
-{
-    dd::mtbdd_manager mgr;
-    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var();
-
-    SECTION("test")
-    {
-        auto f = x0 | x1;
-
-        f.print();
-
     }
 }
