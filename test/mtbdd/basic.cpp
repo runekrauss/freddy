@@ -180,7 +180,7 @@ TEST_CASE("MTBDD is substituted", "[basic]")
         auto const g = f.exist(0);
 
         CHECK_FALSE(g.is_essential(0));
-        CHECK(g == mgr.constant(92) -mgr.constant(16) * x1 -mgr.constant(12) * x1 * x1);
+        CHECK(g == mgr.constant(92) - mgr.constant(16) * x1 - mgr.constant(12) * x1 * x1);
     }
 
     SECTION("Variable is removed by universal quantification")
