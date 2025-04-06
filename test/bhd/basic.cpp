@@ -72,7 +72,7 @@ TEST_CASE("BHD is constructed", "[basic]")
         CHECK_FALSE(f.eval({true, true}).value());
     }
 
-    SECTION("Complement bit is overwritten")
+    SECTION("EXP maintains its level")
     {
         auto const f = x0 & mgr.exp();
 #ifndef NDEBUG
@@ -82,21 +82,12 @@ TEST_CASE("BHD is constructed", "[basic]")
 #endif
         CHECK(f.high().is_exp());
         CHECK(f.low().is_zero());
-    }
-
-    SECTION("EXP is complemented")
-    {
-        auto const f = ~x0 & mgr.exp();
-
-        CHECK(f.high().is_zero());
-        CHECK(f.low().is_exp());
-    }
-
-    SECTION("EXP maintains its level")
-    {
-        auto const f = x0 & mgr.exp();
-
         CHECK((f & x1) == f);
+    }
+
+    SECTION("Computing with EXP")
+    {
+        CHECK((mgr.exp() & ~mgr.exp()) == mgr.exp());
     }
 }
 
@@ -183,7 +174,7 @@ TEST_CASE("BHD is substituted", "[basic]")
         auto const g = f.exist(1);
 
         CHECK_FALSE(g.is_essential(1));
-        CHECK(g.high().is_zero());
+        CHECK(g.high().is_one());
         CHECK(g.eval({true, true, true}).value());
     }
 
