@@ -36,7 +36,7 @@ class mtbdd_manager;
 class mtbdd  // multi-terminal binary decision diagram
 {
   public:
-    mtbdd() = default;
+    mtbdd() = default; // so that MTBDDs initially work with standard containers
 
     auto operator+=(mtbdd const&) -> mtbdd&;
 
@@ -53,7 +53,6 @@ class mtbdd  // multi-terminal binary decision diagram
     auto operator|=(mtbdd const&) -> mtbdd&;
 
     auto operator^=(mtbdd const&) -> mtbdd&;
-
 
     auto friend operator+(mtbdd lhs, mtbdd const& rhs)
     {
@@ -93,7 +92,7 @@ class mtbdd  // multi-terminal binary decision diagram
 
     auto friend operator==(mtbdd const& lhs, mtbdd const& rhs) noexcept
     {
-        assert(lhs.mgr == rhs.mgr);
+        assert(lhs.mgr == rhs.mgr); // check for the same MTBDD manager
 
         return lhs.f == rhs.f;
     }
@@ -171,6 +170,7 @@ class mtbdd  // multi-terminal binary decision diagram
   private:
     friend mtbdd_manager;
 
+    // wrapper is controlled by its MTBDD manager
     mtbdd(std::shared_ptr<detail::edge<bool, std::int32_t>> f, mtbdd_manager* const mgr) :
             f{std::move(f)},
             mgr{mgr}
@@ -179,9 +179,9 @@ class mtbdd  // multi-terminal binary decision diagram
         assert(mgr);
     }
 
-    std::shared_ptr<detail::edge<bool, std::int32_t>> f;  // DD handle
+    std::shared_ptr<detail::edge<bool, std::int32_t>> f;
 
-    mtbdd_manager* mgr{};  // must be destroyed after this wrapper
+    mtbdd_manager* mgr{};
 };
 
 class mtbdd_manager : public detail::manager<bool, std::int32_t>
@@ -245,7 +245,7 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        std::ostringstream buf;  // for highlighting EXP
+        std::ostringstream buf;
         to_dot(transform(fs), outputs, buf);
 
         auto dot = buf.str();
@@ -256,7 +256,6 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
   private:
     auto static tmls() -> std::array<edge_ptr, 2>
     {
-        // choose the 0-leaf due to complemented edges in order to ensure canonicity
         auto const one = std::make_shared<detail::node<bool, std::int32_t>>(0);
         auto const two = std::make_shared<detail::node<bool, std::int32_t>>(1);
 
