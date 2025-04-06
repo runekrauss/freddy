@@ -63,7 +63,7 @@ TEST_CASE("MTBDD is constructed", "[basic]")
     {
         auto const f = ~x0;
 
-        CHECK(f == (mgr.one() - x0));
+        CHECK(f == mgr.one() - x0);
     }
 
     SECTION("Disjunction is represented")

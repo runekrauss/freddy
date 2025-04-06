@@ -94,12 +94,12 @@ TEST_CASE("BDD can be characterized", "[basic]")
 
     SECTION("#Nodes is determined")
     {
-        CHECK(mgr.node_count() <= 7);
+        CHECK(mgr.node_count() == 7);
     }
 
     SECTION("#Edges is determined")
     {
-        CHECK(mgr.edge_count() <= 12);
+        CHECK(mgr.edge_count() == 12);
     }
 
     SECTION("Nodes are counted")

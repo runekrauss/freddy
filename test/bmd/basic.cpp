@@ -65,7 +65,7 @@ TEST_CASE("BMD is constructed", "[basic]")
     {
         auto const f = ~x0;
 
-        CHECK(f == (mgr.one() - x0));
+        CHECK(f == mgr.one() - x0);
     }
 
     SECTION("Disjunction is represented")
@@ -121,12 +121,12 @@ TEST_CASE("BMD can be characterized", "[basic]")
 
     SECTION("#Nodes is determined")
     {
-        CHECK(mgr.node_count() <= 16);
+        CHECK(mgr.node_count() == 16);
     }
 
     SECTION("#Edges is determined")
     {
-        CHECK(mgr.edge_count() <= 57);
+        CHECK(mgr.edge_count() == 57);
     }
 
     SECTION("Nodes are counted")
