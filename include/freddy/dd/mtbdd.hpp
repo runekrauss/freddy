@@ -314,10 +314,16 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
             return constant(f->v->c() + g->v->c()).f;
         }
 
-        //TODO: CACHE
+        op::add op{f, g};
+        if (auto const* const ent = cached(op))
+        {
+            return ent->r;
+        }
 
         auto const x = top_var(f, g);
-        return make_branch(x, add(cof(f, x, true), cof(g, x, true)), add(cof(f, x, false), cof(g, x, false)));
+
+        op.r = make_branch(x, add(cof(f, x, true), cof(g, x, true)), add(cof(f, x, false), cof(g, x, false)));
+        return cache(std::move(op))->r;
     }
 
     [[nodiscard]] auto agg([[maybe_unused]] bool const& w, std::int32_t const& val) const noexcept -> std::int32_t override
