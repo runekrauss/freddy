@@ -6,6 +6,7 @@
 
 #include <freddy/dd/mtbdd.hpp>  // dd::mtbdd_manager
 
+#include <cstdint>  // std::int32_t
 #ifndef NDEBUG
 #include <iostream>  // std::cout
 #endif
@@ -22,7 +23,7 @@ using namespace freddy;
 
 TEST_CASE("MTBDD is constructed", "[basic]")
 {
-    dd::mtbdd_manager mgr;
+    dd::mtbdd_manager<std::int32_t> mgr;
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation is performed")
@@ -101,7 +102,7 @@ TEST_CASE("MTBDD is constructed", "[basic]")
 
 TEST_CASE("MTBDD can be characterized", "[basic]")
 {
-    dd::mtbdd_manager mgr;
+    dd::mtbdd_manager<std::int32_t> mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = x0 + mgr.constant(2) * x1 + mgr.constant(4) * x2;
 
@@ -154,9 +155,9 @@ TEST_CASE("MTBDD can be characterized", "[basic]")
 
 TEST_CASE("MTBDD is substituted", "[basic]")
 {
-    dd::mtbdd_manager mgr;
+    dd::mtbdd_manager<float> mgr;
     auto const x0 = mgr.var(), x1 = mgr.var();
-    auto const f = mgr.constant(8) - mgr.constant(20) * x0 + mgr.two() * x1 + mgr.constant(4) * x0 * x1;
+    auto const f = mgr.constant(8.5f) - mgr.constant(20.0f) * x0 + mgr.two() * x1 + mgr.constant(4.0f) * x0 * x1;
 
     SECTION("Variable is replaced by function")
     {
@@ -180,18 +181,18 @@ TEST_CASE("MTBDD is substituted", "[basic]")
         auto const g = f.exist(0);
 
         CHECK_FALSE(g.is_essential(0));
-        CHECK(g == mgr.constant(92) - mgr.constant(16) * x1 - mgr.constant(12) * x1 * x1);
+        CHECK(g == mgr.constant(94.75f) - mgr.constant(20.0f) * x1 - mgr.constant(12.0f) * x1 * x1);
     }
 
     SECTION("Variable is removed by universal quantification")
     {
-        CHECK(f.forall(1) == mgr.constant(80) - mgr.constant(328) * x0 + mgr.constant(320) * x0 * x0);
+        CHECK(f.forall(1) == mgr.constant(89.25f) - mgr.constant(346.0f) * x0 + mgr.constant(320.0f) * x0 * x0);
     }
 }
 
 TEST_CASE("MTBDD variable order is changeable", "[basic]")
 {
-    dd::mtbdd_manager mgr;
+    dd::mtbdd_manager<std::int32_t> mgr;
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x5 = mgr.var("x5"), x0 = mgr.var("x0"), x2 = mgr.var("x2"),
                x4 = mgr.var("x4");
     auto const f = (x0 & x1) | (x2 & x3) | (x4 & x5);

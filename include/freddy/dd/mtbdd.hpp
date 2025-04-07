@@ -11,10 +11,11 @@
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
-#include <cmath>        // std::pow
+#include <concepts>     // std::floating_point
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
 #include <ostream>      // std::ostream
+#include <sstream>      // std::ostringstream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
 #include <utility>      // std::move
@@ -31,12 +32,15 @@ namespace freddy::dd
 // Types
 // =====================================================================================================================
 
+template <typename V>
+requires std::floating_point<V> || std::integral<V>
 class mtbdd_manager;
 
+template <typename V>
 class mtbdd  // multi-terminal binary decision diagram
 {
   public:
-    mtbdd() = default; // so that MTBDDs initially work with standard containers
+    mtbdd() = default;  // so that MTBDDs initially work with standard containers
 
     auto operator+=(mtbdd const&) -> mtbdd&;
 
@@ -92,7 +96,7 @@ class mtbdd  // multi-terminal binary decision diagram
 
     auto friend operator==(mtbdd const& lhs, mtbdd const& rhs) noexcept
     {
-        assert(lhs.mgr == rhs.mgr); // check for the same MTBDD manager
+        assert(lhs.mgr == rhs.mgr);  // check for the same MTBDD manager
 
         return lhs.f == rhs.f;
     }
@@ -141,7 +145,7 @@ class mtbdd  // multi-terminal binary decision diagram
     [[nodiscard]] auto low() const;
 
     template <typename T, typename... Ts>
-    auto fn(T, Ts...) const;
+    [[nodiscard]] auto fn(T, Ts...) const;
 
     [[nodiscard]] auto size() const;
 
@@ -151,7 +155,7 @@ class mtbdd  // multi-terminal binary decision diagram
 
     [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
 
-    [[nodiscard]] auto has_const(bool) const;
+    [[nodiscard]] auto has_const(V) const;
 
     [[nodiscard]] auto is_essential(std::int32_t) const;
 
@@ -168,10 +172,10 @@ class mtbdd  // multi-terminal binary decision diagram
     auto print(std::ostream& = std::cout) const;
 
   private:
-    friend mtbdd_manager;
+    friend mtbdd_manager<V>;
 
     // wrapper is controlled by its MTBDD manager
-    mtbdd(std::shared_ptr<detail::edge<bool, std::int32_t>> f, mtbdd_manager* const mgr) :
+    mtbdd(std::shared_ptr<detail::edge<bool, V>> f, mtbdd_manager<V>* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
@@ -179,91 +183,95 @@ class mtbdd  // multi-terminal binary decision diagram
         assert(mgr);
     }
 
-    std::shared_ptr<detail::edge<bool, std::int32_t>> f;
+    std::shared_ptr<detail::edge<bool, V>> f;
 
-    mtbdd_manager* mgr{};
+    mtbdd_manager<V>* mgr{};
 };
 
-class mtbdd_manager : public detail::manager<bool, std::int32_t>
+template <typename V>  // codomain is an arbitrary finite set
+requires std::floating_point<V> || std::integral<V>
+class mtbdd_manager : public detail::manager<bool, V>
 {
   public:
-    friend mtbdd;
+    friend mtbdd<V>;
 
-    mtbdd_manager() :
-            manager{tmls()}
+    mtbdd_manager() : detail::manager<bool, V>{tmls()}
     {
-        consts.push_back(make_const(false, 2));
-        consts.push_back(make_const(false, -1));
+        this->consts.push_back(this->make_const(false, 2));
+        this->consts.push_back(this->make_const(false, -1));
     }
 
     auto var(std::string_view l = {})
     {
-        return mtbdd{make_var(expansion::S, l), this};
+        return mtbdd{this->make_var(expansion::S, l), this};
     }
 
     auto var(std::int32_t const i) noexcept
     {
         assert(i >= 0);
-        assert(i < var_count());
+        assert(i < this->var_count());
 
-        return mtbdd{vars[i], this};
+        return mtbdd{this->vars[i], this};
     }
 
-    auto constant(std::int32_t val){
-        return mtbdd{make_const(false, val), this};
+    auto constant(V const val)
+    {
+        return mtbdd{this->make_const(false, val), this};
     }
 
     auto zero() noexcept
     {
-        return mtbdd{consts[0], this};
+        return mtbdd{this->consts[0], this};
     }
 
     auto one() noexcept
     {
-        return mtbdd{consts[1], this};
+        return mtbdd{this->consts[1], this};
     }
 
     auto two() noexcept
     {
-        return mtbdd{consts[2], this};
+        return mtbdd{this->consts[2], this};
     }
 
-    [[nodiscard]] auto size(std::vector<mtbdd> const& fs) const
+    [[nodiscard]] auto size(std::vector<mtbdd<V>> const& fs) const
     {
-        return node_count(transform(fs));
+        return this->node_count(transform(fs));
     }
 
-    [[nodiscard]] auto depth(std::vector<mtbdd> const& fs) const
+    [[nodiscard]] auto depth(std::vector<mtbdd<V>> const& fs) const
     {
         assert(!fs.empty());
 
-        return longest_path(transform(fs));
+        return this->longest_path(transform(fs));
     }
 
-    auto print(std::vector<mtbdd> const& fs, std::vector<std::string> const& outputs = {},
+    auto print(std::vector<mtbdd<V>> const& fs, std::vector<std::string> const& outputs = {},
                std::ostream& s = std::cout) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
         std::ostringstream buf;
-        to_dot(transform(fs), outputs, buf);
+        this->to_dot(transform(fs), outputs, buf);
 
         auto dot = buf.str();
-        detail::replace_all(dot, ",label=\" 0 \"]","]");
+        detail::replace_all(dot, "label=\" 0 \"]","]");
         s << dot;
     }
 
   private:
+    using edge_ptr = std::shared_ptr<detail::edge<bool, V>>;
+
     auto static tmls() -> std::array<edge_ptr, 2>
     {
-        auto const one = std::make_shared<detail::node<bool, std::int32_t>>(0);
-        auto const two = std::make_shared<detail::node<bool, std::int32_t>>(1);
+        auto const leaf0 = std::make_shared<detail::node<bool, V>>(0);
+        auto const leaf1 = std::make_shared<detail::node<bool, V>>(1);
 
-        return std::array<edge_ptr, 2>{std::make_shared<detail::edge<bool, std::int32_t>>(false, one),
-                                       std::make_shared<detail::edge<bool, std::int32_t>>(false, two)};
+        return std::array<edge_ptr, 2>{std::make_shared<detail::edge<bool, V>>(false, leaf0),
+                                       std::make_shared<detail::edge<bool, V>>(false, leaf1)};
     }
 
-    auto static transform(std::vector<mtbdd> const& fs) -> std::vector<edge_ptr>
+    auto static transform(std::vector<mtbdd<V>> const& fs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> gs;
         gs.reserve(fs.size());
@@ -276,7 +284,7 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
     {
         assert(f);
 
-        return mul(consts[3], f);
+        return mul(this->consts[3], f);
     }
 
     auto sub(edge_ptr const& f, edge_ptr const& g)
@@ -292,7 +300,7 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
         assert(f);
         assert(g);
 
-        return sub(add(f, g), mul(consts[2], mul(f, g)));
+        return sub(add(f, g), mul(this->consts[2], mul(f, g)));
     }
 
     auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -300,32 +308,33 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
         assert(f);
         assert(g);
 
-        if (f == consts[0])
-        { // g + 0 = g
+        if (f == this->consts[0])
+        {  // 0 + g = g
             return g;
         }
-        if (g == consts[0])
-        { // f + 0 = f
+        if (g == this->consts[0])
+        {  // f + 0 = f
             return f;
         }
 
-        if (f->v->is_const() && g->v->is_const()){
-            return constant(f->v->c() + g->v->c()).f;
+        if (f->v->is_const() && g->v->is_const())
+        {
+            return this->make_const(false, f->v->c() + g->v->c());
         }
 
         op::add op{f, g};
-        if (auto const* const ent = cached(op))
+        if (auto const* const ent = this->cached(op))
         {
             return ent->r;
         }
 
-        auto const x = top_var(f, g);
+        auto const x = this->top_var(f, g);
 
-        op.r = make_branch(x, add(cof(f, x, true), cof(g, x, true)), add(cof(f, x, false), cof(g, x, false)));
-        return cache(std::move(op))->r;
+        op.r = make_branch(x, add(this->cof(f, x, true), this->cof(g, x, true)), add(this->cof(f, x, false), this->cof(g, x, false)));
+        return this->cache(std::move(op))->r;
     }
 
-    [[nodiscard]] auto agg([[maybe_unused]] bool const& w, std::int32_t const& val) const noexcept -> std::int32_t override
+    [[nodiscard]] auto agg([[maybe_unused]] bool const& w, V const& val) const noexcept -> V override
     {
         return val;
     }
@@ -339,7 +348,7 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
     {
         assert(f);
 
-        return sub(consts[1], f);
+        return sub(this->consts[1], f);
     }
 
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -347,7 +356,7 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
         assert(f);
         assert(g);
 
-        return mul(f,g);
+        return mul(f, g);
     }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -360,7 +369,7 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
 
     auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
     {
-        assert(x < var_count());
+        assert(x < this->var_count());
         assert(hi);
         assert(lo);
 
@@ -368,12 +377,12 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
         {
             return hi;
         }
-        return uedge(false, unode(x, std::move(hi), std::move(lo)));
+        return this->uedge(false, this->unode(x, std::move(hi), std::move(lo)));
     }
 
-    [[nodiscard]] auto merge(std::int32_t const& val1, std::int32_t const& val2) const noexcept -> std::int32_t override
+    [[nodiscard]] auto merge([[maybe_unused]] V const& val1, [[maybe_unused]] V const& val2) const noexcept -> V override
     {
-        return !(val1 == val2);
+        return 0;  // as no Davio expansion is used
     }
 
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -381,42 +390,44 @@ class mtbdd_manager : public detail::manager<bool, std::int32_t>
         assert(f);
         assert(g);
 
-        if (f == consts[0] || g == consts[0])
+        if (f == this->consts[0] || g == this->consts[0])
         {  // f/g * 0 = 0
-            return consts[0];
+            return this->consts[0];
         }
-        if (f == consts[1])
-        {  // g * 1 = g
+        if (f == this->consts[1])
+        {  // 1 * g = g
             return g;
         }
-        if (g == consts[1])
+        if (g == this->consts[1])
         {  // f * 1 = f
             return f;
         }
 
-        if (f->v->is_const() && g->v->is_const()){
-            return constant(f->v->c() * g->v->c()).f;
+        if (f->v->is_const() && g->v->is_const())
+        {
+            return this->make_const(false, f->v->c() * g->v->c());
         }
 
         op::mul op{f, g};
-        if (auto const* const ent = cached(op))
+        if (auto const* const ent = this->cached(op))
         {
             return ent->r;
         }
 
-        auto const x = top_var(f, g);
+        auto const x = this->top_var(f, g);
 
-        op.r = make_branch(x, mul(cof(f, x, true), cof(g, x, true)), mul(cof(f, x, false), cof(g, x, false)));
-        return cache(std::move(op))->r;
+        op.r = make_branch(x, mul(this->cof(f, x, true), this->cof(g, x, true)), mul(this->cof(f, x, false), this->cof(g, x, false)));
+        return this->cache(std::move(op))->r;
     }
 
     [[nodiscard]] auto regw() const noexcept -> bool override
     {
-        return false;  // means a regular edge
+        return false;
     }
 };
 
-auto inline mtbdd::operator+=(mtbdd const& rhs) -> mtbdd&
+template <typename V>
+auto inline mtbdd<V>::operator+=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -425,7 +436,8 @@ auto inline mtbdd::operator+=(mtbdd const& rhs) -> mtbdd&
     return *this;
 }
 
-auto inline mtbdd::operator-=(mtbdd const& rhs) -> mtbdd&
+template <typename V>
+auto inline mtbdd<V>::operator-=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -434,7 +446,8 @@ auto inline mtbdd::operator-=(mtbdd const& rhs) -> mtbdd&
     return *this;
 }
 
-auto inline mtbdd::operator*=(mtbdd const& rhs) -> mtbdd&
+template <typename V>
+auto inline mtbdd<V>::operator*=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -443,21 +456,24 @@ auto inline mtbdd::operator*=(mtbdd const& rhs) -> mtbdd&
     return *this;
 }
 
-auto inline mtbdd::operator-() const
+template <typename V>
+auto inline mtbdd<V>::operator-() const
 {
     assert(mgr);
 
     return mtbdd{mgr->neg(f), mgr};
 }
 
-auto inline mtbdd::operator~() const
+template <typename V>
+auto inline mtbdd<V>::operator~() const
 {
     assert(mgr);
 
     return mtbdd{mgr->complement(f), mgr};
 }
 
-auto inline mtbdd::operator&=(mtbdd const& rhs) -> mtbdd&
+template <typename V>
+auto inline mtbdd<V>::operator&=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -466,7 +482,8 @@ auto inline mtbdd::operator&=(mtbdd const& rhs) -> mtbdd&
     return *this;
 }
 
-auto inline mtbdd::operator|=(mtbdd const& rhs) -> mtbdd&
+template <typename V>
+auto inline mtbdd<V>::operator|=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -475,7 +492,8 @@ auto inline mtbdd::operator|=(mtbdd const& rhs) -> mtbdd&
     return *this;
 }
 
-auto inline mtbdd::operator^=(mtbdd const& rhs) -> mtbdd&
+template <typename V>
+auto inline mtbdd<V>::operator^=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -484,28 +502,32 @@ auto inline mtbdd::operator^=(mtbdd const& rhs) -> mtbdd&
     return *this;
 }
 
-auto inline mtbdd::is_zero() const noexcept
+template <typename V>
+auto inline mtbdd<V>::is_zero() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->zero();
 }
 
-auto inline mtbdd::is_one() const noexcept
+template <typename V>
+auto inline mtbdd<V>::is_one() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->one();
 }
 
-auto inline mtbdd::is_two() const noexcept
+template <typename V>
+auto inline mtbdd<V>::is_two() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->two();
 }
 
-auto inline mtbdd::high() const
+template <typename V>
+auto inline mtbdd<V>::high() const
 {
     assert(mgr);
     assert(!f->v->is_const());
@@ -513,7 +535,8 @@ auto inline mtbdd::high() const
     return mtbdd{f->v->br().hi, mgr};
 }
 
-auto inline mtbdd::low() const
+template <typename V>
+auto inline mtbdd<V>::low() const
 {
     assert(mgr);
     assert(!f->v->is_const());
@@ -521,36 +544,41 @@ auto inline mtbdd::low() const
     return mtbdd{f->v->br().lo, mgr};
 }
 
+template <typename V>
 template <typename T, typename... Ts>
-auto inline mtbdd::fn(T const a, Ts... args) const
+auto inline mtbdd<V>::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
     return mtbdd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
-auto inline mtbdd::size() const
+template <typename V>
+auto inline mtbdd<V>::size() const
 {
     assert(mgr);
 
     return mgr->size({*this});
 }
 
-auto inline mtbdd::depth() const
+template <typename V>
+auto inline mtbdd<V>::depth() const
 {
     assert(mgr);
 
     return mgr->depth({*this});
 }
 
-auto inline mtbdd::path_count() const noexcept
+template <typename V>
+auto inline mtbdd<V>::path_count() const noexcept
 {
     assert(mgr);
 
     return mgr->path_count(f);
 }
 
-auto inline mtbdd::eval(std::vector<bool> const& as) const noexcept
+template <typename V>
+auto inline mtbdd<V>::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
     assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
@@ -558,21 +586,24 @@ auto inline mtbdd::eval(std::vector<bool> const& as) const noexcept
     return mgr->eval(f, as);
 }
 
-auto inline mtbdd::has_const(bool const c) const
+template <typename V>
+auto inline mtbdd<V>::has_const(V const c) const
 {
     assert(mgr);
 
     return mgr->has_const(f, c);
 }
 
-auto inline mtbdd::is_essential(std::int32_t const x) const
+template <typename V>
+auto inline mtbdd<V>::is_essential(std::int32_t const x) const
 {
     assert(mgr);
 
     return mgr->is_essential(f, x);
 }
 
-auto inline mtbdd::ite(mtbdd const& g, mtbdd const& h) const
+template <typename V>
+auto inline mtbdd<V>::ite(mtbdd const& g, mtbdd const& h) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -581,7 +612,8 @@ auto inline mtbdd::ite(mtbdd const& g, mtbdd const& h) const
     return mtbdd{mgr->ite(f, g.f, h.f), mgr};
 }
 
-auto inline mtbdd::compose(std::int32_t const x, mtbdd const& g) const
+template <typename V>
+auto inline mtbdd<V>::compose(std::int32_t const x, mtbdd const& g) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -589,28 +621,32 @@ auto inline mtbdd::compose(std::int32_t const x, mtbdd const& g) const
     return mtbdd{mgr->compose(f, x, g.f), mgr};
 }
 
-auto inline mtbdd::restr(std::int32_t const x, bool const a) const
+template <typename V>
+auto inline mtbdd<V>::restr(std::int32_t const x, bool const a) const
 {
     assert(mgr);
 
     return mtbdd{mgr->restr(f, x, a), mgr};
 }
 
-auto inline mtbdd::exist(std::int32_t const x) const
+template <typename V>
+auto inline mtbdd<V>::exist(std::int32_t const x) const
 {
     assert(mgr);
 
     return mtbdd{mgr->exist(f, x), mgr};
 }
 
-auto inline mtbdd::forall(std::int32_t const x) const
+template <typename V>
+auto inline mtbdd<V>::forall(std::int32_t const x) const
 {
     assert(mgr);
 
     return mtbdd{mgr->forall(f, x), mgr};
 }
 
-auto inline mtbdd::print(std::ostream& s) const
+template <typename V>
+auto inline mtbdd<V>::print(std::ostream& s) const
 {
     assert(mgr);
 
