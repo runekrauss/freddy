@@ -720,8 +720,8 @@ class manager
                 br.x = y;
 
                 ctrl(vl[y].nt);
-
-                if (!vl[y].nt.insert(v).second)  //insert failed => identical node already exists
+                auto tmp_result = vl[y].nt.insert(v);
+                if (!tmp_result.second)  //insert failed => identical node already exists
                 {
                     duplicate_nodes.insert(v);
                 }

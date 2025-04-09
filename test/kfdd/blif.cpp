@@ -139,7 +139,7 @@ TEST_CASE("kfdd/bdd correctness c432", "[blif]")
     auto bdd_blif = load_blif_bdd("c432.blif");
     std::cout << "bdd size: " << bdd_blif.mgr.size(bdd_blif.f) << "\n";
 
-    blif_eq(kfdd_blif, bdd_blif);
+    blif_eq(kfdd_blif, bdd_blif, 65537);
 }
 
 }  // namespace
