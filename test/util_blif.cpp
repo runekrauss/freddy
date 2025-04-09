@@ -469,12 +469,7 @@ class bdd_reader : public lorina::blif_reader
         assert(false);
     }
     file.close();
-    //std::cout << g.mgr << '\n';
 
-    std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
-    std::cout << "Size: " << g.mgr.size(g.f) << '\n';
-    //g.mgr.reorder();
-    //g.mgr.dtl_sift();
     std::cout << "Node_Count: " << g.mgr.node_count() << '\n';
     std::cout << "Size: " << g.mgr.size(g.f) << '\n';
     return g;
@@ -524,7 +519,7 @@ class bdd_reader : public lorina::blif_reader
     return g;
 }
 
-[[maybe_unused]] auto blif_eq(blif_kfdd const& dd1, blif_kfdd const& dd2, int skip = 1)
+[[maybe_unused]] auto blif_eq(blif_kfdd const& dd1, blif_kfdd const& dd2, uint64_t skip = 1)
 {
     assert(dd1.mgr.var_count() == dd2.mgr.var_count());
     assert(dd1.f.size() == dd2.f.size());
@@ -532,14 +527,14 @@ class bdd_reader : public lorina::blif_reader
     int32_t noVars = dd1.mgr.var_count();
     assert(noVars <= 64);
 
-    uint64_t noCombs = 1 << noVars;
+    uint64_t noCombs = 1LL << noVars;
 
     for (uint64_t i = 0; i < noCombs; i += skip)
     {
         std::vector<bool> input_vars;
         for (int32_t j = 0; j < noVars; j++)
         {
-            input_vars.push_back(!!(i & (1 << j)));
+            input_vars.push_back(!!(i & (1LL << j)));
         }
         for (uint64_t j = 0; j < dd1.f.size(); j++)
         {
@@ -554,7 +549,7 @@ class bdd_reader : public lorina::blif_reader
     return true;
 }
 
-[[maybe_unused]] auto blif_eq(blif_bdd const& dd1, blif_kfdd const& dd2, int skip = 1)
+[[maybe_unused]] auto blif_eq(blif_bdd const& dd1, blif_kfdd const& dd2, uint64_t skip = 1)
 {
     assert(dd1.mgr.var_count() == dd2.mgr.var_count());
     assert(dd1.f.size() == dd2.f.size());
@@ -562,23 +557,29 @@ class bdd_reader : public lorina::blif_reader
     int32_t noVars = dd1.mgr.var_count();
     assert(noVars <= 64);
 
-    uint64_t noCombs = 1 << noVars;
+    uint64_t noCombs = 1LL << noVars;
 
     for (uint64_t i = 0; i < noCombs; i += skip)
     {
         std::vector<bool> input_vars;
         for (int32_t j = 0; j < noVars; j++)
         {
-            input_vars.push_back(!!(i & (1 << j)));
+            input_vars.push_back(!!(i & (1LL << j)));
         }
         for (uint64_t j = 0; j < dd1.f.size(); j++)
         {
-            CHECK(dd1.f.at(j).eval(input_vars) == dd2.f.at(j).eval(input_vars));
+            auto res = dd1.f.at(j).eval(input_vars) == dd2.f.at(j).eval(input_vars);
+            CHECK(res);
+            if (!res)
+            {
+                return false;
+            }
         }
     }
+    return true;
 }
 
-[[maybe_unused]] auto blif_eq(blif_kfdd const& dd1, blif_bdd const& dd2, int skip = 1)
+[[maybe_unused]] auto blif_eq(blif_kfdd const& dd1, blif_bdd const& dd2, uint64_t skip = 1)
 {
     assert(dd1.mgr.var_count() == dd2.mgr.var_count());
     assert(dd1.f.size() == dd2.f.size());
@@ -586,23 +587,29 @@ class bdd_reader : public lorina::blif_reader
     int32_t noVars = dd1.mgr.var_count();
     assert(noVars <= 64);
 
-    uint64_t noCombs = 1 << noVars;
+    uint64_t noCombs = 1LL << noVars;
 
     for (uint64_t i = 0; i < noCombs; i += skip)
     {
         std::vector<bool> input_vars;
         for (int32_t j = 0; j < noVars; j++)
         {
-            input_vars.push_back(!!(i & (1 << j)));
+            input_vars.push_back(!!(i & (1LL << j)));
         }
         for (uint64_t j = 0; j < dd1.f.size(); j++)
         {
-            CHECK(dd1.f.at(j).eval(input_vars) == dd2.f.at(j).eval(input_vars));
+            auto res = dd1.f.at(j).eval(input_vars) == dd2.f.at(j).eval(input_vars);
+            CHECK(res);
+            if (!res)
+            {
+                return false;
+            }
         }
     }
+    return true;
 }
 
-[[maybe_unused]] auto blif_eq(blif_bdd const& dd1, blif_bdd const& dd2, int skip = 1)
+[[maybe_unused]] auto blif_eq(blif_bdd const& dd1, blif_bdd const& dd2, uint64_t skip = 1)
 {
     assert(dd1.mgr.var_count() == dd2.mgr.var_count());
     assert(dd1.f.size() == dd2.f.size());
@@ -610,19 +617,25 @@ class bdd_reader : public lorina::blif_reader
     int32_t noVars = dd1.mgr.var_count();
     assert(noVars <= 64);
 
-    uint64_t noCombs = 1 << noVars;
+    uint64_t noCombs = 1LL << noVars;
 
     for (uint64_t i = 0; i < noCombs; i += skip)
     {
         std::vector<bool> input_vars;
         for (int32_t j = 0; j < noVars; j++)
         {
-            input_vars.push_back(!!(i & (1 << j)));
+            input_vars.push_back(!!(i & (1LL << j)));
         }
         for (uint64_t j = 0; j < dd1.f.size(); j++)
         {
-            CHECK(dd1.f.at(j).eval(input_vars) == dd2.f.at(j).eval(input_vars));
+            auto res = dd1.f.at(j).eval(input_vars) == dd2.f.at(j).eval(input_vars);
+            CHECK(res);
+            if (!res)
+            {
+                return false;
+            }
         }
     }
+    return true;
 }
 }  //namespace

@@ -231,14 +231,14 @@ class kfdd_manager : public detail::manager<bool, bool>
         auto comp_largest_layer = [&](const int x, const int y) { return vl[x].nt.size() > vl[y].nt.size(); };
 
         gc();
-#ifndef NDEBUG
+//#ifndef NDEBUG
         std::cout << "Before sifting:" << '\n';
         for (auto x = 0; x < var_count(); x++)
         {
             std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
                       << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
         }
-#endif
+//#endif
 
         auto tmp_vars = std::vector<int>(var_count());
         for (auto x = 0; x < var_count(); x++)
@@ -252,14 +252,14 @@ class kfdd_manager : public detail::manager<bool, bool>
             sift_single_var(x);
         }
 
-#ifndef NDEBUG
+//#ifndef NDEBUG
         std::cout << "After sifting:" << '\n';
         for (auto x = 0; x < var_count(); x++)
         {
             std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
                       << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
         }
-#endif
+//#endif
     }
 
     void change_expansion_type(int x, expansion t)
