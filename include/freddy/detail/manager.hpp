@@ -693,10 +693,12 @@ class manager
         }
         reserve(vl[x].nt, max_swaps_needed);
 
+#ifndef NDEBUG
         auto bucket_count = vl[x].nt.bucket_count();
-
+#endif
 
         boost::unordered_flat_set<node_ptr> duplicate_nodes;
+        boost::unordered_flat_set<node_ptr> duplicate_nodes_swap;
         boost::unordered_flat_set<edge_ptr> duplicate_edges;
 
         for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
@@ -719,8 +721,7 @@ class manager
 
                 ctrl(vl[y].nt);
 
-                auto node_insert_result = vl[y].nt.insert(v);
-                if (!node_insert_result.second)  //insert failed => identical node already exists
+                if (!vl[y].nt.insert(v).second)  //insert failed => identical node already exists
                 {
                     duplicate_nodes.insert(v);
                 }
@@ -731,105 +732,6 @@ class manager
                 ++it;
             }
         }
-
-
-        if (!duplicate_nodes.empty())
-        {
-            reserve(vl[x].et, 2);
-            for (auto it = vl[x].et.begin(); it != vl[x].et.end();)
-            {
-                auto edge = *it;
-                auto node_it = duplicate_nodes.find(edge->v);
-                if (node_it != duplicate_nodes.end())
-                {
-                    auto node = *node_it;
-                    auto orig_v = vl[y].nt.find(node);
-                    assert(orig_v != vl[y].nt.end());
-
-                    it = vl[x].et.erase(it);
-                    edge->v = *orig_v;
-                    if (vl[x].et.insert(edge).second == false)
-                    {
-                        duplicate_edges.insert(edge);
-                    }
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-        }
-
-        if (!duplicate_edges.empty())
-        {
-            for (auto i = lvl-1; i > 0; --i)
-            {
-                auto curr_var = lvl2var[i];
-                auto count = 0;
-                for (auto it = vl[curr_var].nt.begin(); it != vl[curr_var].nt.end();++it)
-                {
-                    if (duplicate_edges.contains((*it)->br().hi) || duplicate_edges.contains((*it)->br().lo))
-                    {
-                        ++count;
-                    }
-                }
-
-                reserve(vl[curr_var].nt, count);
-
-                for (auto it = vl[curr_var].nt.begin(); it != vl[curr_var].nt.end();)
-                {
-                    auto node = *it;
-                    auto hi_node_it = duplicate_edges.find(node->br().hi);
-                    auto lo_node_it = duplicate_edges.find(node->br().lo);
-                    if (hi_node_it != duplicate_edges.end() || lo_node_it != duplicate_edges.end())
-                    {
-                        it = vl[curr_var].nt.erase(it);
-                        if (hi_node_it != duplicate_edges.end())
-                        {
-                            auto hi_node = *hi_node_it;
-                            auto orig_edge_it = vl[x].et.find(hi_node);
-                            node->br().hi = *orig_edge_it;
-                        }
-
-                        if (lo_node_it != duplicate_edges.end())
-                        {
-                            auto lo_node = *lo_node_it;
-                            auto orig_edge_it = vl[x].et.find(lo_node);
-                            node->br().lo = *orig_edge_it;
-                        }
-                        vl[curr_var].nt.insert(node);
-                    }
-                    else
-                    {
-                        ++it;
-                    }
-                }
-            }
-        }
-
-        // auto org_v = *(vl[y].nt.find(v));
-        // boost::unordered_flat_set<edge_ptr, hash, comp> et;
-        // for (auto it2 = vl[x].et.begin(); it2 != vl[x].et.end();)
-        // {
-        //     auto edge = *it2;
-        //     if ((*it2)->v == v)
-        //     {
-        //         it2 = vl[x].et.erase(it2);
-        //         edge->v = org_v;
-        //         auto edge_insert_result = et.insert(edge);
-        //         if (!edge_insert_result.second)  // duplicated edge => need to check all higher nodes
-        //             // later and use previously existing edge
-        //         {
-        //             assert(false);
-        //         }
-        //     }
-        //     else
-        //     {
-        //         ++it2;
-        //     }
-        // }
-        // vl[x].et.merge(et);
-        gc();
 
         for (auto it = vl[x].et.begin(); it != vl[x].et.end();)
         {  // swap edges pointing to swapped nodes
@@ -845,6 +747,129 @@ class manager
                 ++it;
             }
         }
+
+        do
+        {
+            if (duplicate_nodes.empty())
+            {
+                break;
+            }
+
+            auto lowest_level = var_count() - 1;
+            auto dup_node_count = 0;
+            for (auto it = duplicate_nodes.begin(); it != duplicate_nodes.end(); ++it)
+            {
+                auto node = *it;
+                if (var2lvl[node->br().x] < lowest_level)
+                {
+                    lowest_level = var2lvl[node->br().x];
+                    dup_node_count = 1;
+                    continue;
+                }
+                if (var2lvl[node->br().x] == lowest_level)
+                {
+                    ++dup_node_count;
+                }
+            }
+            auto curr_node_var = lvl2var[lowest_level];
+
+            reserve(vl[curr_node_var].et, dup_node_count * 2);
+            for (auto it = vl[curr_node_var].et.begin(); it != vl[curr_node_var].et.end();)
+            {
+                auto edge = *it;
+                auto node_it = duplicate_nodes.find(edge->v);
+                if (node_it != duplicate_nodes.end())
+                {
+                    auto node = *node_it;
+                    auto orig_v = vl[curr_node_var].nt.find(node);
+                    assert(orig_v != vl[curr_node_var].nt.end());
+
+                    it = vl[curr_node_var].et.erase(it);
+                    edge->v = *orig_v;
+                    auto tmp_result = vl[curr_node_var].et.insert(edge);
+                    if (!tmp_result.second)
+                    {
+                        duplicate_edges.insert(edge);
+                        assert(vl[edge->v->br().x].et.find(edge) != vl[edge->v->br().x].et.end());
+                        assert(vl[curr_node_var].et.find(edge) != vl[curr_node_var].et.end());
+                    }
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+
+            if (!duplicate_edges.empty())
+            {
+                for (auto i = lvl - 1; i >= 0; --i)
+                {
+                    auto curr_var = lvl2var[i];
+                    auto count = 0;
+                    for (auto it = vl[curr_var].nt.begin(); it != vl[curr_var].nt.end(); ++it)
+                    {
+                        if (duplicate_edges.contains((*it)->br().hi) || duplicate_edges.contains((*it)->br().lo))
+                        {
+                            ++count;
+                        }
+                    }
+
+                    reserve(vl[curr_var].nt, count);
+
+                    for (auto it = vl[curr_var].nt.begin(); it != vl[curr_var].nt.end();)
+                    {
+                        auto node = *it;
+                        auto hi_edge_it = duplicate_edges.find(node->br().hi);
+                        auto lo_edge_it = duplicate_edges.find(node->br().lo);
+                        if (hi_edge_it != duplicate_edges.end() || lo_edge_it != duplicate_edges.end())
+                        {
+                            it = vl[curr_var].nt.erase(it);
+                            if (hi_edge_it != duplicate_edges.end())
+                            {
+                                auto hi_edge = *hi_edge_it;
+                                auto orig_edge_it = vl[hi_edge->v->br().x].et.find(hi_edge);
+                                assert(orig_edge_it != vl[hi_edge->v->br().x].et.end());
+                                node->br().hi = *orig_edge_it;
+                            }
+
+                            if (lo_edge_it != duplicate_edges.end())
+                            {
+                                auto lo_edge = *lo_edge_it;
+                                auto orig_edge_it = vl[lo_edge->v->br().x].et.find(lo_edge);
+                                assert(orig_edge_it != vl[lo_edge->v->br().x].et.end());
+                                node->br().lo = *orig_edge_it;
+                            }
+                            auto tmp_result = vl[curr_var].nt.insert(node);
+                            if (!tmp_result.second)
+                            {
+                                duplicate_nodes_swap.insert(node);
+                            }
+                        }
+                        else
+                        {
+                            ++it;
+                        }
+                    }
+                }
+            }
+            auto tmp_count = 0;
+            for (auto it = duplicate_nodes.begin(); it != duplicate_nodes.end();)
+            {
+                if ((*it)->br().x == curr_node_var)
+                {
+                    it = duplicate_nodes.erase(it);
+                    ++tmp_count;
+                }
+                else
+                {
+                    ++it;
+                }
+            }
+            assert(tmp_count == dup_node_count);
+            duplicate_nodes.merge(duplicate_nodes_swap);
+            duplicate_edges.clear();
+        } while (!duplicate_nodes.empty());
+
         gc();
         assert(vl[lvl2var[var_count() - 1]].nt.size() == 1);
     }

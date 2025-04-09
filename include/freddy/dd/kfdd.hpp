@@ -148,6 +148,11 @@ class kfdd  // binary decision diagram
 
     [[nodiscard]] auto sharpsat() const;
 
+    auto manager() const noexcept -> kfdd_manager const&
+    {
+        return *mgr;
+    }
+
     auto print(std::ostream& = std::cout) const;
 
   private:
@@ -226,12 +231,14 @@ class kfdd_manager : public detail::manager<bool, bool>
         auto comp_largest_layer = [&](const int x, const int y) { return vl[x].nt.size() > vl[y].nt.size(); };
 
         gc();
+#ifndef NDEBUG
         std::cout << "Before sifting:" << '\n';
         for (auto x = 0; x < var_count(); x++)
         {
             std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
                       << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
         }
+#endif
 
         auto tmp_vars = std::vector<int>(var_count());
         for (auto x = 0; x < var_count(); x++)
@@ -243,24 +250,27 @@ class kfdd_manager : public detail::manager<bool, bool>
         {
             auto x = tmp_vars[i];
             sift_single_var(x);
-            //std::cout << "var: " << x << '\n';
-            //sift_single_var(i);
         }
+
+#ifndef NDEBUG
         std::cout << "After sifting:" << '\n';
         for (auto x = 0; x < var_count(); x++)
         {
             std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
                       << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
         }
+#endif
     }
 
     void change_expansion_type(int x, expansion t)
     {
         //remember original expansion type
         auto org_t = vl[x].t;
+#ifndef NDEBUG
         //get level
         const int level = var2lvl[x];
         //ensure level is last layer
+#endif
         assert(level == var_count() - 1);
         //ensure there is only one node on last layer
         assert(vl[x].nt.size() == 1);
@@ -293,8 +303,6 @@ class kfdd_manager : public detail::manager<bool, bool>
             {
                 edge->w = agg(edge->w, true);
             }
-            //std::cout << "before ensuring canonicity:" << "\n";
-            //f.print();
             ensure_canonicity();
         }
 
@@ -307,10 +315,10 @@ class kfdd_manager : public detail::manager<bool, bool>
         int x;
         int pos;
         size_t size;
-        freddy::expansion expansion;
+        expansion exp;
     };
 
-    auto move_to_bottom(const int x)-> void
+    auto move_to_bottom(const int x) -> void
     {
         sift(var2lvl[x], var_count() - 1);
     }
@@ -323,15 +331,15 @@ class kfdd_manager : public detail::manager<bool, bool>
         auto exceeding_size = static_cast<float>(get_size()) * config::growth_factor;
         for (auto i = pos - 1; i >= 0; --i)
         {
-            //integritycheck();
             exchange(i);
-            //integritycheck();
             auto current_size = get_size();
             auto new_size_f = static_cast<float>(current_size);
             if (new_size_f > exceeding_size)
             {
                 exchange(i);
+#ifndef NDEBUG
                 std::cout << "aborting sifting of variable " << x << ", exceeding growth factor." << '\n';
+#endif
                 break;
             }
             if (current_size < size)
@@ -340,7 +348,7 @@ class kfdd_manager : public detail::manager<bool, bool>
                 pos = i;
             }
         }
-        return {.x = x, .pos = pos, .size = size, .expansion = vl[x].t};
+        return {.x = x, .pos = pos, .size = size, .exp = vl[x].t};
     }
     auto get_size() -> size_t
     {
@@ -349,10 +357,41 @@ class kfdd_manager : public detail::manager<bool, bool>
 
     auto sift_single_var(const int x) -> smallest_level_r
     {
-        //integritycheck();
+        // std::vector<expansion> allowed_expansions = {expansion::S, expansion::PD};
+        // std::vector<expansion> exps = allowed_expansions;
+        // if (exps.size() == 1)
+        // {
+        //     //reorder
+        // }
+        // else
+        // {
+        //     assert(std::find(exps.begin(), exps.end(), vl[x].t) != exps.end());
+        //     //sifte variable mit aktuellem zerlegungstypen, erst nach oben dann nach unten
+        //     smallest_level_r tmp_res{};
+        //     smallest_level_r res{.x = x, .pos = var2lvl[x], .size = get_size(), .expansion = vl[x].t};
+        //     //dtl sifting
+        //     move_to_top(x);
+        //     tmp_res = find_smallest_level_downwards(x);
+        //     if (tmp_res.size < res.size)
+        //     {
+        //         res = tmp_res;
+        //     }
+        //     exps.erase(vl[x].t);
+        //
+        //     while (!exps.empty())
+        //     {
+        //         move_to_bottom(x);
+        //         change_expansion_type(x, exps.pop_back());
+        //         tmp_res = find_smallest_level(x);
+        //         if (tmp_res.size < res.size)
+        //         {
+        //             res = tmp_res;
+        //         }
+        //     }
+        // }
 
         smallest_level_r tmp_res{};
-        smallest_level_r res{.x = x, .pos = var2lvl[x], .size = get_size(), .expansion = vl[x].t};
+        smallest_level_r res{.x = x, .pos = var2lvl[x], .size = get_size(), .exp = vl[x].t};
 
         //find smallest level for Shannon
         move_to_bottom(x);
@@ -363,7 +402,6 @@ class kfdd_manager : public detail::manager<bool, bool>
             res = tmp_res;
         }
 
-
         //find smallest level for Positive Davio
         move_to_bottom(x);
         change_expansion_type(x, expansion::PD);
@@ -372,7 +410,6 @@ class kfdd_manager : public detail::manager<bool, bool>
         {
             res = tmp_res;
         }
-
 
         //find smallest level for Negative Davio
         move_to_bottom(x);
@@ -386,9 +423,7 @@ class kfdd_manager : public detail::manager<bool, bool>
         //move variable to smallest level with smallest expansion type
         move_to_bottom(x);
 
-
-        change_expansion_type(x, res.expansion);
-
+        change_expansion_type(x, res.exp);
 
         sift(var2lvl[x], res.pos);
 
@@ -562,48 +597,47 @@ class kfdd_manager : public detail::manager<bool, bool>
         return cache(std::move(op))->r;
     }
 
-
-//    auto antiv(edge_ptr const& f, edge_ptr const& g)
-//    {
-//        assert(f);
-//        assert(g);
-//
-//        if (f == consts[0])
-//        {
-//            return g;
-//        }
-//        if (g == consts[0])
-//        {
-//            return f;
-//        }
-//        if (f == consts[1])
-//        {
-//            return complement(g);
-//        }
-//        if (g == consts[1])
-//        {
-//            return complement(f);
-//        }
-//        if (f == g)
-//        {
-//            return consts[0];
-//        }
-//        if (f == complement(g))
-//        {
-//            return consts[1];
-//        }
-//
-//        op::antiv op{f, g};
-//        if (auto const* const ent = cached(op))
-//        {
-//            return ent->r;
-//        }
-//
-//        auto const x = top_var(f, g);
-//
-//        op.r = make_branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false)));
-//        return cache(std::move(op))->r;
-//    }
+    // auto antiv(edge_ptr const& f, edge_ptr const& g)
+    // {
+    //     assert(f);
+    //     assert(g);
+    //
+    //     if (f == consts[0])
+    //     {
+    //         return g;
+    //     }
+    //     if (g == consts[0])
+    //     {
+    //         return f;
+    //     }
+    //     if (f == consts[1])
+    //     {
+    //         return complement(g);
+    //     }
+    //     if (g == consts[1])
+    //     {
+    //         return complement(f);
+    //     }
+    //     if (f == g)
+    //     {
+    //         return consts[0];
+    //     }
+    //     if (f == complement(g))
+    //     {
+    //         return consts[1];
+    //     }
+    //
+    //     op::antiv op{f, g};
+    //     if (auto const* const ent = cached(op))
+    //     {
+    //         return ent->r;
+    //     }
+    //
+    //     auto const x = top_var(f, g);
+    //
+    //     op.r = make_branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false)));
+    //     return cache(std::move(op))->r;
+    // }
 
     auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
@@ -670,12 +704,12 @@ class kfdd_manager : public detail::manager<bool, bool>
             case expansion::S:
                 high = conj(f_high, g_high);
                 low = conj(f_low, g_low);
-            break;
+                break;
             case expansion::PD:
             case expansion::ND:
                 high = antiv(conj(f_high, g_high), antiv(conj(f_low, g_high), conj(g_low, f_high)));
                 low = conj(f_low, g_low);
-            break;
+                break;
             default: break;
         }
 
@@ -683,39 +717,39 @@ class kfdd_manager : public detail::manager<bool, bool>
         return cache(std::move(op))->r;
     }
 
-//    auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
-//    {
-//        assert(f);
-//        assert(g);
-//
-//        if (f == consts[0] || g == consts[0])
-//        {  // something conjugated with 0 is 0
-//            return consts[0];
-//        }
-//        if (f == consts[1])
-//        {  // 1g == g
-//            return g;
-//        }
-//        if (g == consts[1])
-//        {  // f1 == f
-//            return f;
-//        }
-//        if (f->v == g->v)
-//        {  // check for complement
-//            return f->w == g->w ? f : consts[0];
-//        }
-//
-//        op::conj op{f, g};
-//        if (auto const* const ent = cached(op))
-//        {
-//            return ent->r;
-//        }
-//
-//        auto const x = top_var(f, g);
-//
-//        op.r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
-//        return cache(std::move(op))->r;
-//    }
+    // auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
+    // {
+    //     assert(f);
+    //     assert(g);
+    //
+    //     if (f == consts[0] || g == consts[0])
+    //     {  // something conjugated with 0 is 0
+    //         return consts[0];
+    //     }
+    //     if (f == consts[1])
+    //     {  // 1g == g
+    //         return g;
+    //     }
+    //     if (g == consts[1])
+    //     {  // f1 == f
+    //         return f;
+    //     }
+    //     if (f->v == g->v)
+    //     {  // check for complement
+    //         return f->w == g->w ? f : consts[0];
+    //     }
+    //
+    //     op::conj op{f, g};
+    //     if (auto const* const ent = cached(op))
+    //     {
+    //         return ent->r;
+    //     }
+    //
+    //     auto const x = top_var(f, g);
+    //
+    //     op.r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
+    //     return cache(std::move(op))->r;
+    // }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
@@ -724,7 +758,6 @@ class kfdd_manager : public detail::manager<bool, bool>
 
         return complement(conj(complement(f), complement(g)));
     }
-
 
     auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
     {
@@ -742,49 +775,34 @@ class kfdd_manager : public detail::manager<bool, bool>
                     return hi;  // without limitation of generality
                 }
 
-            w = lo->w;
-            if (!w)
-            {
-                //return uedge(w, unode(x, std::move(hi), std::move(lo)));
-                return uedge(w, unode(x, hi, lo));
-            }
-            return uedge(w, unode(x, complement(hi), complement(lo)));
-            break;
+                w = lo->w;
+                if (!w)
+                {
+                    //return uedge(w, unode(x, std::move(hi), std::move(lo)));
+                    return uedge(w, unode(x, hi, lo));
+                }
+                return uedge(w, unode(x, complement(hi), complement(lo)));
+                break;
             case expansion::PD:
             case expansion::ND:
                 if (hi == consts[0])
                 {
                     return lo;
                 }
-            if (lo->w)
-            {
-                w = lo->w;
-                r = uedge(w, unode(x, hi, complement(lo)));
-            }
-            else
-            {
-                r = uedge(false, unode(x, std::move(hi), std::move(lo)));
-            }
-            break;
+                if (lo->w)
+                {
+                    w = lo->w;
+                    r = uedge(w, unode(x, hi, complement(lo)));
+                }
+                else
+                {
+                    r = uedge(false, unode(x, std::move(hi), std::move(lo)));
+                }
+                break;
             default: assert(false);
         }
         return r;
     }
-
-//    auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
-//    {
-//        assert(x < var_count());
-//        assert(hi);
-//        assert(lo);
-//
-//        if (hi == lo)  // redundancy rule
-//        {
-//            return hi;  // without limitation of generality
-//        }
-//
-//        auto const w = lo->w;
-//        return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
-//    }
 
     [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
     {

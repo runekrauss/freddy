@@ -32,7 +32,7 @@ find_package(lorina QUIET NO_MODULE)
 if(NOT lorina_FOUND)
     include(FetchContent)
     FetchContent_Declare(
-            lorina  # so that Boost does not have to be fully downloaded and to speed up the compile time
+            lorina
             GIT_REPOSITORY https://github.com/hriener/lorina
             GIT_TAG v0.2
             GIT_SHALLOW 1

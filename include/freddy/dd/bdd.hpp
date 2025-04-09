@@ -148,6 +148,11 @@ class bdd  // binary decision diagram
 
     [[nodiscard]] auto sharpsat() const;
 
+    auto manager() const noexcept -> bdd_manager const&
+    {
+        return *mgr;
+    }
+
     auto print(std::ostream& = std::cout) const;
 
   private:

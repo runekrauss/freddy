@@ -4,11 +4,14 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
+#include <freddy/dd/bdd.hpp>
 #include <freddy/dd/kfdd.hpp>  // dd::kfdd
 
 #include <cassert>  // assert
 #include <cstdint>  // std::uint8_t
 #include <vector>   // std::vector
+
+#include "../test/util.cpp"
 
 // *********************************************************************************************************************
 // Namespaces
@@ -139,22 +142,11 @@ TEST_CASE("4-Queens dtl sifts correctly", "[kfdd_queen]")
 
     mgr2.dtl_sift();
 
-
-    auto const noVars = 16;
-    auto const noCombs = 2 << noVars;
-
-    for(int i = 0; i < noCombs; i++)
-    {
-        std::vector<bool> input_vars;
-        for(int j = 0; j < noVars; j++)
-        {
-            input_vars.push_back(!!(i & (2 << j)));
-        }
-        CHECK(queens1.eval(input_vars) == queens2.eval(input_vars));
-    }
+    eval_dds(queens1,queens2);
 
     std::cout << "queens1:" << "\n";
     queens1.print();
+
     std::cout << "queens2:" << "\n";
     queens2.print();
 
@@ -170,27 +162,11 @@ TEST_CASE("5-Queens dtl sifts correctly", "[kfdd_queen]")
 
     mgr2.dtl_sift();
 
+    eval_dds(queens1,queens2);
+
     std::cout << "queens1: " << "\n";
     std::cout << queens1.size() << "\n";
 
     std::cout << "queens2: " << "\n";
     std::cout << queens2.size() << "\n";
-
-
-
-
-
-    auto const noVars = 25;
-    auto const noCombs = 2 << noVars;
-
-    for(int i = 0; i < noCombs; i += 151)
-    {
-        std::vector<bool> input_vars;
-        for(int j = 0; j < noVars; j++)
-        {
-            input_vars.push_back(!!(i & (2 << j)));
-        }
-        CHECK(queens1.eval(input_vars) == queens2.eval(input_vars));
-    }
-
 }
