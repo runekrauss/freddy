@@ -33,7 +33,7 @@ namespace freddy::dd
 // =====================================================================================================================
 
 template <typename V>
-requires std::floating_point<V> || std::integral<V>
+    requires std::floating_point<V> || std::integral<V>
 class mtbdd_manager;
 
 template <typename V>
@@ -189,13 +189,14 @@ class mtbdd  // multi-terminal binary decision diagram
 };
 
 template <typename V>  // codomain is an arbitrary finite set
-requires std::floating_point<V> || std::integral<V>
+    requires std::floating_point<V> || std::integral<V>
 class mtbdd_manager : public detail::manager<bool, V>
 {
   public:
     friend mtbdd<V>;
 
-    mtbdd_manager() : detail::manager<bool, V>{tmls()}
+    mtbdd_manager() :
+            detail::manager<bool, V>{tmls()}
     {
         this->consts.push_back(this->make_const(false, 2));
         this->consts.push_back(this->make_const(false, -1));
@@ -255,7 +256,7 @@ class mtbdd_manager : public detail::manager<bool, V>
         this->to_dot(transform(fs), outputs, buf);
 
         auto dot = buf.str();
-        detail::replace_all(dot, "label=\" 0 \"]","]");
+        detail::replace_all(dot, "label=\" 0 \"]", "]");
         s << dot;
     }
 
@@ -330,7 +331,8 @@ class mtbdd_manager : public detail::manager<bool, V>
 
         auto const x = this->top_var(f, g);
 
-        op.r = make_branch(x, add(this->cof(f, x, true), this->cof(g, x, true)), add(this->cof(f, x, false), this->cof(g, x, false)));
+        op.r = make_branch(x, add(this->cof(f, x, true), this->cof(g, x, true)),
+                           add(this->cof(f, x, false), this->cof(g, x, false)));
         return this->cache(std::move(op))->r;
     }
 
@@ -339,7 +341,8 @@ class mtbdd_manager : public detail::manager<bool, V>
         return val;
     }
 
-    [[nodiscard]] auto comb([[maybe_unused]] bool const& w1, [[maybe_unused]] bool const& w2) const noexcept -> bool override
+    [[nodiscard]] auto comb([[maybe_unused]] bool const& w1,
+                            [[maybe_unused]] bool const& w2) const noexcept -> bool override
     {
         return false;
     }
@@ -380,7 +383,8 @@ class mtbdd_manager : public detail::manager<bool, V>
         return this->uedge(false, this->unode(x, std::move(hi), std::move(lo)));
     }
 
-    [[nodiscard]] auto merge([[maybe_unused]] V const& val1, [[maybe_unused]] V const& val2) const noexcept -> V override
+    [[nodiscard]] auto merge([[maybe_unused]] V const& val1,
+                             [[maybe_unused]] V const& val2) const noexcept -> V override
     {
         return 0;  // as no Davio expansion is used
     }
@@ -416,7 +420,8 @@ class mtbdd_manager : public detail::manager<bool, V>
 
         auto const x = this->top_var(f, g);
 
-        op.r = make_branch(x, mul(this->cof(f, x, true), this->cof(g, x, true)), mul(this->cof(f, x, false), this->cof(g, x, false)));
+        op.r = make_branch(x, mul(this->cof(f, x, true), this->cof(g, x, true)),
+                           mul(this->cof(f, x, false), this->cof(g, x, false)));
         return this->cache(std::move(op))->r;
     }
 
