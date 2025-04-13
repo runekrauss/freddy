@@ -111,7 +111,7 @@ TEST_CASE("MTBDD can be characterized", "[basic]")
         CHECK(mgr.var_count() == 3);
     }
 
-    SECTION("Constant is supported")
+    SECTION("Constants is supported")
     {
         CHECK(mgr.const_count() == 9);
         CHECK(f.has_const(0));
