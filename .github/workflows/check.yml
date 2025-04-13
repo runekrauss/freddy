@@ -21,7 +21,7 @@ on:
       - 'CMakeLists.txt'
 
 permissions:
-  contents: read
+  contents: write
   pull-requests: write
 
 concurrency:
