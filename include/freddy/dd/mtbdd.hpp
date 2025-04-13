@@ -264,8 +264,8 @@ class mtbdd_manager : public detail::manager<bool, V>
 
     auto static tmls() -> std::array<edge_ptr, 2>
     {
-        auto const leaf0 = std::make_shared<detail::node<bool, V>>(0);
-        auto const leaf1 = std::make_shared<detail::node<bool, V>>(1);
+        auto const leaf0 = std::make_shared<detail::node<bool, V>>(static_cast<V>(0));
+        auto const leaf1 = std::make_shared<detail::node<bool, V>>(static_cast<V>(1));
 
         return std::array<edge_ptr, 2>{std::make_shared<detail::edge<bool, V>>(false, leaf0),
                                        std::make_shared<detail::edge<bool, V>>(false, leaf1)};
