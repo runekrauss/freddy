@@ -104,7 +104,7 @@ TEST_CASE("MTBDD can be characterized", "[basic]")
 {
     dd::mtbdd_manager<std::int32_t> mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
-    auto const f = x0 + mgr.constant(2) * x1 + mgr.constant(4) * x2;
+    auto const f = x0 + mgr.two() * x1 + mgr.constant(4) * x2;
 
     SECTION("Variables are supported")
     {
@@ -114,7 +114,8 @@ TEST_CASE("MTBDD can be characterized", "[basic]")
     SECTION("Constant is supported")
     {
         CHECK(mgr.const_count() == 9);
-        CHECK(f.has_const(1));
+        CHECK(f.has_const(0));
+        CHECK(f.has_const(7));
     }
 
     SECTION("#Nodes is determined")

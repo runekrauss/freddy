@@ -111,12 +111,12 @@ TEST_CASE("BHD can be characterized", "[basic]")
 
     SECTION("#Nodes is determined")
     {
-        CHECK(mgr.node_count() <= 11);
+        CHECK(mgr.node_count() == 9);
     }
 
     SECTION("#Edges is determined")
     {
-        CHECK(mgr.edge_count() <= 19);
+        CHECK(mgr.edge_count() == 16);
     }
 
     SECTION("Nodes are counted")
