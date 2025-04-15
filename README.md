@@ -4,8 +4,7 @@
 [![Build](https://github.com/runekrauss/freddy/actions/workflows/build.yml/badge.svg)](https://github.com/runekrauss/freddy/actions/workflows/build.yml)
 [![Test](https://github.com/runekrauss/freddy/actions/workflows/test.yml/badge.svg)](https://github.com/runekrauss/freddy/actions/workflows/test.yml)
 
-**FrEDDY** is the **Framework** to **Engineer Decision Diagrams Yourself** for efficient solving of problems in
-VLSI CAD.
+**FrEDDY** is a **Framework** to **Engineer Decision Diagrams Yourself** for efficient solving of problems in VLSI CAD.
 
 ## :dart: Features
 

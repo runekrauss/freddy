@@ -15,14 +15,14 @@
 #include "operation.hpp"            // operation
 #include "variable.hpp"             // variable
 
-#include <freddy/op/antiv.hpp>
-
 #include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
 
 #include <algorithm>    // std::ranges::max_element
 #include <array>        // std::array
 #include <cassert>      // assert
+#include <cmath>        // std::ceil
 #include <concepts>     // std::same_as
+#include <cstddef>      // std::size_t
 #include <cstdint>      // std::int32_t
 #include <format>       // std::format
 #include <memory>       // std::unique_ptr
@@ -545,14 +545,6 @@ class manager
 
     auto unode(std::int32_t const x, edge_ptr hi, edge_ptr lo)  // unique node
     {
-        if (var2lvl[x] == var_count() - 1)
-        {
-            if (!(lo->v->is_const()) || lo->w || lo->v->c() || !hi->v->is_const() ||
-                !hi->w || hi->v->c())
-            {
-                assert(false);
-            }
-        }
         return foa(node<E, V>{x, std::move(hi), std::move(lo)}, vl[x].nt);
     }
 
@@ -604,8 +596,8 @@ class manager
     }
     // NOLINTEND
 
-    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
-        -> void
+    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs,
+                        std::ostream& s) const -> void
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -644,10 +636,12 @@ class manager
         {
             assert(fs[i]);
 
-            s << 'f' << fs[i] << R"( [shape=plaintext,fontname="times bold",label=")"
-              << (outputs.empty() ? 'f' + std::to_string(i) : outputs[i]) << "\"]\n";
-            s << "{ rank=same; f; f" << fs[i] << "; }\n";
-            s << 'f' << fs[i] << " -> v" << fs[i]->v << " [label=\" " << fs[i]->w << " \"];\n";
+            auto const func = 'f' + std::to_string(i);  // to prevent overriding of identical functions
+
+            s << func << R"( [shape=plaintext,fontname="times bold",label=")" << (outputs.empty() ? func : outputs[i])
+              << "\"]\n";
+            s << "{ rank=same; f; " << func << "; }\n";
+            s << func << " -> v" << fs[i]->v << " [label=\" " << fs[i]->w << " \"];\n";
 
             to_dot(fs[i], marks, s);
         }
@@ -706,12 +700,6 @@ class manager
                     auto node = *node_it;
                     auto orig_v = vl[curr_node_var].nt.find(node);
                     assert(node->br().x==curr_node_var);
-                    //assert(orig_v != vl[curr_node_var].nt.end());
-                    // if (orig_v == vl[curr_node_var].nt.end())
-                    // {
-                    //     auto res = vl[curr_node_var].nt.insert(node);
-                    //     continue;
-                    // }
                     it = vl[curr_node_var].et.erase(it);
                     if (orig_v != vl[curr_node_var].nt.end())
                     {
@@ -1017,17 +1005,16 @@ class manager
         {
             return;
         }
-        gc();
-        ut.rehash(2 * ut.bucket_count());
-    }
 
-    template <typename T>
-    auto reserve(T& ut, int reserved_slots)
-    {
-        if (ut.size() + reserved_slots > ut.max_load())
+        // clean up nodes/edges and dynamically resize the UT
+        gc();
+        if (ut.load_factor() <= ut.max_load_factor() * (1.0f - config::dead_factor))
         {
-            ut.reserve(std::max(2 * ut.bucket_count(), ut.size() + reserved_slots));
-            assert(ut.size() + reserved_slots <= ut.max_load());
+            ut.rehash(static_cast<std::size_t>(std::ceil(0.5f * ut.bucket_count())));
+        }
+        else
+        {  // too few nodes/edges of this UT were deleted
+            ut.rehash(2 * ut.bucket_count());
         }
     }
 
@@ -1063,7 +1050,7 @@ class manager
         auto const search = ut.find(&obj);
         if (search == ut.end())
         {
-            ctrl(ut);  // check for GC and UT expansion
+            ctrl(ut);  // make sure that at least one more node/edge can be inserted
             return *ut.insert(std::make_shared<T>(std::forward<T>(obj))).first;
         }
         return *search;

@@ -11,4 +11,5 @@ cmake-*
 !/.clang-tidy
 !/.gitignore
 !/CMakeLists.txt
+!/LICENSE
 !/README.md
