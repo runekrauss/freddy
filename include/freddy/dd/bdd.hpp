@@ -4,6 +4,7 @@
 // Includes
 // *********************************************************************************************************************
 
+#include "freddy/detail/edge.hpp"
 #include "freddy/detail/manager.hpp"  // detail::manager
 #include "freddy/op/antiv.hpp"        // op::antiv
 #include "freddy/op/conj.hpp"         // op::conj
@@ -14,11 +15,13 @@
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::pow
+#include <cstdint>
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
 #include <memory>
 #include <ostream>      // std::ostream
 #include <string>       // std::string
+#include <string_view>  // std::string_view
 #include <utility>      // std::move
 #include <vector>       // std::vector
 

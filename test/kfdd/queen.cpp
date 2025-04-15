@@ -11,7 +11,7 @@
 #include <cstdint>  // std::uint8_t
 #include <vector>   // std::vector
 
-#include "../test/util.cpp"
+#include "../test/util.hpp"
 
 // *********************************************************************************************************************
 // Namespaces

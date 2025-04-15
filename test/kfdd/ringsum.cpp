@@ -7,13 +7,12 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include "freddy/config.hpp"
 #include "freddy/expansion.hpp"
 
 #include <freddy/dd/kfdd.hpp>  // dd::kfdd_manager
 
-#include "../test/util.cpp"
-#include <array>     // std::array
+#include "../test/util.hpp"
+#include <vector>
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
@@ -52,13 +51,13 @@ TEST_CASE("kfdd ringsum sift test", "[ringsum]")
 
 TEST_CASE("simple ringsum", "[ringsum]")
 {
-    dd::kfdd_manager mgr{};
-    auto x0 = mgr.var(expansion::S);
-    auto x1 = mgr.var(expansion::S);
-    auto x2 = mgr.var(expansion::S);
-    auto x3 = mgr.var(expansion::S);
-    auto x4 = mgr.var(expansion::S);
-    auto ringsum = mgr.one() ^ (x3 & x0) ^ (x4 & x0) ^ (x0 & x1);
+    dd::kfdd_manager mgr1{};
+    auto x0 = mgr1.var(expansion::S);
+    auto x1 = mgr1.var(expansion::S);
+    auto x2 = mgr1.var(expansion::S);
+    auto x3 = mgr1.var(expansion::S);
+    auto x4 = mgr1.var(expansion::S);
+    auto ringsum = mgr1.one() ^ (x3 & x0) ^ (x4 & x0) ^ (x0 & x1);
 
     dd::kfdd_manager mgr2{};
     auto y0 = mgr2.var(expansion::S);
@@ -76,20 +75,20 @@ TEST_CASE("simple ringsum", "[ringsum]")
 TEST_CASE("wiki example ringsum", "[ringsum]")
 {
     dd::kfdd_manager mgr{};
-    auto A = mgr.var(expansion::S);
-    auto B = mgr.var(expansion::S);
-    auto C = mgr.var(expansion::S);
-    auto ringsum = mgr.one() ^ B ^ (A & B) ^ (A & C) ^ (A & B & C);
+    const auto a1 = mgr.var(expansion::S);
+    const auto b1 = mgr.var(expansion::S);
+    const auto c1 = mgr.var(expansion::S);
+    const auto ringsum1 = mgr.one() ^ b1 ^ (a1 & b1) ^ (a1 & c1) ^ (a1 & b1 & c1);
 
     dd::kfdd_manager mgr2{};
-    auto A2 = mgr2.var(expansion::S);
-    auto B2 = mgr2.var(expansion::S);
-    auto C2 = mgr2.var(expansion::S);
-    auto ringsum2 = mgr2.one() ^ B2 ^ (A2 & B2) ^ (A2 & C2) ^ (A2 & B2 & C2);
+    auto a2 = mgr2.var(expansion::S);
+    auto b2 = mgr2.var(expansion::S);
+    auto c2 = mgr2.var(expansion::S);
+    auto ringsum2 = mgr2.one() ^ b2 ^ (a2 & b2) ^ (a2 & c2) ^ (a2 & b2 & c2);
 
     mgr2.dtl_sift();
 
-    eval_dds(ringsum, ringsum2);
+    eval_dds(ringsum1, ringsum2);
 }
 
-}
+}//unnamed namespace
