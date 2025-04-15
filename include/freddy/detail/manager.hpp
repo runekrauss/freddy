@@ -336,14 +336,23 @@ class manager
         edge_ptr lo;
         if (f->v->br().x == x)
         {
-            hi = mul(f->v->br().hi, g);
 
             switch (vl[x].t)
             {
-                case expansion::PD: lo = f->v->br().lo; break;
+                case expansion::ND:
+                    lo = f->v->br().lo;
+                    hi = mul(f->v->br().hi, complement(g));
+                    break;
+                case expansion::PD:
+                {
+                    lo = f->v->br().lo;
+                    hi = mul(f->v->br().hi, g);
+                    break;
+                }
                 case expansion::S:
                 {
                     lo = mul(f->v->br().lo, complement(g));
+                    hi = mul(f->v->br().hi, g);
                     break;
                 }
                 default: assert(false);
@@ -351,14 +360,25 @@ class manager
         }
         else
         {
-            hi = mul(vars[f->v->br().x], compose(f->v->br().hi, x, g));
 
             switch (vl[f->v->br().x].t)
             {
-                case expansion::PD: lo = compose(f->v->br().lo, x, g); break;
+                case expansion::ND:
+                {
+                    lo = compose(f->v->br().lo, x, g);
+                    hi = mul(complement(vars[f->v->br().x]), compose(f->v->br().hi, x, g));
+                    break;
+                }
+                case expansion::PD:
+                {
+                    lo = compose(f->v->br().lo, x, g);
+                    hi = mul(vars[f->v->br().x], compose(f->v->br().hi, x, g));
+                    break;
+                }
                 case expansion::S:
                 {
                     lo = mul(complement(vars[f->v->br().x]), compose(f->v->br().lo, x, g));
+                    hi = mul(vars[f->v->br().x], compose(f->v->br().hi, x, g));
                     break;
                 }
                 default: assert(false);
@@ -693,19 +713,20 @@ class manager
                     //     continue;
                     // }
                     it = vl[curr_node_var].et.erase(it);
-                    //if (orig_v != vl[curr_node_var].nt.end())
-                    //{
+                    if (orig_v != vl[curr_node_var].nt.end())
+                    {
                         edge->v = *orig_v;
-                    //}
-                    //else
-                    //{
-                    //    auto res = vl[node->br().x].nt.insert(node);
-                    //    assert(res.second);
-                    //}
+                    }
+                    else
+                    {
+                        auto res = vl[node->br().x].nt.insert(node);
+                        assert(res.second);
+                    }
                     auto tmp_result = vl[curr_node_var].et.insert(edge);
                     if (!tmp_result.second)
                     {
                         duplicate_edges.insert(edge);
+                        duplicate_edge_count++;
                         assert(vl[edge->v->br().x].et.find(edge) != vl[edge->v->br().x].et.end());
                         assert(vl[curr_node_var].et.find(edge) != vl[curr_node_var].et.end());
                     }
@@ -759,6 +780,7 @@ class manager
                             if (!tmp_result.second)
                             {
                                 duplicate_nodes_swap.insert(node);
+                                duplicate_node_count++;
                             }
                         }
                         else
@@ -786,6 +808,10 @@ class manager
             duplicate_edges.clear();
         } while (!duplicate_nodes.empty());
     }
+
+
+    int duplicate_node_count = 0;
+    int duplicate_edge_count = 0;
 
     auto exchange(std::int32_t const lvl)  // with the level below
     {
@@ -862,6 +888,7 @@ class manager
                 if (!tmp_result.second)  //insert failed => identical node already exists
                 {
                     duplicate_nodes.insert(v);
+                    duplicate_node_count++;
                 }
 #ifndef NDEBUG
                 assert(vl[x].nt.bucket_count() == bucket_count);

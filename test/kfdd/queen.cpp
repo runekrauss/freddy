@@ -97,42 +97,42 @@ auto enc(std::uint8_t const n, dd::kfdd_manager& mgr)
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("1-Queens is solvable", "[kfdd_queen]")
+TEST_CASE("kfdd 1-Queens is solvable", "[kfdd_queen]")
 {
     dd::kfdd_manager mgr;
 
     CHECK(enc(1, mgr).sharpsat() == 1);
 }
 
-TEST_CASE("2-Queens is unsolvable", "[kfdd_queen]")
+TEST_CASE("kfdd 2-Queens is unsolvable", "[kfdd_queen]")
 {
     dd::kfdd_manager mgr;
 
     CHECK(enc(2, mgr).sharpsat() == 0);
 }
 
-TEST_CASE("3-Queens is unsolvable", "[kfdd_queen]")
+TEST_CASE("kfdd 3-Queens is unsolvable", "[kfdd_queen]")
 {
     dd::kfdd_manager mgr;
 
     CHECK(enc(3, mgr).sharpsat() == 0);
 }
 
-TEST_CASE("4-Queens is solvable", "[kfdd_queen]")
+TEST_CASE("kfdd 4-Queens is solvable", "[kfdd_queen]")
 {
     dd::kfdd_manager mgr;
 
     CHECK(enc(4, mgr).sharpsat() == 2);
 }
 
-TEST_CASE("5-Queens is solvable", "[kfdd_queen]")
+TEST_CASE("kfdd 5-Queens is solvable", "[kfdd_queen]")
 {
     dd::kfdd_manager mgr;
 
     CHECK(enc(5, mgr).sharpsat() == 10);
 }
 
-TEST_CASE("4-Queens dtl sifts correctly", "[kfdd_queen]")
+TEST_CASE("kfdd 4-Queens dtl sifts correctly", "[kfdd_queen]")
 {
     dd::kfdd_manager mgr;
     auto queens1 = enc(4, mgr);
@@ -143,16 +143,9 @@ TEST_CASE("4-Queens dtl sifts correctly", "[kfdd_queen]")
     mgr2.dtl_sift();
 
     eval_dds(queens1,queens2);
-
-    std::cout << "queens1:" << "\n";
-    queens1.print();
-
-    std::cout << "queens2:" << "\n";
-    queens2.print();
-
 }
 
-TEST_CASE("5-Queens dtl sifts correctly", "[kfdd_queen]")
+TEST_CASE("kfdd 5-Queens dtl sifts correctly", "[kfdd_queen]")
 {
     dd::kfdd_manager mgr;
     auto queens1 = enc(5, mgr);
@@ -163,10 +156,4 @@ TEST_CASE("5-Queens dtl sifts correctly", "[kfdd_queen]")
     mgr2.dtl_sift();
 
     eval_dds(queens1,queens2);
-
-    std::cout << "queens1: " << "\n";
-    std::cout << queens1.size() << "\n";
-
-    std::cout << "queens2: " << "\n";
-    std::cout << queens2.size() << "\n";
 }

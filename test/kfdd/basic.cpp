@@ -579,4 +579,106 @@ TEST_CASE("kfdd basic NEG tests [S]", "[basic]")
     CHECK(negated_v1.eval({true}) == 0);
 }
 
+TEST_CASE("kfdd basic restr test S", "[basic]")
+{
+    dd::kfdd_manager mgr;
+    auto x0 = mgr.var(expansion::S);
+    auto res0 = x0.restr(0,false);
+    CHECK(res0==mgr.zero());
+    auto res1 = x0.restr(0,true);
+    CHECK(res1==mgr.one());
+}
+
+TEST_CASE("kfdd basic restr test PD", "[basic]")
+{
+    dd::kfdd_manager mgr;
+    auto x0 = mgr.var(expansion::PD);
+    auto res0 = x0.restr(0,false);
+    CHECK(res0==mgr.zero());
+    auto res1 = x0.restr(0,true);
+    CHECK(res1==mgr.one());
+}
+
+TEST_CASE("kfdd basic restr test ND", "[basic]")
+{
+    dd::kfdd_manager mgr;
+    auto x0 = mgr.var(expansion::ND);
+    auto res0 = x0.restr(0,false);
+    CHECK(res0==mgr.zero());
+    auto res1 = x0.restr(0,true);
+    CHECK(res1==mgr.one());
+}
+
+TEST_CASE("kfdd basic compose test S", "[basic]")
+{
+    dd::kfdd_manager mgr;
+    auto x0 = mgr.var(expansion::S);
+    auto x1 = mgr.var(expansion::S);
+    auto x2 = mgr.var(expansion::S);
+    auto pred = x1 & x2;
+    auto composed = x0.compose(0, pred);
+    CHECK(composed.eval({false, false, false})==false);
+    CHECK(composed.eval({false, false, true})==false);
+    CHECK(composed.eval({false, true, false})==false);
+    CHECK(composed.eval({false, true, true,})==true);
+    CHECK(composed.eval({true, false, false})==false);
+    CHECK(composed.eval({true, false, true})==false);
+    CHECK(composed.eval({true, true, false})==false);
+    CHECK(composed.eval({true, true, true,})==true);
+}
+
+TEST_CASE("kfdd basic compose test PD", "[basic]")
+{
+    dd::kfdd_manager mgr;
+    auto x0 = mgr.var(expansion::PD);
+    auto x1 = mgr.var(expansion::PD);
+    auto x2 = mgr.var(expansion::PD);
+    auto pred = x1 & x2;
+    auto composed = x0.compose(0, pred);
+    CHECK(composed.eval({false, false, false})==false);
+    CHECK(composed.eval({false, false, true})==false);
+    CHECK(composed.eval({false, true, false})==false);
+    CHECK(composed.eval({false, true, true,})==true);
+    CHECK(composed.eval({true, false, false})==false);
+    CHECK(composed.eval({true, false, true})==false);
+    CHECK(composed.eval({true, true, false})==false);
+    CHECK(composed.eval({true, true, true,})==true);
+}
+
+TEST_CASE("kfdd basic compose test ND", "[basic]")
+{
+    dd::kfdd_manager mgr;
+    auto x0 = mgr.var(expansion::ND);
+    auto x1 = mgr.var(expansion::ND);
+    auto x2 = mgr.var(expansion::ND);
+    auto pred = x1 & x2;
+    auto composed = x0.compose(0, pred);
+    CHECK(composed.eval({false, false, false})==false);
+    CHECK(composed.eval({false, false, true})==false);
+    CHECK(composed.eval({false, true, false})==false);
+    CHECK(composed.eval({false, true, true,})==true);
+    CHECK(composed.eval({true, false, false})==false);
+    CHECK(composed.eval({true, false, true})==false);
+    CHECK(composed.eval({true, true, false})==false);
+    CHECK(composed.eval({true, true, true,})==true);
+}
+
+TEST_CASE("kfdd basic compose test mixed", "[basic]")
+{
+    dd::kfdd_manager mgr;
+    auto x0 = mgr.var(expansion::PD);
+    auto x1 = mgr.var(expansion::ND);
+    auto x2 = mgr.var(expansion::S);
+    auto pred = x1 & x2;
+    auto composed = x0.compose(0, pred);
+    CHECK(composed.eval({false, false, false})==false);
+    CHECK(composed.eval({false, false, true})==false);
+    CHECK(composed.eval({false, true, false})==false);
+    CHECK(composed.eval({false, true, true,})==true);
+    CHECK(composed.eval({true, false, false})==false);
+    CHECK(composed.eval({true, false, true})==false);
+    CHECK(composed.eval({true, true, false})==false);
+    CHECK(composed.eval({true, true, true,})==true);
+}
+
 }  //namespace

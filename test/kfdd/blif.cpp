@@ -132,10 +132,10 @@ TEST_CASE("kfdd blif c3540 dtl sifting + correctness", "[blif_kfdd]")
     CHECK(blif_eq(kfdd_blif, bdd_blif,536870869));
 }
 
-// TEST_CASE("kfdd blif c5315 synthesis with dtl sifting", "[blif_kfdd]")
-// {
-//     test_blif("c5315.blif", 10000);
-// }
+TEST_CASE("kfdd blif c5315 synthesis with dtl sifting", "[blif_kfdd]")
+{
+    test_blif("c5315.blif", 10000);
+}
 
 TEST_CASE("kfdd/bdd correctness c432", "[blif]")
 {

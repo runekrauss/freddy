@@ -29,85 +29,25 @@ namespace
 TEST_CASE("kfdd ringsum sift test", "[ringsum]")
 {
     dd::kfdd_manager mgr_ctrl{};
-    auto x0c = mgr_ctrl.var(expansion::S);
-    auto x1c = mgr_ctrl.var(expansion::S);
-    auto x2c = mgr_ctrl.var(expansion::S);
-    auto x3c = mgr_ctrl.var(expansion::S);
-    auto x4c = mgr_ctrl.var(expansion::S);
-    auto x5c = mgr_ctrl.var(expansion::S);
-    auto x6c = mgr_ctrl.var(expansion::S);
-    auto x7c = mgr_ctrl.var(expansion::S);
-    auto x8c = mgr_ctrl.var(expansion::S);
-    auto x9c = mgr_ctrl.var(expansion::S);
-    auto x10c = mgr_ctrl.var(expansion::S);
-    auto x11c = mgr_ctrl.var(expansion::S);
-    auto x12c = mgr_ctrl.var(expansion::S);
-    auto x13c = mgr_ctrl.var(expansion::S);
-    auto x14c = mgr_ctrl.var(expansion::S);
-    auto x15c = mgr_ctrl.var(expansion::S);
-    auto x16c = mgr_ctrl.var(expansion::S);
-    auto x17c = mgr_ctrl.var(expansion::S);
-    auto x18c = mgr_ctrl.var(expansion::S);
-    auto x19c = mgr_ctrl.var(expansion::S);
-    auto x20c = mgr_ctrl.var(expansion::S);
-    auto x21c = mgr_ctrl.var(expansion::S);
-    auto x22c = mgr_ctrl.var(expansion::S);
-    auto x23c = mgr_ctrl.var(expansion::S);
-    auto x24c = mgr_ctrl.var(expansion::S);
-    auto x25c = mgr_ctrl.var(expansion::S);
-    auto x26c = mgr_ctrl.var(expansion::S);
-    auto x27c = mgr_ctrl.var(expansion::S);
-    auto x28c = mgr_ctrl.var(expansion::S);
-    auto x29c = mgr_ctrl.var(expansion::S);
-    auto x30c = mgr_ctrl.var(expansion::S);
-    auto x31c = mgr_ctrl.var(expansion::S);
+    std::vector<dd::kfdd> c;
+    for (auto i = 0; i < 32; ++i)
+    {
+        c.push_back(mgr_ctrl.var(expansion::S));
+    }
 
     dd::kfdd_manager mgr{};
-    auto x0 = mgr.var(expansion::S);
-    auto x1 = mgr.var(expansion::S);
-    auto x2 = mgr.var(expansion::S);
-    auto x3 = mgr.var(expansion::S);
-    auto x4 = mgr.var(expansion::S);
-    auto x5 = mgr.var(expansion::S);
-    auto x6 = mgr.var(expansion::S);
-    auto x7 = mgr.var(expansion::S);
-    auto x8 = mgr.var(expansion::S);
-    auto x9 = mgr.var(expansion::S);
-    auto x10 = mgr.var(expansion::S);
-    auto x11 = mgr.var(expansion::S);
-    auto x12 = mgr.var(expansion::S);
-    auto x13 = mgr.var(expansion::S);
-    auto x14 = mgr.var(expansion::S);
-    auto x15 = mgr.var(expansion::S);
-    auto x16 = mgr.var(expansion::S);
-    auto x17 = mgr.var(expansion::S);
-    auto x18 = mgr.var(expansion::S);
-    auto x19 = mgr.var(expansion::S);
-    auto x20 = mgr.var(expansion::S);
-    auto x21 = mgr.var(expansion::S);
-    auto x22 = mgr.var(expansion::S);
-    auto x23 = mgr.var(expansion::S);
-    auto x24 = mgr.var(expansion::S);
-    auto x25 = mgr.var(expansion::S);
-    auto x26 = mgr.var(expansion::S);
-    auto x27 = mgr.var(expansion::S);
-    auto x28 = mgr.var(expansion::S);
-    auto x29 = mgr.var(expansion::S);
-    auto x30 = mgr.var(expansion::S);
-    auto x31 = mgr.var(expansion::S);
-    auto result_c = (x18c & x17c & x9c & x23c & x21c & x27c & x31c & x27c & x0c & x25c) ^ (x31c & x17c & x15c & x14c & x28c & x21c & x8c & x3c & x12c & x7c) ^ (x30c & x24c & x11c & x1c & x9c & x25c & x11c & x2c & x24c & x30c) ^ (x31c & x6c & x8c & x11c & x31c & x24c & x3c & x12c & x2c & x19c) ^ (x26c & x10c & x25c & x12c & x3c & x3c & x20c & x3c & x1c & x15c) ^ (x20c & x10c & x2c & x24c & x26c & x11c & x20c & x16c & x24c & x5c) ^ (x9c & x30c & x14c & x24c & x21c & x19c & x9c & x4c & x28c & x12c) ^ (x25c & x16c & x1c & x18c & x22c & x23c & x11c & x26c & x12c & x29c) ^ (x31c & x4c & x27c & x28c & x27c & x29c & x10c & x21c & x4c & x8c) ^ (x7c & x23c & x14c & x26c & x29c & x6c & x10c & x16c & x15c & x6c) ^ (x10c & x2c & x25c & x18c & x2c & x7c & x1c & x6c & x20c & x25c) ^ (x22c & x23c & x22c & x22c & x3c & x2c & x28c & x24c & x29c & x25c) ^ (x1c & x27c & x28c & x6c & x0c & x27c & x19c & x26c & x23c & x2c) ^ (x0c & x25c & x23c & x21c & x14c & x17c & x15c & x7c & x4c & x28c) ^ (x2c & x7c & x29c & x14c & x18c & x11c & x16c & x12c & x31c & x4c) ^ (x0c & x10c & x2c & x10c & x27c & x16c & x8c & x31c & x25c & x11c) ^ (x24c & x20c & x2c & x31c & x8c & x24c & x21c & x24c & x25c & x2c) ^ (x6c & x25c & x28c & x12c & x13c & x21c & x30c & x18c & x0c & x21c) ^ (x15c & x18c & x9c & x13c & x17c & x8c & x0c & x5c & x1c & x3c) ^ (x12c & x11c & x22c & x10c & x8c & x22c & x26c & x28c & x24c & x30c);
-    auto result = (x18 & x17 & x9 & x23 & x21 & x27 & x31 & x27 & x0 & x25) ^ (x31 & x17 & x15 & x14 & x28 & x21 & x8 & x3 & x12 & x7) ^ (x30 & x24 & x11 & x1 & x9 & x25 & x11 & x2 & x24 & x30) ^ (x31 & x6 & x8 & x11 & x31 & x24 & x3 & x12 & x2 & x19) ^ (x26 & x10 & x25 & x12 & x3 & x3 & x20 & x3 & x1 & x15) ^ (x20 & x10 & x2 & x24 & x26 & x11 & x20 & x16 & x24 & x5) ^ (x9 & x30 & x14 & x24 & x21 & x19 & x9 & x4 & x28 & x12) ^ (x25 & x16 & x1 & x18 & x22 & x23 & x11 & x26 & x12 & x29) ^ (x31 & x4 & x27 & x28 & x27 & x29 & x10 & x21 & x4 & x8) ^ (x7 & x23 & x14 & x26 & x29 & x6 & x10 & x16 & x15 & x6) ^ (x10 & x2 & x25 & x18 & x2 & x7 & x1 & x6 & x20 & x25) ^ (x22 & x23 & x22 & x22 & x3 & x2 & x28 & x24 & x29 & x25) ^ (x1 & x27 & x28 & x6 & x0 & x27 & x19 & x26 & x23 & x2) ^ (x0 & x25 & x23 & x21 & x14 & x17 & x15 & x7 & x4 & x28) ^ (x2 & x7 & x29 & x14 & x18 & x11 & x16 & x12 & x31 & x4) ^ (x0 & x10 & x2 & x10 & x27 & x16 & x8 & x31 & x25 & x11) ^ (x24 & x20 & x2 & x31 & x8 & x24 & x21 & x24 & x25 & x2) ^ (x6 & x25 & x28 & x12 & x13 & x21 & x30 & x18 & x0 & x21) ^ (x15 & x18 & x9 & x13 & x17 & x8 & x0 & x5 & x1 & x3) ^ (x12 & x11 & x22 & x10 & x8 & x22 & x26 & x28 & x24 & x30);
+    std::vector<dd::kfdd> v;
+    for (auto i = 0; i < 32; ++i)
+    {
+        v.push_back(mgr_ctrl.var(expansion::S));
+    }
+
+    auto result_c = (c[18] & c[17] & c[9] & c[23] & c[21] & c[27] & c[31] & c[27] & c[0] & c[25]) ^ (c[31] & c[17] & c[15] & c[14] & c[28] & c[21] & c[8] & c[3] & c[12] & c[7]) ^ (c[30] & c[24] & c[11] & c[1] & c[9] & c[25] & c[11] & c[2] & c[24] & c[30]) ^ (c[31] & c[6] & c[8] & c[11] & c[31] & c[24] & c[3] & c[12] & c[2] & c[19]) ^ (c[26] & c[10] & c[25] & c[12] & c[3] & c[3] & c[20] & c[3] & c[1] & c[15]) ^ (c[20] & c[10] & c[2] & c[24] & c[26] & c[11] & c[20] & c[16] & c[24] & c[5]) ^ (c[9] & c[30] & c[14] & c[24] & c[21] & c[19] & c[9] & c[4] & c[28] & c[12]) ^ (c[25] & c[16] & c[1] & c[18] & c[22] & c[23] & c[11] & c[26] & c[12] & c[29]) ^ (c[31] & c[4] & c[27] & c[28] & c[27] & c[29] & c[10] & c[21] & c[4] & c[8]) ^ (c[7] & c[23] & c[14] & c[26] & c[29] & c[6] & c[10] & c[16] & c[15] & c[6]) ^ (c[10] & c[2] & c[25] & c[18] & c[2] & c[7] & c[1] & c[6] & c[20] & c[25]) ^ (c[22] & c[23] & c[22] & c[22] & c[3] & c[2] & c[28] & c[24] & c[29] & c[25]) ^ (c[1] & c[27] & c[28] & c[6] & c[0] & c[27] & c[19] & c[26] & c[23] & c[2]) ^ (c[0] & c[25] & c[23] & c[21] & c[14] & c[17] & c[15] & c[7] & c[4] & c[28]) ^ (c[2] & c[7] & c[29] & c[14] & c[18] & c[11] & c[16] & c[12] & c[31] & c[4]) ^ (c[0] & c[10] & c[2] & c[10] & c[27] & c[16] & c[8] & c[31] & c[25] & c[11]) ^ (c[24] & c[20] & c[2] & c[31] & c[8] & c[24] & c[21] & c[24] & c[25] & c[2]) ^ (c[6] & c[25] & c[28] & c[12] & c[13] & c[21] & c[30] & c[18] & c[0] & c[21]) ^ (c[15] & c[18] & c[9] & c[13] & c[17] & c[8] & c[0] & c[5] & c[1] & c[3]) ^ (c[12] & c[11] & c[22] & c[10] & c[8] & c[22] & c[26] & c[28] & c[24] & c[30]);
+    auto result_v = (v[18] & v[17] & v[9] & v[23] & v[21] & v[27] & v[31] & v[27] & v[0] & v[25]) ^ (v[31] & v[17] & v[15] & v[14] & v[28] & v[21] & v[8] & v[3] & v[12] & v[7]) ^ (v[30] & v[24] & v[11] & v[1] & v[9] & v[25] & v[11] & v[2] & v[24] & v[30]) ^ (v[31] & v[6] & v[8] & v[11] & v[31] & v[24] & v[3] & v[12] & v[2] & v[19]) ^ (v[26] & v[10] & v[25] & v[12] & v[3] & v[3] & v[20] & v[3] & v[1] & v[15]) ^ (v[20] & v[10] & v[2] & v[24] & v[26] & v[11] & v[20] & v[16] & v[24] & v[5]) ^ (v[9] & v[30] & v[14] & v[24] & v[21] & v[19] & v[9] & v[4] & v[28] & v[12]) ^ (v[25] & v[16] & v[1] & v[18] & v[22] & v[23] & v[11] & v[26] & v[12] & v[29]) ^ (v[31] & v[4] & v[27] & v[28] & v[27] & v[29] & v[10] & v[21] & v[4] & v[8]) ^ (v[7] & v[23] & v[14] & v[26] & v[29] & v[6] & v[10] & v[16] & v[15] & v[6]) ^ (v[10] & v[2] & v[25] & v[18] & v[2] & v[7] & v[1] & v[6] & v[20] & v[25]) ^ (v[22] & v[23] & v[22] & v[22] & v[3] & v[2] & v[28] & v[24] & v[29] & v[25]) ^ (v[1] & v[27] & v[28] & v[6] & v[0] & v[27] & v[19] & v[26] & v[23] & v[2]) ^ (v[0] & v[25] & v[23] & v[21] & v[14] & v[17] & v[15] & v[7] & v[4] & v[28]) ^ (v[2] & v[7] & v[29] & v[14] & v[18] & v[11] & v[16] & v[12] & v[31] & v[4]) ^ (v[0] & v[10] & v[2] & v[10] & v[27] & v[16] & v[8] & v[31] & v[25] & v[11]) ^ (v[24] & v[20] & v[2] & v[31] & v[8] & v[24] & v[21] & v[24] & v[25] & v[2]) ^ (v[6] & v[25] & v[28] & v[12] & v[13] & v[21] & v[30] & v[18] & v[0] & v[21]) ^ (v[15] & v[18] & v[9] & v[13] & v[17] & v[8] & v[0] & v[5] & v[1] & v[3]) ^ (v[12] & v[11] & v[22] & v[10] & v[8] & v[22] & v[26] & v[28] & v[24] & v[30]);
 
     mgr.dtl_sift();
 
-    eval_dds(result, result_c);
-
-    std::cout << "control: " << result_c.size() << '\n';
-    result_c.print();
-    std::cout << "sifted: " << result.size() << '\n';
-    result.print();
-
-
+    eval_dds(result_v, result_c);
 }
 
 TEST_CASE("simple ringsum", "[ringsum]")
@@ -131,12 +71,6 @@ TEST_CASE("simple ringsum", "[ringsum]")
     mgr2.dtl_sift();
 
     eval_dds(ringsum, ringsum2);
-
-    std::cout << "ringsum 1:" << '\n';
-    ringsum.print();
-
-    std::cout << "ringsum 2:" << '\n';
-    ringsum2.print();
 }
 
 TEST_CASE("wiki example ringsum", "[ringsum]")
@@ -153,16 +87,7 @@ TEST_CASE("wiki example ringsum", "[ringsum]")
     auto C2 = mgr2.var(expansion::S);
     auto ringsum2 = mgr2.one() ^ B2 ^ (A2 & B2) ^ (A2 & C2) ^ (A2 & B2 & C2);
 
-    std::cout << "ringsum 1:" << '\n';
-    ringsum.print();
-
-    std::cout << "ringsum 2 before sifting:" << '\n';
-    ringsum2.print();
-
     mgr2.dtl_sift();
-
-    std::cout << "ringsum 2 after sifting:" << '\n';
-    ringsum2.print();
 
     eval_dds(ringsum, ringsum2);
 }

@@ -224,8 +224,11 @@ class kfdd_manager : public detail::manager<bool, bool>
         to_dot(transform(fs), outputs, s);
     }
 
+
     auto dtl_sift()
     {
+        duplicate_node_count = 0;
+        duplicate_edge_count = 0;
         gc();
 
         auto comp_largest_layer = [&](const int x, const int y) { return vl[x].nt.size() > vl[y].nt.size(); };
@@ -238,6 +241,9 @@ class kfdd_manager : public detail::manager<bool, bool>
             std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
                       << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
         }
+
+        std::cout << "duplicat node count: " << duplicate_node_count << '\n';
+        std::cout << "duplicate edge count: " << duplicate_edge_count << '\n';
 //#endif
 
         auto tmp_vars = std::vector<int>(var_count());
@@ -259,7 +265,6 @@ class kfdd_manager : public detail::manager<bool, bool>
             std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
                       << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
         }
-        ensure_canonicity();
         gc();
 //#endif
     }
@@ -305,7 +310,7 @@ class kfdd_manager : public detail::manager<bool, bool>
             {
                 edge->w = agg(edge->w, true);
             }
-            //ensure_canonicity();
+            ensure_canonicity();
         }
 
         gc();
