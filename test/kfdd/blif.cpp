@@ -44,6 +44,13 @@ TEST_CASE("kfdd blif c432 dtl sifting + correctness", "[blif_kfdd]")
     CHECK(blif_eq(kfdd_blif, bdd_blif,65537));
 }
 
+TEST_CASE("kfdd dtl sifting", "[blif_kfdd]")
+{
+    auto blif_name = "c432.blif";
+    auto kfdd_blif = load_blif_kfdd(blif_name);
+    kfdd_blif.mgr.dtl_sift();
+}
+
 TEST_CASE("kfdd blif c880 synthesis with dtl sifting", "[blif_kfdd]")
 {
     test_blif("c880.blif", 20000);
@@ -101,10 +108,10 @@ TEST_CASE("kfdd blif c1908 dtl sifting + correctness", "[blif_kfdd]")
     CHECK(blif_eq(kfdd_blif, bdd_blif,8171));
 }
 
-// TEST_CASE("kfdd blif c2670 synthesis with dtl sifting", "[blif_kfdd]")
-// {
-//     test_blif("c2670.blif", 25000);
-// }
+TEST_CASE("kfdd blif c2670 synthesis with dtl sifting", "[blif_kfdd]")
+{
+    test_blif("c2670.blif", 25000);
+}
 
 TEST_CASE("kfdd blif c3540 synthesis with dtl sifting", "[blif_kfdd]")
 {

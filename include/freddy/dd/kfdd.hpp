@@ -259,6 +259,8 @@ class kfdd_manager : public detail::manager<bool, bool>
             std::cout << "var: " << std::format("{:03}", x) << ", t: " << e_to_s(vl[x].t)
                       << ", pos: " << std::format("{:03}", var2lvl[x]) << "\n";
         }
+        ensure_canonicity();
+        gc();
 //#endif
     }
 
@@ -303,7 +305,7 @@ class kfdd_manager : public detail::manager<bool, bool>
             {
                 edge->w = agg(edge->w, true);
             }
-            ensure_canonicity();
+            //ensure_canonicity();
         }
 
         gc();

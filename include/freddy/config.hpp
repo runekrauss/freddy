@@ -27,6 +27,6 @@ auto inline vl_size = 32;  // minimum capacity of the variable list
 
 auto inline dead_factor = 0.125f;  // percentage of how many nodes/edges must be deleted so that UTs are not resized
 
-auto inline growth_factor = 1.5f;  // permitted growth of nodes during variable reordering
+auto inline growth_factor = 2.0f;  // permitted growth of nodes during variable reordering
 
 }  // namespace freddy::config

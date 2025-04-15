@@ -647,107 +647,10 @@ class manager
         return "";
     }
 
-    auto exchange(std::int32_t const lvl)  // with the level below
+    auto fix_duplicate_nodes(boost::unordered_flat_set<node_ptr>& duplicate_nodes)
     {
-        assert(vl[lvl2var[var_count() - 1]].nt.size() == 1);
-
-        assert(lvl < var_count());
-        assert(var_count() > 1);
-
-        if (lvl == var_count() - 1)
-        {
-            return;
-        }
-
-        gc();  // ensure that dead nodes are not swapped
-
-        auto const x = lvl2var[lvl];
-        auto const y = lvl2var[lvl + 1];
-
-        std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
-        std::swap(var2lvl[x], var2lvl[y]);
-
-        auto swap_is_needed = [y](auto const& hi, auto const& lo) {
-            assert(hi);
-            assert(lo);
-
-            if (hi->v->is_const() && lo->v->is_const())
-            {
-                return false;
-            }
-            if (hi->v->is_const() || lo->v->is_const())
-            {
-                return hi->v->is_const() ? lo->v->br().x == y : hi->v->br().x == y;
-            }
-            return hi->v->br().x == y || lo->v->br().x == y;
-        };
-
-        auto max_swaps_needed = 0;
-
-        for (auto node : vl[x].nt)
-        {
-            if (swap_is_needed(node->br().hi, node->br().lo))
-            {
-                max_swaps_needed += 2;
-            }
-        }
-        reserve(vl[x].nt, max_swaps_needed);
-
-#ifndef NDEBUG
-        auto bucket_count = vl[x].nt.bucket_count();
-#endif
-
-        boost::unordered_flat_set<node_ptr> duplicate_nodes;
         boost::unordered_flat_set<node_ptr> duplicate_nodes_swap;
         boost::unordered_flat_set<edge_ptr> duplicate_edges;
-
-        for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
-        {
-            if (swap_is_needed((*it)->br().hi, (*it)->br().lo))  // swapping levels is a local operation
-            {
-                auto v = *it;  // to ensure existing references are not lost
-                it = vl[x].nt.erase(it);
-                auto& br = v->br();
-
-                auto const f1 = cof(br.hi, y, true);
-                auto const f2 = cof(br.hi, y, false);
-                auto const f3 = cof(br.lo, y, true);
-                auto const f4 = cof(br.lo, y, false);
-
-                br.lo = make_branch(x, f2, f4);
-                br.hi = make_branch(x, f1, f3);
-
-                br.x = y;
-
-                ctrl(vl[y].nt);
-                auto tmp_result = vl[y].nt.insert(v);
-                if (!tmp_result.second)  //insert failed => identical node already exists
-                {
-                    duplicate_nodes.insert(v);
-                }
-                assert(vl[x].nt.bucket_count() == bucket_count);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-
-        for (auto it = vl[x].et.begin(); it != vl[x].et.end();)
-        {  // swap edges pointing to swapped nodes
-            auto tmp_var = (*it)->v->br().x;
-            if (tmp_var != x)
-            {
-                ctrl(vl[tmp_var].et);
-                vl[tmp_var].et.insert(*it);
-                it = vl[x].et.erase(it);
-            }
-            else
-            {
-                ++it;
-            }
-        }
-
         do
         {
             if (duplicate_nodes.empty())
@@ -782,10 +685,23 @@ class manager
                 {
                     auto node = *node_it;
                     auto orig_v = vl[curr_node_var].nt.find(node);
-                    assert(orig_v != vl[curr_node_var].nt.end());
-
+                    assert(node->br().x==curr_node_var);
+                    //assert(orig_v != vl[curr_node_var].nt.end());
+                    // if (orig_v == vl[curr_node_var].nt.end())
+                    // {
+                    //     auto res = vl[curr_node_var].nt.insert(node);
+                    //     continue;
+                    // }
                     it = vl[curr_node_var].et.erase(it);
-                    edge->v = *orig_v;
+                    //if (orig_v != vl[curr_node_var].nt.end())
+                    //{
+                        edge->v = *orig_v;
+                    //}
+                    //else
+                    //{
+                    //    auto res = vl[node->br().x].nt.insert(node);
+                    //    assert(res.second);
+                    //}
                     auto tmp_result = vl[curr_node_var].et.insert(edge);
                     if (!tmp_result.second)
                     {
@@ -802,7 +718,7 @@ class manager
 
             if (!duplicate_edges.empty())
             {
-                for (auto i = lvl - 1; i >= 0; --i)
+                for (auto i = lowest_level - 1; i >= 0; --i)
                 {
                     auto curr_var = lvl2var[i];
                     auto count = 0;
@@ -869,6 +785,110 @@ class manager
             duplicate_nodes.merge(duplicate_nodes_swap);
             duplicate_edges.clear();
         } while (!duplicate_nodes.empty());
+    }
+
+    auto exchange(std::int32_t const lvl)  // with the level below
+    {
+        assert(vl[lvl2var[var_count() - 1]].nt.size() == 1);
+
+        assert(lvl < var_count());
+        assert(var_count() > 1);
+
+        if (lvl == var_count() - 1)
+        {
+            return;
+        }
+
+        //gc();  // ensure that dead nodes are not swapped
+
+        auto const x = lvl2var[lvl];
+        auto const y = lvl2var[lvl + 1];
+
+        std::swap(lvl2var[lvl], lvl2var[lvl + 1]);
+        std::swap(var2lvl[x], var2lvl[y]);
+
+        auto swap_is_needed = [y](auto const& hi, auto const& lo) {
+            assert(hi);
+            assert(lo);
+
+            if (hi->v->is_const() && lo->v->is_const())
+            {
+                return false;
+            }
+            if (hi->v->is_const() || lo->v->is_const())
+            {
+                return hi->v->is_const() ? lo->v->br().x == y : hi->v->br().x == y;
+            }
+            return hi->v->br().x == y || lo->v->br().x == y;
+        };
+
+        auto max_swaps_needed = 0;
+
+        for (auto node : vl[x].nt)
+        {
+            if (swap_is_needed(node->br().hi, node->br().lo))
+            {
+                max_swaps_needed += 2;
+            }
+        }
+        reserve(vl[x].nt, max_swaps_needed);
+
+#ifndef NDEBUG
+        auto bucket_count = vl[x].nt.bucket_count();
+#endif
+
+        boost::unordered_flat_set<node_ptr> duplicate_nodes;
+
+        for (auto it = vl[x].nt.begin(); it != vl[x].nt.end();)
+        {
+            if (swap_is_needed((*it)->br().hi, (*it)->br().lo))  // swapping levels is a local operation
+            {
+                auto v = *it;  // to ensure existing references are not lost
+                it = vl[x].nt.erase(it);
+                auto& br = v->br();
+
+                auto const f1 = cof(br.hi, y, true);
+                auto const f2 = cof(br.hi, y, false);
+                auto const f3 = cof(br.lo, y, true);
+                auto const f4 = cof(br.lo, y, false);
+
+                br.lo = make_branch(x, f2, f4);
+                br.hi = make_branch(x, f1, f3);
+
+                br.x = y;
+
+                ctrl(vl[y].nt);
+                auto tmp_result = vl[y].nt.insert(v);
+                if (!tmp_result.second)  //insert failed => identical node already exists
+                {
+                    duplicate_nodes.insert(v);
+                }
+#ifndef NDEBUG
+                assert(vl[x].nt.bucket_count() == bucket_count);
+#endif
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        for (auto it = vl[x].et.begin(); it != vl[x].et.end();)
+        {  // swap edges pointing to swapped nodes
+            auto tmp_var = (*it)->v->br().x;
+            if (tmp_var != x)
+            {
+                ctrl(vl[tmp_var].et);
+                vl[tmp_var].et.insert(*it);
+                it = vl[x].et.erase(it);
+            }
+            else
+            {
+                ++it;
+            }
+        }
+
+        fix_duplicate_nodes(duplicate_nodes);
 
         gc();
         assert(vl[lvl2var[var_count() - 1]].nt.size() == 1);
