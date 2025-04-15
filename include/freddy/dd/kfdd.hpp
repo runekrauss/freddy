@@ -4,8 +4,10 @@
 // Includes
 // *********************************************************************************************************************
 
+#include "freddy/config.hpp"
+#include "freddy/detail/edge.hpp"
 #include "freddy/detail/manager.hpp"  // detail::manager
-#include "freddy/op/antiv.hpp"        // op::antiv
+#include "freddy/expansion.hpp"
 #include "freddy/op/conj.hpp"         // op::conj
 #include "freddy/op/ite.hpp"          // op::ite
 #include "freddy/op/sharpsat.hpp"     // op::sharpsat
@@ -14,8 +16,12 @@
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::pow
+#include <cstddef>
+#include <cstdint>
+#include <format>
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
+#include <memory>
 #include <ostream>      // std::ostream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
@@ -148,7 +154,7 @@ class kfdd  // binary decision diagram
 
     [[nodiscard]] auto sharpsat() const;
 
-    auto manager() const noexcept -> kfdd_manager const&
+    [[nodiscard]] auto manager() const noexcept -> kfdd_manager const&
     {
         return *mgr;
     }
@@ -357,7 +363,7 @@ class kfdd_manager : public detail::manager<bool, bool>
         }
         return {.x = x, .pos = pos, .size = size, .exp = vl[x].t};
     }
-    auto get_size() -> size_t
+    [[nodiscard]] auto get_size() const -> size_t
     {
         return static_cast<size_t>(node_count());
     }
@@ -397,13 +403,12 @@ class kfdd_manager : public detail::manager<bool, bool>
         //     }
         // }
 
-        smallest_level_r tmp_res{};
         smallest_level_r res{.x = x, .pos = var2lvl[x], .size = get_size(), .exp = vl[x].t};
 
         //find smallest level for Shannon
         move_to_bottom(x);
         change_expansion_type(x, expansion::S);
-        tmp_res = find_smallest_level(x);
+        smallest_level_r tmp_res = find_smallest_level(x);
         if (tmp_res.size < res.size)
         {
             res = tmp_res;
@@ -773,7 +778,7 @@ class kfdd_manager : public detail::manager<bool, bool>
         assert(lo);
         auto const t = vl[x].t;
         edge_ptr r;
-        bool w;
+        bool w{};
         switch (t)
         {
             case expansion::S:
@@ -785,11 +790,9 @@ class kfdd_manager : public detail::manager<bool, bool>
                 w = lo->w;
                 if (!w)
                 {
-                    //return uedge(w, unode(x, std::move(hi), std::move(lo)));
                     return uedge(w, unode(x, hi, lo));
                 }
                 return uedge(w, unode(x, complement(hi), complement(lo)));
-                break;
             case expansion::PD:
             case expansion::ND:
                 if (hi == consts[0])

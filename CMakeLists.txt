@@ -28,21 +28,6 @@ if(NOT Boost_FOUND)
     target_link_libraries(freddy INTERFACE boost_unordered)
 endif()
 
-find_package(lorina QUIET NO_MODULE)
-if(NOT lorina_FOUND)
-    include(FetchContent)
-    FetchContent_Declare(
-            lorina
-            GIT_REPOSITORY https://github.com/hriener/lorina
-            GIT_TAG v0.2
-            GIT_SHALLOW 1
-            SYSTEM
-    )
-    FetchContent_MakeAvailable(lorina)
-
-    target_link_libraries(freddy INTERFACE cli11 lorina)
-endif()
-
 option(CLANGTIDY "Check code")
 if(CLANGTIDY)
     find_program(CLANG_TIDY clang-tidy REQUIRED)
@@ -82,7 +67,6 @@ if(FREDDY_TEST)
         set(TEST_NAME ${DIR_NAME}_${FILE_NAME})
         add_executable(${TEST_NAME} ${FILE})
         target_link_libraries(${TEST_NAME} PRIVATE Catch2::Catch2WithMain freddy)
-        target_link_libraries(${TEST_NAME} PUBLIC cli11 lorina)
         #add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
         catch_discover_tests(${TEST_NAME})
     endforeach()

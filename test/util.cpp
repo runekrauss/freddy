@@ -20,19 +20,19 @@ namespace
 {
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
-    int32_t noVars = dd1.manager().var_count();
+    const auto no_vars = static_cast<uint32_t>(dd1.manager().var_count());
     assert(noVars <= 64);
 
-    uint64_t noCombs = 1 << noVars;
+    const uint64_t no_combs = 1ULL << no_vars;
 
-    for(uint64_t i = 0; i < noCombs; i += skip)
+    for(uint64_t i = 0; i < no_combs; i += skip)
     {
         std::vector<bool> input_vars;
-        for(auto j = 0; j < noVars; j++)
+        for(uint32_t j = 0; j < no_vars; j++)
         {
-            input_vars.push_back(!!(i & (1 << j)));
+            input_vars.push_back(0 != (i & (1ULL << j)));
         }
-        bool result = dd1.eval(input_vars) == dd2.eval(input_vars);
+        const bool result = dd1.eval(input_vars) == dd2.eval(input_vars);
         CHECK(result);
         if (!result)
         {
@@ -46,19 +46,19 @@ namespace
 {
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
-    int32_t noVars = dd1.manager().var_count();
+    const auto no_vars = static_cast<uint32_t>(dd1.manager().var_count());
     assert(noVars <= 64);
 
-    uint64_t noCombs = 1 << noVars;
+    const uint64_t no_combs = 1ULL << no_vars;
 
-    for(uint64_t i = 0; i < noCombs; i += skip)
+    for(uint64_t i = 0; i < no_combs; i += skip)
     {
         std::vector<bool> input_vars;
-        for(auto j = 0; j < noVars; j++)
+        for(uint32_t j = 0; j < no_vars; j++)
         {
-            input_vars.push_back(!!(i & (1 << j)));
+            input_vars.push_back((i & (1ULL << j)) != 0u);
         }
-        bool result = dd1.eval(input_vars) == dd2.eval(input_vars);
+        const bool result = dd1.eval(input_vars) == dd2.eval(input_vars);
         CHECK(result);
         if (!result)
         {
@@ -72,19 +72,19 @@ namespace
 {
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
-    int32_t noVars = dd1.manager().var_count();
+    const auto no_vars = static_cast<uint32_t>(dd1.manager().var_count());
     assert(noVars <= 64);
 
-    uint64_t noCombs = 1 << noVars;
+    const uint64_t no_combs = 1ULL << no_vars;
 
-    for(uint64_t i = 0; i < noCombs; i += skip)
+    for(uint64_t i = 0; i < no_combs; i += skip)
     {
         std::vector<bool> input_vars;
-        for(auto j = 0; j < noVars; j++)
+        for(uint32_t j = 0; j < no_vars; j++)
         {
-            input_vars.push_back(!!(i & (1 << j)));
+            input_vars.push_back(0u != (i & (1ULL << j)));
         }
-        bool result = dd1.eval(input_vars) == dd2.eval(input_vars);
+        const bool result = dd1.eval(input_vars) == dd2.eval(input_vars);
         CHECK(result);
         if (!result)
         {
@@ -98,19 +98,19 @@ namespace
 {
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
-    int32_t noVars = dd1.manager().var_count();
+    const auto no_vars = static_cast<uint32_t>(dd1.manager().var_count());
     assert(noVars <= 64);
 
-    uint64_t noCombs = 1 << noVars;
+    const uint64_t no_combs = 1ULL << no_vars;
 
-    for(uint64_t i = 0; i < noCombs; i += skip)
+    for(uint64_t i = 0; i < no_combs; i += skip)
     {
         std::vector<bool> input_vars;
-        for(auto j = 0; j < noVars; j++)
+        for(uint32_t j = 0; j < no_vars; j++)
         {
-            input_vars.push_back(!!(i & (1 << j)));
+            input_vars.push_back(0u != (i & (1ULL << j)));
         }
-        bool result = dd1.eval(input_vars) == dd2.eval(input_vars);
+        const bool result = dd1.eval(input_vars) == dd2.eval(input_vars);
         CHECK(result);
         if (!result)
         {
@@ -120,4 +120,4 @@ namespace
     return true;
 }
 
-}
+} //anonymous namespace

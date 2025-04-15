@@ -16,9 +16,9 @@
 #include <cmath>        // std::pow
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
+#include <memory>
 #include <ostream>      // std::ostream
 #include <string>       // std::string
-#include <string_view>  // std::string_view
 #include <utility>      // std::move
 #include <vector>       // std::vector
 
@@ -148,7 +148,7 @@ class bdd  // binary decision diagram
 
     [[nodiscard]] auto sharpsat() const;
 
-    auto manager() const noexcept -> bdd_manager const&
+    [[nodiscard]] auto manager() const noexcept -> bdd_manager const&
     {
         return *mgr;
     }
@@ -392,7 +392,7 @@ class bdd_manager : public detail::manager<bool, bool>
         return cache(std::move(op))->r;
     }
 
-    auto antiv(edge_ptr const& f, edge_ptr const& g)
+    auto antiv(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
         assert(g);

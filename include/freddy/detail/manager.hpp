@@ -444,7 +444,7 @@ class manager
         return cache(std::move(op))->r;
     }
 
-    auto antiv(edge_ptr const& f, edge_ptr const& g) -> edge_ptr
+    auto virtual antiv(edge_ptr const& f, edge_ptr const& g) -> edge_ptr
     {
         assert(f);
         assert(g);
@@ -547,8 +547,8 @@ class manager
     {
         if (var2lvl[x] == var_count() - 1)
         {
-            if (!(lo->v->is_const()) || !(lo->w == false) || !(lo->v->c() == false) || !(hi->v->is_const()) ||
-                !(hi->w == true) || !(hi->v->c() == false))
+            if (!(lo->v->is_const()) || lo->w || lo->v->c() || !hi->v->is_const() ||
+                !hi->w || hi->v->c())
             {
                 assert(false);
             }
@@ -659,9 +659,9 @@ class manager
     {
         switch (e)
         {
-            case expansion::S: return "S"; break;
-            case expansion::PD: return "PD"; break;
-            case expansion::ND: return "ND"; break;
+            case expansion::S: return "S";
+            case expansion::PD: return "PD";
+            case expansion::ND: return "ND";
             default: assert(false); break;
         }
         return "";
