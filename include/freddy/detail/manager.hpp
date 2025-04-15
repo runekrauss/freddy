@@ -15,6 +15,8 @@
 #include "operation.hpp"            // operation
 #include "variable.hpp"             // variable
 
+#include <freddy/op/antiv.hpp>
+
 #include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
 
 #include <algorithm>    // std::ranges::max_element
@@ -596,8 +598,8 @@ class manager
     }
     // NOLINTEND
 
-    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs,
-                        std::ostream& s) const -> void
+    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
+        -> void
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -699,7 +701,7 @@ class manager
                 {
                     auto node = *node_it;
                     auto orig_v = vl[curr_node_var].nt.find(node);
-                    assert(node->br().x==curr_node_var);
+                    assert(node->br().x == curr_node_var);
                     it = vl[curr_node_var].et.erase(it);
                     if (orig_v != vl[curr_node_var].nt.end())
                     {
@@ -796,7 +798,6 @@ class manager
             duplicate_edges.clear();
         } while (!duplicate_nodes.empty());
     }
-
 
     int duplicate_node_count = 0;
     int duplicate_edge_count = 0;
@@ -1015,6 +1016,16 @@ class manager
         else
         {  // too few nodes/edges of this UT were deleted
             ut.rehash(2 * ut.bucket_count());
+        }
+    }
+
+    template <typename T>
+    auto reserve(T& ut, int reserved_slots)
+    {
+        if (ut.size() + reserved_slots > ut.max_load())
+        {
+            ut.reserve(std::max(2 * ut.bucket_count(), ut.size() + reserved_slots));
+            assert(ut.size() + reserved_slots <= ut.max_load());
         }
     }
 
