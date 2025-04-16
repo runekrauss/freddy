@@ -11,7 +11,7 @@
 #include <cstdint>  // std::uint8_t
 #include <vector>   // std::vector
 
-#include "../test/util.hpp"
+#include <freddy/util.hpp>
 
 // *********************************************************************************************************************
 // Namespaces
@@ -66,8 +66,7 @@ auto enc(std::uint8_t const n, dd::kfdd_manager& mgr)
             // two queens must not be along an up right diagonal
             for (auto k = 0; k < n; ++k)
             {
-                auto const l = j + k - i;
-                if (l >= 0 && l < n && k != i)
+                if (auto const l = j + k - i; l >= 0 && l < n && k != i)
                 {
                     pred &= ~(x[i][j] & x[k][l]);
                 }
@@ -76,8 +75,7 @@ auto enc(std::uint8_t const n, dd::kfdd_manager& mgr)
             // two queens must not be along a down right diagonal
             for (auto k = 0; k < n; ++k)
             {
-                auto const l = j + i - k;
-                if (l >= 0 && l < n && k != i)
+                if (auto const l = j + i - k; l >= 0 && l < n && k != i)
                 {
                     pred &= ~(x[i][j] & x[k][l]);
                 }
@@ -135,10 +133,10 @@ TEST_CASE("kfdd 5-Queens is solvable", "[kfdd_queen]")
 TEST_CASE("kfdd 4-Queens dtl sifts correctly", "[kfdd_queen]")
 {
     dd::kfdd_manager mgr;
-    auto queens1 = enc(4, mgr);
+    auto const queens1 = enc(4, mgr);
 
     dd::kfdd_manager mgr2;
-    auto queens2 = enc(4, mgr2);
+    auto const queens2 = enc(4, mgr2);
 
     mgr2.dtl_sift();
 
@@ -148,10 +146,10 @@ TEST_CASE("kfdd 4-Queens dtl sifts correctly", "[kfdd_queen]")
 TEST_CASE("kfdd 5-Queens dtl sifts correctly", "[kfdd_queen]")
 {
     dd::kfdd_manager mgr;
-    auto queens1 = enc(5, mgr);
+    auto const queens1 = enc(5, mgr);
 
     dd::kfdd_manager mgr2;
-    auto queens2 = enc(5, mgr2);
+    auto const queens2 = enc(5, mgr2);
 
     mgr2.dtl_sift();
 

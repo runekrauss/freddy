@@ -63,8 +63,7 @@ auto enc(std::uint8_t const n, dd::bdd_manager& mgr)
             // two queens must not be along an up right diagonal
             for (auto k = 0; k < n; ++k)
             {
-                auto const l = j + k - i;
-                if (l >= 0 && l < n && k != i)
+                if (auto const l = j + k - i; l >= 0 && l < n && k != i)
                 {
                     pred &= ~(x[i][j] & x[k][l]);
                 }
@@ -73,8 +72,7 @@ auto enc(std::uint8_t const n, dd::bdd_manager& mgr)
             // two queens must not be along a down right diagonal
             for (auto k = 0; k < n; ++k)
             {
-                auto const l = j + i - k;
-                if (l >= 0 && l < n && k != i)
+                if (auto const l = j + i - k; l >= 0 && l < n && k != i)
                 {
                     pred &= ~(x[i][j] & x[k][l]);
                 }

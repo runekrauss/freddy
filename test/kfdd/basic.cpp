@@ -5,6 +5,7 @@
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
 #include <freddy/dd/kfdd.hpp>  // dd::kfdd_manager
+#include <freddy/expansion.hpp>
 
 #include <iostream>  // std::cout
 
@@ -24,12 +25,12 @@ TEST_CASE("kfdd basic consts tests", "[basic]")
 {
 
     dd::kfdd_manager mgr_basics;
-    auto test_one = mgr_basics.one();
+    auto const test_one = mgr_basics.one();
     //test_one.print();
 
     CHECK(test_one.eval({}) == 1);
 
-    auto test_zero = mgr_basics.zero();
+    auto const test_zero = mgr_basics.zero();
     //test_zero.print();
 
     CHECK(test_zero.eval({}) == 0);
@@ -528,14 +529,14 @@ TEST_CASE("kfdd basic AND tests [S]", "[basic]")
 TEST_CASE("kfdd basic NEG tests [PD]", "[basic]")
 {
     dd::kfdd_manager mgr_neg;
-    auto v1 = mgr_neg.var(expansion::PD);
+    auto const v1 = mgr_neg.var(expansion::PD);
     std::cout << "v1:" << '\n';
     v1.print();
 
     CHECK(v1.eval({false}) == 0);
     CHECK(v1.eval({true}) == 1);
 
-    auto negated_v1 = ~v1;
+    auto const negated_v1 = ~v1;
     std::cout << "~v1:" << '\n';
     negated_v1.print();
 
@@ -546,14 +547,14 @@ TEST_CASE("kfdd basic NEG tests [PD]", "[basic]")
 TEST_CASE("kfdd basic NEG tests [ND]", "[basic]")
 {
     dd::kfdd_manager mgr_neg;
-    auto v1 = mgr_neg.var(expansion::ND);
+    auto const v1 = mgr_neg.var(expansion::ND);
     std::cout << "v1:" << '\n';
     v1.print();
 
     CHECK(v1.eval({false}) == 0);
     CHECK(v1.eval({true}) == 1);
 
-    auto negated_v1 = ~v1;
+    auto const negated_v1 = ~v1;
     std::cout << "~v1:" << '\n';
     negated_v1.print();
 
@@ -564,14 +565,14 @@ TEST_CASE("kfdd basic NEG tests [ND]", "[basic]")
 TEST_CASE("kfdd basic NEG tests [S]", "[basic]")
 {
     dd::kfdd_manager mgr_neg;
-    auto v1 = mgr_neg.var(expansion::S);
+    auto const v1 = mgr_neg.var(expansion::S);
     std::cout << "v1:" << '\n';
     v1.print();
 
     CHECK(v1.eval({false}) == 0);
     CHECK(v1.eval({true}) == 1);
 
-    auto negated_v1 = ~v1;
+    auto const negated_v1 = ~v1;
     std::cout << "~v1:" << '\n';
     negated_v1.print();
 
@@ -582,41 +583,41 @@ TEST_CASE("kfdd basic NEG tests [S]", "[basic]")
 TEST_CASE("kfdd basic restr test S", "[basic]")
 {
     dd::kfdd_manager mgr;
-    auto x0 = mgr.var(expansion::S);
-    auto res0 = x0.restr(0,false);
+    auto const x0 = mgr.var(expansion::S);
+    auto const res0 = x0.restr(0,false);
     CHECK(res0==mgr.zero());
-    auto res1 = x0.restr(0,true);
+    auto const res1 = x0.restr(0,true);
     CHECK(res1==mgr.one());
 }
 
 TEST_CASE("kfdd basic restr test PD", "[basic]")
 {
     dd::kfdd_manager mgr;
-    auto x0 = mgr.var(expansion::PD);
-    auto res0 = x0.restr(0,false);
+    auto const x0 = mgr.var(expansion::PD);
+    auto const res0 = x0.restr(0,false);
     CHECK(res0==mgr.zero());
-    auto res1 = x0.restr(0,true);
+    auto const res1 = x0.restr(0,true);
     CHECK(res1==mgr.one());
 }
 
 TEST_CASE("kfdd basic restr test ND", "[basic]")
 {
     dd::kfdd_manager mgr;
-    auto x0 = mgr.var(expansion::ND);
-    auto res0 = x0.restr(0,false);
+    auto const x0 = mgr.var(expansion::ND);
+    auto const res0 = x0.restr(0,false);
     CHECK(res0==mgr.zero());
-    auto res1 = x0.restr(0,true);
+    auto const res1 = x0.restr(0,true);
     CHECK(res1==mgr.one());
 }
 
 TEST_CASE("kfdd basic compose test S", "[basic]")
 {
     dd::kfdd_manager mgr;
-    auto x0 = mgr.var(expansion::S);
-    auto x1 = mgr.var(expansion::S);
-    auto x2 = mgr.var(expansion::S);
-    auto pred = x1 & x2;
-    auto composed = x0.compose(0, pred);
+    auto const x0 = mgr.var(expansion::S);
+    auto const x1 = mgr.var(expansion::S);
+    auto const x2 = mgr.var(expansion::S);
+    auto const pred = x1 & x2;
+    auto const composed = x0.compose(0, pred);
     CHECK(composed.eval({false, false, false})==false);
     CHECK(composed.eval({false, false, true})==false);
     CHECK(composed.eval({false, true, false})==false);
@@ -630,11 +631,11 @@ TEST_CASE("kfdd basic compose test S", "[basic]")
 TEST_CASE("kfdd basic compose test PD", "[basic]")
 {
     dd::kfdd_manager mgr;
-    auto x0 = mgr.var(expansion::PD);
-    auto x1 = mgr.var(expansion::PD);
-    auto x2 = mgr.var(expansion::PD);
-    auto pred = x1 & x2;
-    auto composed = x0.compose(0, pred);
+    auto const x0 = mgr.var(expansion::PD);
+    auto const x1 = mgr.var(expansion::PD);
+    auto const x2 = mgr.var(expansion::PD);
+    auto const pred = x1 & x2;
+    auto const composed = x0.compose(0, pred);
     CHECK(composed.eval({false, false, false})==false);
     CHECK(composed.eval({false, false, true})==false);
     CHECK(composed.eval({false, true, false})==false);
@@ -648,11 +649,11 @@ TEST_CASE("kfdd basic compose test PD", "[basic]")
 TEST_CASE("kfdd basic compose test ND", "[basic]")
 {
     dd::kfdd_manager mgr;
-    auto x0 = mgr.var(expansion::ND);
-    auto x1 = mgr.var(expansion::ND);
-    auto x2 = mgr.var(expansion::ND);
-    auto pred = x1 & x2;
-    auto composed = x0.compose(0, pred);
+    auto const x0 = mgr.var(expansion::ND);
+    auto const x1 = mgr.var(expansion::ND);
+    auto const x2 = mgr.var(expansion::ND);
+    auto const pred = x1 & x2;
+    auto const composed = x0.compose(0, pred);
     CHECK(composed.eval({false, false, false})==false);
     CHECK(composed.eval({false, false, true})==false);
     CHECK(composed.eval({false, true, false})==false);
@@ -666,11 +667,11 @@ TEST_CASE("kfdd basic compose test ND", "[basic]")
 TEST_CASE("kfdd basic compose test mixed", "[basic]")
 {
     dd::kfdd_manager mgr;
-    auto x0 = mgr.var(expansion::PD);
-    auto x1 = mgr.var(expansion::ND);
-    auto x2 = mgr.var(expansion::S);
-    auto pred = x1 & x2;
-    auto composed = x0.compose(0, pred);
+    auto const x0 = mgr.var(expansion::PD);
+    auto const x1 = mgr.var(expansion::ND);
+    auto const x2 = mgr.var(expansion::S);
+    auto const pred = x1 & x2;
+    auto const composed = x0.compose(0, pred);
     CHECK(composed.eval({false, false, false})==false);
     CHECK(composed.eval({false, false, true})==false);
     CHECK(composed.eval({false, true, false})==false);
