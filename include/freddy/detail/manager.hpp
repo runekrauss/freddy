@@ -709,8 +709,12 @@ class manager
                     }
                     else
                     {
+#ifndef NDEBUG
                         auto res = vl[node->br().x].nt.insert(node);
                         assert(res.second);
+#else
+                        vl[node->br().x].nt.insert(node);
+#endif
                     }
                     auto tmp_result = vl[curr_node_var].et.insert(edge);
                     if (!tmp_result.second)
@@ -780,20 +784,26 @@ class manager
                     }
                 }
             }
+#ifndef NDEBUG
             auto tmp_count = 0;
+#endif
             for (auto it = duplicate_nodes.begin(); it != duplicate_nodes.end();)
             {
                 if ((*it)->br().x == curr_node_var)
                 {
                     it = duplicate_nodes.erase(it);
+#ifndef NDEBUG
                     ++tmp_count;
+#endif
                 }
                 else
                 {
                     ++it;
                 }
             }
+#ifndef NDEBUG
             assert(tmp_count == dup_node_count);
+#endif
             duplicate_nodes.merge(duplicate_nodes_swap);
             duplicate_edges.clear();
         } while (!duplicate_nodes.empty());
