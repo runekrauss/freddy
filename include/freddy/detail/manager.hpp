@@ -678,7 +678,7 @@ class manager
             auto dup_node_count = 0;
             for (auto it = duplicate_nodes.begin(); it != duplicate_nodes.end(); ++it)
             {
-                auto const node = *it;
+                auto const& node = *it;
                 if (var2lvl[node->br().x] < lowest_level)
                 {
                     lowest_level = var2lvl[node->br().x];
@@ -753,7 +753,7 @@ class manager
                             it = vl[curr_var].nt.erase(it);
                             if (hi_edge_it != duplicate_edges.end())
                             {
-                                auto const hi_edge = *hi_edge_it;
+                                auto const& hi_edge = *hi_edge_it;
                                 auto orig_edge_it = vl[hi_edge->v->br().x].et.find(hi_edge);
                                 assert(orig_edge_it != vl[hi_edge->v->br().x].et.end());
                                 node->br().hi = *orig_edge_it;
@@ -839,7 +839,7 @@ class manager
 
         auto max_swaps_needed = 0;
 
-        for (auto const node : vl[x].nt)
+        for (auto const& node : vl[x].nt)
         {
             if (swap_is_needed(node->br().hi, node->br().lo))
             {
