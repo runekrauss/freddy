@@ -11,12 +11,10 @@
 // Namespaces
 // *********************************************************************************************************************
 
-using namespace freddy;
-
-namespace
+namespace freddy
 {
 
-[[maybe_unused]] auto eval_dds(dd::kfdd const& dd1, dd::kfdd const& dd2, int skip = 1) -> bool
+[[maybe_unused]] inline auto eval_dds(dd::kfdd const& dd1, dd::kfdd const& dd2, int skip = 1) -> bool
 {
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
@@ -42,7 +40,7 @@ namespace
     return true;
 }
 
-[[maybe_unused]] auto eval_dds(dd::bdd const& dd1, dd::kfdd const& dd2, int skip = 1) -> bool
+[[maybe_unused]] inline auto eval_dds(dd::bdd const& dd1, dd::kfdd const& dd2, int skip = 1) -> bool
 {
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
@@ -68,7 +66,7 @@ namespace
     return true;
 }
 
-[[maybe_unused]] auto eval_dds(dd::kfdd const& dd1, dd::bdd const& dd2, int skip = 1) -> bool
+[[maybe_unused]] inline auto eval_dds(dd::kfdd const& dd1, dd::bdd const& dd2, int skip = 1) -> bool
 {
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
@@ -94,7 +92,7 @@ namespace
     return true;
 }
 
-[[maybe_unused]] auto eval_dds(dd::bdd const& dd1, dd::bdd const& dd2, int skip = 1) -> bool
+[[maybe_unused]] inline auto eval_dds(dd::bdd const& dd1, dd::bdd const& dd2, int skip = 1) -> bool
 {
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
@@ -120,4 +118,4 @@ namespace
     return true;
 }
 
-} //anonymous namespace
+} //freddy::test
