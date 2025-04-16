@@ -20,6 +20,7 @@ namespace freddy
 enum struct expansion : std::uint8_t
 {
     PD,  // positive Davio
+    ND,  // negative Davio
     S    // Shannon
 };
 

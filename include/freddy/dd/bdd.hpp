@@ -4,6 +4,7 @@
 // Includes
 // *********************************************************************************************************************
 
+#include "freddy/detail/edge.hpp"
 #include "freddy/detail/manager.hpp"  // detail::manager
 #include "freddy/op/antiv.hpp"        // op::antiv
 #include "freddy/op/conj.hpp"         // op::conj
@@ -14,8 +15,10 @@
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::pow
+#include <cstdint>
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
+#include <memory>
 #include <ostream>      // std::ostream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
@@ -147,6 +150,11 @@ class bdd  // binary decision diagram
     [[nodiscard]] auto forall(std::int32_t) const;
 
     [[nodiscard]] auto sharpsat() const;
+
+    [[nodiscard]] auto manager() const noexcept -> bdd_manager const&
+    {
+        return *mgr;
+    }
 
     auto print(std::ostream& = std::cout) const;
 
@@ -387,7 +395,7 @@ class bdd_manager : public detail::manager<bool, bool>
         return cache(std::move(op))->r;
     }
 
-    auto antiv(edge_ptr const& f, edge_ptr const& g)
+    auto antiv(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
         assert(g);
