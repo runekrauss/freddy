@@ -4,7 +4,6 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/bdd.hpp>
 #include <freddy/dd/kfdd.hpp>  // dd::kfdd
 #include <freddy/expansion.hpp>
 

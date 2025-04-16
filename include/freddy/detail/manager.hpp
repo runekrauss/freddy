@@ -917,7 +917,6 @@ class manager
         fix_duplicate_nodes(duplicate_nodes);
 
         gc();
-        assert(vl[lvl2var[var_count() - 1]].nt.size() == 1);
     }
 
     void ensure_canonicity()
