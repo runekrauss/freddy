@@ -118,4 +118,4 @@ namespace freddy
     return true;
 }
 
-} //freddy::test
+} //namespace freddy

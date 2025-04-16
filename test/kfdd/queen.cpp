@@ -6,6 +6,7 @@
 
 #include <freddy/dd/bdd.hpp>
 #include <freddy/dd/kfdd.hpp>  // dd::kfdd
+#include <freddy/expansion.hpp>
 
 #include <cassert>  // assert
 #include <cstdint>  // std::uint8_t
