@@ -765,7 +765,7 @@ class manager
 
                             if (lo_edge_it != duplicate_edges.end())
                             {
-                                auto const lo_edge = *lo_edge_it;
+                                auto const& lo_edge = *lo_edge_it;
                                 auto orig_edge_it = vl[lo_edge->v->br().x].et.find(lo_edge);
                                 assert(orig_edge_it != vl[lo_edge->v->br().x].et.end());
                                 node->br().lo = *orig_edge_it;
