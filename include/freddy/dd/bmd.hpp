@@ -12,6 +12,7 @@
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::pow
+#include <cstdint>
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
 #include <numeric>      // std::gcd
@@ -317,7 +318,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         return add(f, neg(g));
     }
 
-    auto antiv(edge_ptr const& f, edge_ptr const& g)
+    auto antiv(edge_ptr const& f, edge_ptr const& g)-> edge_ptr override
     {
         assert(f);
         assert(g);
