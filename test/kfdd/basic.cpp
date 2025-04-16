@@ -15,8 +15,6 @@
 
 using namespace freddy;
 
-namespace
-{
 // *********************************************************************************************************************
 // Macros
 // *********************************************************************************************************************
@@ -681,5 +679,3 @@ TEST_CASE("kfdd basic compose test mixed", "[basic]")
     CHECK(composed.eval({true, true, false})==false);
     CHECK(composed.eval({true, true, true,})==true);
 }
-
-}  //namespace

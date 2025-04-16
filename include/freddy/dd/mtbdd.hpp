@@ -296,7 +296,7 @@ class mtbdd_manager : public detail::manager<bool, V>
         return add(f, neg(g));
     }
 
-    auto antiv(edge_ptr const& f, edge_ptr const& g)
+    auto antiv(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
         assert(g);

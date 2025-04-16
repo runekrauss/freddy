@@ -21,7 +21,7 @@ namespace
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
     const auto no_vars = static_cast<uint32_t>(dd1.manager().var_count());
-    assert(noVars <= 64);
+    assert(no_vars <= 64);
 
     const uint64_t no_combs = 1ULL << no_vars;
 
@@ -47,7 +47,7 @@ namespace
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
     const auto no_vars = static_cast<uint32_t>(dd1.manager().var_count());
-    assert(noVars <= 64);
+    assert(no_vars <= 64);
 
     const uint64_t no_combs = 1ULL << no_vars;
 
@@ -73,7 +73,7 @@ namespace
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
     const auto no_vars = static_cast<uint32_t>(dd1.manager().var_count());
-    assert(noVars <= 64);
+    assert(no_vars <= 64);
 
     const uint64_t no_combs = 1ULL << no_vars;
 
@@ -99,7 +99,7 @@ namespace
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
     const auto no_vars = static_cast<uint32_t>(dd1.manager().var_count());
-    assert(noVars <= 64);
+    assert(no_vars <= 64);
 
     const uint64_t no_combs = 1ULL << no_vars;
 
