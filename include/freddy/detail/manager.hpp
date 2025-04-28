@@ -7,7 +7,7 @@
 #include "common.hpp"               // parallel_for
 #include "edge.hpp"                 // edge
 #include "freddy/config.hpp"        // config::ct_size
-#include "freddy/expansion.hpp"     // expansion
+#include "freddy/expansion.hpp"     // to_string
 #include "freddy/op/compose.hpp"    // op::compose
 #include "freddy/op/has_const.hpp"  // op::has_const
 #include "freddy/op/restr.hpp"      // op::restr
@@ -511,7 +511,8 @@ class manager
                 s << "f -> x" << lvl2var[i] << " [style=invis];\n";
             }
 
-            s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")" << lvl2var[i] << "\"];\n";
+            s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")" << lvl2var[i] << " ["
+              << to_string(vl[lvl2var[i]].t) << "]\"];\n";
 
             if (i + 1 < var_count())
             {
@@ -849,8 +850,8 @@ class manager
             return;
         }
 
-        s << 'v' << f->v << " [shape=circle,style=filled,color=black,fontcolor=white,label=\"" << vl[f->v->br().x].l
-          << "\"];\n";
+        s << 'v' << f->v << " [shape=" << (vl[f->v->br().x].t == expansion::S ? "circle" : "octagon,regular=true")
+          << ",style=filled,color=black,fontcolor=white,label=\"" << vl[f->v->br().x].l << "\"];\n";
         s << "{ rank=same; x" << f->v->br().x << "; v" << f->v << "; }\n";
         s << 'v' << f->v << " -> v" << f->v->br().hi->v << " [color=blue,dir=none,label=\" " << f->v->br().hi->w
           << " \"];\n";

@@ -46,14 +46,7 @@ struct variable
     auto friend operator<<(std::ostream& s, variable const& var) -> std::ostream&
     {
         // table head
-        s << "Variable '" << var.l << "' [";
-        switch (var.t)
-        {
-            case expansion::PD: s << "pD"; break;
-            case expansion::S: s << 'S'; break;
-            default: assert(false);
-        }
-        s << "]\n";
+        s << "Variable '" << var.l << "' [" << to_string(var.t) << "]\n";
         s << std::format("{:-<61}\n", '-');
 
         // body content

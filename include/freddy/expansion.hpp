@@ -4,7 +4,9 @@
 // Includes
 // *********************************************************************************************************************
 
+#include <cassert>  // assert
 #include <cstdint>  // std::uint8_t
+#include <string>   // std::string
 
 // *********************************************************************************************************************
 // Namespaces
@@ -22,5 +24,21 @@ enum struct expansion : std::uint8_t
     PD,  // positive Davio
     S    // Shannon
 };
+
+// =====================================================================================================================
+// Functions
+// =====================================================================================================================
+
+auto inline to_string(expansion const t)
+{
+    std::string str;
+    switch (t)
+    {
+        case expansion::PD: str = "pD"; break;
+        case expansion::S: str = "S"; break;
+        default: assert(false);
+    }
+    return str;
+}
 
 }  // namespace freddy
