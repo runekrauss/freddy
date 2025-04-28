@@ -51,20 +51,45 @@ class manager
             s << mgr.vl[x] << "\n\n";
         }
 
-        s << "Constants\n";
-        s << std::format("{:-<34}\n", '-');
-        s << std::format("{:12} | {:>19}\n", "EC #Buckets", mgr.ec.bucket_count());
-        s << std::format("{:12} | {:>19}\n", "EC #Edges", mgr.ec.size());
-        s << std::format("{:12} | {:>19}\n", "EC Max. load", mgr.ec.max_load());
-        s << std::format("{:12} | {:>19}\n", "NC #Buckets", mgr.nc.bucket_count());
-        s << std::format("{:12} | {:>19}\n", "NC #Nodes", mgr.nc.size());
-        s << std::format("{:12} | {:>19}\n\n", "NC Max. load", mgr.nc.max_load());
+        auto print_thead = [&s](auto name) {
+            s << name << '\n';
+            s << std::format("{:-<61}\n", '-');
+        };
+        auto print_tbody = [&s](auto const& ut, auto prefix) {
+            s << std::format("{:2} {:36} | {:19}\n", prefix, "#Buckets", ut.bucket_count());
+            s << std::format("{:2} {:36} | {:19}\n", prefix, "#Elements", ut.size());
+            s << std::format("{:2} {:36} | {:19}", prefix, "Max. load", ut.max_load());
+#ifdef BOOST_UNORDERED_ENABLE_STATS
+            auto const& stats = ut.get_stats();
+            if (stats.insertion.count != 0)
+            {
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Insertion probe length",
+                                 stats.insertion.probe_length.average);
+            }
+            if (stats.successful_lookup.count != 0)
+            {
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup probe length",
+                                 stats.successful_lookup.probe_length.average);
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup comparison count",
+                                 stats.successful_lookup.num_comparisons.average);
+            }
+            if (stats.unsuccessful_lookup.count != 0)
+            {
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Unsuccessful lookup probe length",
+                                 stats.unsuccessful_lookup.probe_length.average);
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Unsuccessful lookup comparison count",
+                                 stats.unsuccessful_lookup.num_comparisons.average);
+            }
+#endif
+        };
 
-        s << "Cache\n";
-        s << std::format("{:-<34}\n", '-');
-        s << std::format("{:12} | {:>19}\n", "CT #Buckets", mgr.ct.bucket_count());
-        s << std::format("{:12} | {:>19}\n", "CT #OPs", mgr.ct.size());
-        s << std::format("{:12} | {:>19}", "CT Max. load", mgr.ct.max_load());
+        print_thead("Constants");
+        print_tbody(mgr.ec, "EC");
+        s << '\n';
+        print_tbody(mgr.nc, "NC");
+
+        print_thead("\n\nCache");
+        print_tbody(mgr.ct, "CT");
 
         return s;
     }
@@ -145,7 +170,6 @@ class manager
         cleanup(ec);
         cleanup(nc);
     }
-
   protected:  // generally intended for overriding and wrapping methods
     using edge_ptr = std::shared_ptr<edge<E, V>>;
 
@@ -196,7 +220,7 @@ class manager
     }
 
     template <typename T>
-        requires std::same_as<T, bool>
+    requires std::same_as<T, bool>
     auto fn(edge_ptr const& f, T const a)
     {
         assert(f);
@@ -206,7 +230,7 @@ class manager
     }
 
     template <typename T, typename... Ts>
-        requires std::same_as<T, bool>
+    requires std::same_as<T, bool>
     auto fn(edge_ptr const& f, T const a, Ts... args)
     {
         assert(f);
@@ -467,8 +491,8 @@ class manager
     }
     // NOLINTEND
 
-    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs,
-                        std::ostream& s) const -> void
+    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
+        -> void
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -546,7 +570,6 @@ class manager
     std::vector<edge_ptr> consts;  // DD constants that are never cleared
 
     std::vector<std::int32_t> var2lvl;  // for reordering
-
   private:
     template <typename T>
     auto ctrl(T& ut)

@@ -19,7 +19,7 @@ if(NOT Boost_FOUND)
     FetchContent_Declare(
         boost_unordered  # so that Boost does not have to be fully downloaded and to speed up the compile time
         GIT_REPOSITORY https://github.com/MikePopoloski/boost_unordered
-        GIT_TAG v1.87.0
+        GIT_TAG v1.87.1
         GIT_SHALLOW 1
         SYSTEM
     )
@@ -42,7 +42,7 @@ if(FREDDY_TEST)
         FetchContent_Declare(
             Catch2
             GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG v3.7.1
+            GIT_TAG v3.8.1
             GIT_SHALLOW 1
             SYSTEM
         )

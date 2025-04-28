@@ -10,7 +10,7 @@
 #include "freddy/expansion.hpp"  // expansion
 #include "node.hpp"              // node
 
-#include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
+#include <boost/unordered/unordered_flat_set.hpp>  // BOOST_UNORDERED_ENABLE_STATS
 
 #include <cassert>      // assert
 #include <format>       // std::format
@@ -54,15 +54,41 @@ struct variable
             default: assert(false);
         }
         s << "]\n";
-        s << std::format("{:-<34}\n", '-');
+        s << std::format("{:-<61}\n", '-');
 
         // body content
-        s << std::format("{:12} | {:>19}\n", "ET #Buckets", var.et.bucket_count());
-        s << std::format("{:12} | {:>19}\n", "ET #Edges", var.et.size());
-        s << std::format("{:12} | {:>19}\n", "ET Max. load", var.et.max_load());
-        s << std::format("{:12} | {:>19}\n", "NT #Buckets", var.nt.bucket_count());
-        s << std::format("{:12} | {:>19}\n", "NT #Nodes", var.nt.size());
-        s << std::format("{:12} | {:>19}", "NT Max. load", var.nt.max_load());
+        auto print = [&s](auto const& ut, auto prefix) {
+            s << std::format("{:2} {:36} | {:19}\n", prefix, "#Buckets", ut.bucket_count());
+            s << std::format("{:2} {:36} | {:19}\n", prefix, "#Elements", ut.size());
+            s << std::format("{:2} {:36} | {:19}", prefix, "Max. load", ut.max_load());
+#ifdef BOOST_UNORDERED_ENABLE_STATS  // calculate statistics to determine the quality of hash functions
+            auto const& stats = ut.get_stats();
+            if (stats.insertion.count != 0)
+            {  // operation was performed at least once
+                // average number of bucket groups accessed during insertion
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Insertion probe length",
+                                 stats.insertion.probe_length.average);  // should be close to 1.0
+            }
+            if (stats.successful_lookup.count != 0)
+            {
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup probe length",
+                                 stats.successful_lookup.probe_length.average);
+                // average number of nodes/edges compared during lookup
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup comparison count",
+                                 stats.successful_lookup.num_comparisons.average);
+            }
+            if (stats.unsuccessful_lookup.count != 0)
+            {
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Unsuccessful lookup probe length",
+                                 stats.unsuccessful_lookup.probe_length.average);
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Unsuccessful lookup comparison count",
+                                 stats.unsuccessful_lookup.num_comparisons.average);  // should be close to 0.0
+            }
+#endif
+        };
+        print(var.et, "ET");
+        s << '\n';
+        print(var.nt, "NT");
 
         return s;
     }
