@@ -170,6 +170,7 @@ class manager
         cleanup(ec);
         cleanup(nc);
     }
+
   protected:  // generally intended for overriding and wrapping methods
     using edge_ptr = std::shared_ptr<edge<E, V>>;
 
@@ -571,6 +572,7 @@ class manager
     std::vector<edge_ptr> consts;  // DD constants that are never cleared
 
     std::vector<std::int32_t> var2lvl;  // for reordering
+
   private:
     template <typename T>
     auto ctrl(T& ut)

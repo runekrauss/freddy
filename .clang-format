@@ -76,6 +76,7 @@ IncludeIsMainSourceRegex: ''
 IndentCaseLabels: true
 IndentGotoLabels: true
 IndentPPDirectives: None
+IndentRequiresClause: false
 IndentWidth: 4
 IndentWrappedFunctionNames: false
 InsertNewlineAtEOF: true
