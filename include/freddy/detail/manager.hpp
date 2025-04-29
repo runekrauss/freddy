@@ -25,7 +25,6 @@
 #include <cstddef>      // std::size_t
 #include <cstdint>      // std::int32_t
 #include <format>       // std::format
-#include <iostream>     // std::cout
 #include <memory>       // std::unique_ptr
 #include <numeric>      // std::accumulate
 #include <ostream>      // std::ostream
@@ -56,7 +55,7 @@ class manager
             s << name << '\n';
             s << std::format("{:-<61}\n", '-');
         };
-        auto print_tbody = [&s](auto const& ut, auto prefix) {
+        auto print_tbody = [&s](auto const& ut, auto const& prefix) {
             s << std::format("{:2} {:36} | {:19}\n", prefix, "#Buckets", ut.bucket_count());
             s << std::format("{:2} {:36} | {:19}\n", prefix, "#Elements", ut.size());
             s << std::format("{:2} {:36} | {:19}", prefix, "Max. load", ut.max_load());
@@ -583,15 +582,8 @@ class manager
             return;
         }
 
-        auto const old_size = ut.size();
-
         // clean up nodes/edges and dynamically resize the UT
         gc();
-
-        static std::vector<float> reds;
-        reds.push_back((old_size - ut.size()) / static_cast<float>(old_size) * 100);
-        std::cout << std::accumulate(reds.begin(), reds.end(), 0.0f) / reds.size() << std::endl;
-
         if (ut.load_factor() <= ut.max_load_factor() * (1.0f - config::dead_factor))
         {
             ut.rehash(static_cast<std::size_t>(std::ceil(0.5f * ut.bucket_count())));

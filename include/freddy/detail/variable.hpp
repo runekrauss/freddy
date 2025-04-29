@@ -50,7 +50,7 @@ struct variable
         s << std::format("{:-<61}\n", '-');
 
         // body content
-        auto print = [&s](auto const& ut, auto prefix) {
+        auto print = [&s](auto const& ut, auto const& prefix) {
             s << std::format("{:2} {:36} | {:19}\n", prefix, "#Buckets", ut.bucket_count());
             s << std::format("{:2} {:36} | {:19}\n", prefix, "#Elements", ut.size());
             s << std::format("{:2} {:36} | {:19}", prefix, "Max. load", ut.max_load());
