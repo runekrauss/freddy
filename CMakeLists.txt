@@ -10,6 +10,11 @@ else()
     add_compile_options(-Wall -Wextra -pedantic)
 endif()
 
+option(FREDDY_STATS "Calculate statistics")
+if(FREDDY_STATS)
+    add_compile_definitions(FREDDY_STATS BOOST_UNORDERED_ENABLE_STATS)
+endif()
+
 add_library(freddy INTERFACE)
 target_include_directories(freddy INTERFACE include)
 

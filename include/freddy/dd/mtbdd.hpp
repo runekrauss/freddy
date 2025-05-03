@@ -33,7 +33,7 @@ namespace freddy::dd
 // =====================================================================================================================
 
 template <typename V>
-    requires std::floating_point<V> || std::integral<V>
+requires std::floating_point<V> || std::integral<V>
 class mtbdd_manager;
 
 template <typename V>
@@ -189,7 +189,7 @@ class mtbdd  // multi-terminal binary decision diagram
 };
 
 template <typename V>  // codomain is an arbitrary finite set
-    requires std::floating_point<V> || std::integral<V>
+requires std::floating_point<V> || std::integral<V>
 class mtbdd_manager : public detail::manager<bool, V>
 {
   public:
@@ -341,8 +341,8 @@ class mtbdd_manager : public detail::manager<bool, V>
         return val;
     }
 
-    [[nodiscard]] auto comb([[maybe_unused]] bool const& w1,
-                            [[maybe_unused]] bool const& w2) const noexcept -> bool override
+    [[nodiscard]] auto comb([[maybe_unused]] bool const& w1, [[maybe_unused]] bool const& w2) const noexcept
+        -> bool override
     {
         return false;
     }
@@ -383,8 +383,8 @@ class mtbdd_manager : public detail::manager<bool, V>
         return this->uedge(false, this->unode(x, std::move(hi), std::move(lo)));
     }
 
-    [[nodiscard]] auto merge([[maybe_unused]] V const& val1,
-                             [[maybe_unused]] V const& val2) const noexcept -> V override
+    [[nodiscard]] auto merge([[maybe_unused]] V const& val1, [[maybe_unused]] V const& val2) const noexcept
+        -> V override
     {
         return 0;  // as no Davio expansion is used
     }

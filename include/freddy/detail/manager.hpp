@@ -14,8 +14,11 @@
 #include "node.hpp"                 // node
 #include "operation.hpp"            // operation
 #include "variable.hpp"             // variable
+#ifdef FREDDY_STATS
+#include "statistics.hpp"  // statistics
+#endif
 
-#include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
+#include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered::erase_if
 
 #include <algorithm>    // std::ranges::max_element
 #include <array>        // std::array
@@ -46,51 +49,103 @@ class manager
   public:  // methods that do not need to be wrapped
     auto friend operator<<(std::ostream& s, manager const& mgr) -> std::ostream&
     {
-        for (auto const x : mgr.lvl2var)
-        {  // variable with respect to the order
-            s << mgr.vl[x] << "\n\n";
-        }
-
-        auto print_thead = [&s](auto name) {
-            s << name << '\n';
-            s << std::format("{:-<61}\n", '-');
+        auto print = [&s](auto const& ht, auto const& prefix) {  // body content
+            s << std::format("{:2} {:36} | {:19}\n", prefix, "#Buckets", ht.bucket_count());
+            s << std::format("{:2} {:36} | {:19}\n", prefix, "#Elements", ht.size());
+            s << std::format("{:2} {:36} | {:19}", prefix, "Max. load", ht.max_load());
         };
-        auto print_tbody = [&s](auto const& ut, auto const& prefix) {
-            s << std::format("{:2} {:36} | {:19}\n", prefix, "#Buckets", ut.bucket_count());
-            s << std::format("{:2} {:36} | {:19}\n", prefix, "#Elements", ut.size());
-            s << std::format("{:2} {:36} | {:19}", prefix, "Max. load", ut.max_load());
-#ifdef BOOST_UNORDERED_ENABLE_STATS
-            auto const& stats = ut.get_stats();
-            if (stats.insertion.count != 0)
-            {
-                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Insertion probe length",
-                                 stats.insertion.probe_length.average);
+#ifdef FREDDY_STATS  // output statistics in order to evaluate hashing quality
+        auto print_stats = [&s](auto const& ht, auto const& prefix) {
+            s << std::format("{:2} {:36} | {:19}\n", prefix, "Insertion count", ht.get_stats().insertion.count);
+            if (ht.get_stats().insertion.count != 0)
+            {  // operation was performed at least once
+                // average number of bucket groups accessed during insertion
+                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Insertion probe length",
+                                 ht.get_stats().insertion.probe_length.average);  // should be close to 1.0
+
+                if (prefix == "CT")
+                {
+                    s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Read/Write",
+                                     static_cast<double>(ht.get_stats().successful_lookup.count) /
+                                         ht.get_stats().insertion.count);
+                }
             }
-            if (stats.successful_lookup.count != 0)
+            s << std::format("{:2} {:36} | {:19}\n", prefix, "Successful lookup count",
+                             ht.get_stats().successful_lookup.count);
+            if (ht.get_stats().successful_lookup.count != 0)
             {
-                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup probe length",
-                                 stats.successful_lookup.probe_length.average);
-                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup comparison count",
-                                 stats.successful_lookup.num_comparisons.average);
+                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Successful lookup probe length",
+                                 ht.get_stats().successful_lookup.probe_length.average);
+                // average number of elements compared during lookup
+                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Successful lookup comparison count",
+                                 ht.get_stats().successful_lookup.num_comparisons.average);
             }
-            if (stats.unsuccessful_lookup.count != 0)
+            s << std::format("{:2} {:36} | {:19}", prefix, "Unsuccessful lookup count",
+                             ht.get_stats().unsuccessful_lookup.count);
+            if (ht.get_stats().unsuccessful_lookup.count != 0)
             {
                 s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Unsuccessful lookup probe length",
-                                 stats.unsuccessful_lookup.probe_length.average);
+                                 ht.get_stats().unsuccessful_lookup.probe_length.average);
                 s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Unsuccessful lookup comparison count",
-                                 stats.unsuccessful_lookup.num_comparisons.average);
+                                 ht.get_stats().unsuccessful_lookup.num_comparisons.average);  // should be close to 0.0
             }
-#endif
         };
 
-        print_thead("Constants");
-        print_tbody(mgr.ec, "EC");
+        auto print_gc = [&s](auto const& stats, auto const& prefix) {
+            s << std::format("{:2} {:36} | {:19}", prefix, "Number of garbage collection calls", stats.count);
+            if (stats.count != 0)
+            {
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Percentage of cleaned elements",
+                                 (stats.value / stats.count) * 100);
+            }
+        };
+#endif
+        for (auto const x : mgr.lvl2var)  // variable with respect to the order
+        {
+            s << "Variable '" << mgr.vl[x].l << "' [" << to_string(mgr.vl[x].t) << "]\n";  // table head
+            s << std::format("{:-<61}\n", '-');
+            print(mgr.vl[x].et, "ET");
+#ifdef FREDDY_STATS
+            s << '\n';
+            print_stats(mgr.vl[x].et, "ET");
+            s << '\n';
+            print_gc(mgr.vl[x].et_stats, "ET");
+#endif
+            s << '\n';
+            print(mgr.vl[x].nt, "NT");
+#ifdef FREDDY_STATS
+            s << '\n';
+            print_stats(mgr.vl[x].nt, "NT");
+            s << '\n';
+            print_gc(mgr.vl[x].nt_stats, "NT");
+#endif
+            s << "\n\n";
+        }
+
+        s << "Constants\n";
+        s << std::format("{:-<61}\n", '-');
+        print(mgr.ec, "EC");
+#ifdef FREDDY_STATS
         s << '\n';
-        print_tbody(mgr.nc, "NC");
-
-        print_thead("\n\nCache");
-        print_tbody(mgr.ct, "CT");
-
+        print_stats(mgr.ec, "EC");
+        s << '\n';
+        print_gc(mgr.ec_stats, "EC");
+#endif
+        s << '\n';
+        print(mgr.nc, "NC");
+#ifdef FREDDY_STATS
+        s << '\n';
+        print_stats(mgr.nc, "NC");
+        s << '\n';
+        print_gc(mgr.nc_stats, "NC");
+#endif
+        s << "\n\nCache\n";
+        s << std::format("{:-<61}\n", '-');
+        print(mgr.ct, "CT");
+#ifdef FREDDY_STATS
+        s << '\n';
+        print_stats(mgr.ct, "CT");
+#endif
         return s;
     }
 
@@ -145,30 +200,9 @@ class manager
         }
     }
 
-    auto virtual gc() noexcept -> void  // performance of many EDA tasks depends on garbage collection
+    auto gc() noexcept  // performance of many EDA tasks depends on garbage collection
     {
-        ct.clear();  // to avoid invalid results
-
-        auto cleanup = [](auto& ut) {
-            for (auto it = ut.begin(); it != ut.end();)
-            {
-                if (it->use_count() == 1)  // only the UT references this node/edge => node/edge is dead
-                {
-                    it = ut.erase(it);  // using an anti-drift mechanism
-                }
-                else
-                {
-                    ++it;
-                }
-            }
-        };
-        for (auto const x : lvl2var)
-        {  // an increased chance of deleting nodes/edges
-            cleanup(vl[x].et);
-            cleanup(vl[x].nt);
-        }
-        cleanup(ec);
-        cleanup(nc);
+        gc(0, var_count());
     }
 
   protected:  // generally intended for overriding and wrapping methods
@@ -190,6 +224,8 @@ class manager
 
         for (auto& tml : tmls)
         {
+            assert(tml);
+
             nc.insert(tml->v);
             consts.push_back(*ec.insert(std::move(tml)).first);
         }
@@ -441,23 +477,25 @@ class manager
 
     auto unode(std::int32_t const x, edge_ptr hi, edge_ptr lo)  // unique node
     {
-        return foa(node<E, V>{x, std::move(hi), std::move(lo)}, vl[x].nt);
+        return foa(node<E, V>{x, std::move(hi), std::move(lo)}, vl[x].nt, var2lvl[x]);
     }
 
     auto unode(V c)
     {
-        return foa(node<E, V>{std::move(c)}, nc);
+        return foa(node<E, V>{std::move(c)}, nc, var_count());
     }
 
     auto uedge(E w, node_ptr v)
     {
+        assert(v);
+
         if (v->is_const())
         {
-            return foa(edge<E, V>{std::move(w), std::move(v)}, ec);
+            return foa(edge<E, V>{std::move(w), std::move(v)}, ec, var_count());
         }
         // v is labeled by variable
         auto const x = v->br().x;
-        return foa(edge<E, V>{std::move(w), std::move(v)}, vl[x].et);
+        return foa(edge<E, V>{std::move(w), std::move(v)}, vl[x].et, var2lvl[x]);
     }
 
     template <typename T>
@@ -473,27 +511,55 @@ class manager
         return cr == ct.end() ? nullptr : static_cast<T const*>((*cr).get());
     }
 
-    // many optimizations are possible depending on the DD type
-    auto virtual apply(E const& w, edge_ptr const& f) -> edge_ptr
+    auto gc(std::int32_t const start_lvl, std::int32_t const end_lvl) noexcept
     {
-        assert(f);
+        assert(start_lvl >= 0);
+        assert(start_lvl <= var_count());  // constants can also be taken into account
+        assert(end_lvl <= var_count());
+        assert(start_lvl <= end_lvl);
 
-        return uedge(comb(w, f->w), f->v);
+        ct.clear();  // to avoid invalid results
+#ifdef FREDDY_STATS
+        auto cleanup = [](auto& ut, auto& stats) {
+            auto const old_size = ut.size();
+            auto const erased = boost::unordered::erase_if(ut, [](auto const& item) { return item.use_count() == 1; });
+
+            assert(old_size != 0);
+
+            stats.value += static_cast<double>(erased) / old_size;
+            ++stats.count;
+        };
+#else
+        auto cleanup = [](auto& ut) {
+            boost::unordered::erase_if(ut, [](auto const& item) {  // using an anti-drift mechanism
+                return item.use_count() == 1;  // only the UT references this edge/node => edge/node is dead
+            });
+        };
+#endif
+        for (auto lvl = start_lvl; lvl <= end_lvl && lvl < var_count(); ++lvl)  // variables
+        {  // an increased chance of deleting edges/nodes
+#ifdef FREDDY_STATS
+            cleanup(vl[lvl2var[lvl]].et, vl[lvl2var[lvl]].et_stats);
+            cleanup(vl[lvl2var[lvl]].nt, vl[lvl2var[lvl]].nt_stats);
+#else
+            cleanup(vl[lvl2var[lvl]].et);
+            cleanup(vl[lvl2var[lvl]].nt);
+#endif
+        }
+
+        if (end_lvl == var_count())  // constants
+        {
+#ifdef FREDDY_STATS
+            cleanup(ec, ec_stats);
+            cleanup(nc, nc_stats);
+#else
+            cleanup(ec);
+            cleanup(nc);
+#endif
+        }
     }
 
-    // NOLINTBEGIN
-    auto virtual ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr  // as there are different versions
-    {
-        assert(f);
-        assert(g);
-        assert(h);
-
-        return disj(conj(f, g), conj(complement(f), h));
-    }
-    // NOLINTEND
-
-    auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
-        -> void
+    auto to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& s) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -545,6 +611,25 @@ class manager
         s << "}\n";
     }
 
+    // many optimizations are possible depending on the DD type
+    auto virtual apply(E const& w, edge_ptr const& f) -> edge_ptr
+    {
+        assert(f);
+
+        return uedge(comb(w, f->w), f->v);
+    }
+
+    // NOLINTBEGIN
+    auto virtual ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr  // as there are different versions
+    {
+        assert(f);
+        assert(g);
+        assert(h);
+
+        return disj(conj(f, g), conj(complement(f), h));
+    }
+    // NOLINTEND
+
     auto virtual add(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs additively
 
     [[nodiscard]] auto virtual agg(E const&, V const&) const -> V = 0;  // aggregates an edge weight and a node value
@@ -574,26 +659,6 @@ class manager
     std::vector<std::int32_t> var2lvl;  // for reordering
 
   private:
-    template <typename T>
-    auto ctrl(T& ut)
-    {
-        if (ut.size() < ut.max_load())
-        {
-            return;
-        }
-
-        // clean up nodes/edges and dynamically resize the UT
-        gc();
-        if (ut.load_factor() <= ut.max_load_factor() * (1.0f - config::dead_factor))
-        {
-            ut.rehash(static_cast<std::size_t>(std::ceil(0.5f * ut.bucket_count())));
-        }
-        else
-        {  // too few nodes/edges of this UT were deleted
-            ut.rehash(2 * ut.bucket_count());
-        }
-    }
-
     [[nodiscard]] auto eval(node_ptr const& v, std::vector<bool> const& as) const -> V
     {
         assert(v);
@@ -676,7 +741,6 @@ class manager
                 br.hi = hi;
                 br.x = y;
 
-                ctrl(vl[y].nt);
                 if (!vl[y].nt.insert(v).second)
                 {  // insertion failed (edge case) => same node already exists
                     auto const& orig_v = *vl[y].nt.find(v);
@@ -710,7 +774,6 @@ class manager
         {  // swap edges pointing to swapped nodes
             if ((*it)->v->br().x == y)
             {
-                ctrl(vl[y].et);
                 vl[y].et.insert(*it);
 
                 it = vl[x].et.erase(it);
@@ -728,12 +791,26 @@ class manager
     }
 
     template <typename T>
-    auto foa(T&& obj, boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>& ut)
+    auto foa(T&& obj, boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>& ut, std::int32_t const lvl)
     {  // find or add node/edge
+        assert(lvl >= 0);
+        assert(lvl <= var_count());
+
         auto const search = ut.find(&obj);
         if (search == ut.end())
         {
-            ctrl(ut);  // make sure that at least one more node/edge can be inserted
+            if (ut.size() == ut.max_load())
+            {  // make sure that at least one more node/edge can be inserted
+                gc();
+                if (ut.load_factor() <= ut.max_load_factor() * (1.0f - config::dead_factor))
+                {
+                    ut.rehash(static_cast<std::size_t>(std::ceil(0.5f * ut.bucket_count())));
+                }
+                else
+                {  // too few edges/nodes of this UT were deleted
+                    ut.rehash(2 * ut.bucket_count());
+                }
+            }
             return *ut.insert(std::make_shared<T>(std::forward<T>(obj))).first;
         }
         return *search;
@@ -873,6 +950,11 @@ class manager
     boost::unordered_flat_set<node_ptr, hash, comp> nc;  // constants
 
     std::vector<variable<E, V>> vl;
+#ifdef FREDDY_STATS  // regarding GC
+    statistics ec_stats;
+
+    statistics nc_stats;
+#endif
 };
 
 }  // namespace freddy::detail
