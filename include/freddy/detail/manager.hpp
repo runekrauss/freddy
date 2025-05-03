@@ -55,7 +55,7 @@ class manager
             s << std::format("{:2} {:36} | {:19}", prefix, "Max. load", ht.max_load());
         };
 #ifdef FREDDY_STATS  // output statistics in order to evaluate hashing quality
-        auto print_stats = [&s](auto const& ht, auto const& prefix) {
+        auto print_stats = [&s](auto const& ht, std::string_view prefix) {
             s << std::format("{:2} {:36} | {:19}\n", prefix, "Insertion count", ht.get_stats().insertion.count);
             if (ht.get_stats().insertion.count != 0)
             {  // operation was performed at least once
@@ -243,10 +243,10 @@ class manager
     {
         assert(consts.size() >= 2);
 
+        var2lvl.push_back(var_count());
+        lvl2var.push_back(var_count());
         vl.emplace_back(t, l.empty() ? 'x' + std::to_string(var_count()) : l);
         vars.push_back(uedge(regw(), unode(var_count() - 1, consts[1], consts[0])));
-        var2lvl.push_back(var_count() - 1);
-        lvl2var.push_back(var_count() - 1);
 
         return vars[var_count() - 1];
     }

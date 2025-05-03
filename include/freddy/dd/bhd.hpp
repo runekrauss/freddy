@@ -333,7 +333,7 @@ class bhd_manager : public detail::manager<bool, bool>
         if (is_exp(f))
         {
             std::vector<std::pair<std::int32_t, bool>> tmp;
-            for (auto i = 0; i < static_cast<std::int32_t>(path.size()); ++i)
+            for (auto i = 0; std::cmp_less(i, path.size()); ++i)
             {
                 if (path[i].has_value())
                 {
@@ -458,13 +458,13 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(g);
         assert(x == top_var(f, g));
 
-        if (f->v->is_const() || f->v->br().x < static_cast<std::int32_t>(cost))
+        if (f->v->is_const() || std::cmp_less(f->v->br().x, cost))
         {
-            return g->v->is_const() || g->v->br().x < static_cast<std::int32_t>(cost)
+            return g->v->is_const() || std::cmp_less(g->v->br().x, cost)
                        ? make_branch(x, compr(f, g, x, true), compr(f, g, x, false))
                        : repl(f);
         }
-        return g->v->is_const() || g->v->br().x < static_cast<std::int32_t>(cost) ? repl(g) : consts[2];
+        return g->v->is_const() || std::cmp_less(g->v->br().x, cost) ? repl(g) : consts[2];
     }
 
     auto mem_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr

@@ -23,6 +23,7 @@ Checks: |
   modernize-*,
   performance-*,
   portability-*,
+  -portability-template-virtual-member-function,
   readability-*,
   -readability-avoid-nested-conditional-operator,
   -readability-function-cognitive-complexity,
