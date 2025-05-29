@@ -228,7 +228,7 @@ execute `ctest -T Test -T Coverage` in a terminal window.
 
 A **statistics module** is available to analyze the behavior of implemented DD types during performance debugging. You
 can enable it via `-DFREDDY_STATS=ON`, for example, to measure the distribution of hash values for a specific
-application. To output experimental results, use the manager's stream insertion operator `<<`. Below is an excerpt of an
+application. To output experimental results, use the manager's stream insertion operator `<<`. Below is an excerpt of
 **Edge Table** (ET) output, resulting from running the [usage example](#computer-usage):
 
 ```console
