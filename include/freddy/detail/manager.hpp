@@ -107,7 +107,7 @@ class manager
 
         for (auto const x : mgr.lvl2var)  // variable with respect to the order
         {
-            print_thead("Variable '" + mgr.vl[x].l + "' [" + to_string(mgr.vl[x].t) + ']');
+            print_thead("Variable \"" + mgr.vl[x].l + "\" [" + to_string(mgr.vl[x].t) + ']');
             print_tbody(mgr.vl[x].et, "ET");
             s << '\n';
             print_tbody(mgr.vl[x].nt, "NT");
