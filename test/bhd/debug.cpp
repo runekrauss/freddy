@@ -320,7 +320,7 @@ auto mux_sim(std::vector<std::vector<bool>> const& t)  // stuck-at fault simulat
 
     // fault localization
     std::set<std::string> f{t2f.at(t[0])};
-    for (auto i = 1; std::cmp_less(i, t.size()); ++i)
+    for (decltype(t.size()) i = 1; i < t.size(); ++i)
     {
         std::set<std::string> tmp;
         std::set_intersection(f.begin(), f.end(), t2f.at(t[i]).begin(), t2f.at(t[i]).end(),
