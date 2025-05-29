@@ -8,17 +8,17 @@
 
 ## :dart: Features
 
-* Level-based unique tables for DD optimization
-* Automatic memory management to delete dead DDs
-* Dynamic cache to speed up DD operations
-* Optimized operations for DD manipulation
-* Manager concept so that instances can coexist
-* Development of custom DD types based on the manager
-* Registration of custom operations with the cache
-* Overloaded wrapping of DD handlers to increase usability
-* Parameter configuration for specific problem solving
-* Detailed output for effective debugging
-* And much more
+- Level-based unique tables for DD optimization
+- Automatic memory management to delete dead DDs
+- Dynamic cache to speed up DD operations
+- Optimized operations for DD manipulation
+- Manager concept so that instances can coexist
+- Development of custom DD types based on the manager
+- Registration of custom operations with the cache
+- Overloaded wrapping of DD handlers to increase usability
+- Parameter configuration for specific problem solving
+- Detailed output for effective debugging
+- And much more
 
 ## :rocket: Getting Started
 
@@ -60,9 +60,9 @@ int main()
 }
 ```
 
-A correspondence is generally proven by interpreting binary signals $x_1, \ldots, x_n$ of a logical network $f$ using an
+A correspondence is generally proven by interpreting binary signals $x_1, \dots, x_n$ of a logical network $f$ using an
 encoding function $e$ and comparing it with a word-level specification $g$:
-$e(f(x_1, \ldots, x_n)) = g(e(x_1), \ldots, e(x_n))$.
+$e(f(x_1, \dots, x_n)) = g(e(x_1), \dots, e(x_n))$.
 
 In this example, a **bit-level implementation** $f$ for a 2-bit multiplier is developed via
 [symbolic simulation](https://dl.acm.org/doi/abs/10.1145/123186.128296):
@@ -140,7 +140,7 @@ addition to multiplication can be set as follows:
 
 int main()
 {
-    freddy::config::ct_size = 23;
+    freddy::config::ct_size = 25;
 
     /* initialization */
     
@@ -192,8 +192,8 @@ implemented within the `freddy::dd` namespace in the [dd](include/freddy/dd) dir
 | `mul`         | Multiplicative combination of DDs   |
 | `regw`        | Regular weight of an edge           |
 
-While virtual methods such as garbage collection can be overridden if needed, both a **contradiction** and **tautology**
-must be defined using a DD edge weight `E` and node value `V`, and passed to the base constructor.
+While virtual methods such as `ite` (if-then-else) can be overridden if needed, both a **contradiction** and
+**tautology** must be defined using a DD edge weight `E` and node value `V`, and passed to the base constructor.
 
 > :information_source: If `E` or `V` does not correspond to a built-in type, the operator `==` must be overloaded for
 hashing purposes. A specialization for [std::hash](https://en.cppreference.com/w/cpp/utility/hash) must also be added.
@@ -216,20 +216,43 @@ method `cache` and read by `cached` if they exist. Corresponding code snippets c
 [manager methods](include/freddy/detail/manager.hpp) of the **same name** as first-class operations:
 [compose](include/freddy/op/compose.hpp), [restr](include/freddy/op/restr.hpp), etc.
 
-While operations are provided by the derived manager class `<type>_manager`, an associated wrapper `<type>` finally
+While operations are provided by the derived manager class `<type>_manager`, an associated **wrapper** `<type>` finally
 increases usability. It is implemented by simply calling operations through a DD pointer member. Complete examples can
 be found in [bdd.hpp](include/freddy/dd/bdd.hpp), [bmd.hpp](include/freddy/dd/bmd.hpp),
 [bhd.hpp](include/freddy/dd/bhd.hpp), and [mtbdd.hpp](include/freddy/dd/mtbdd.hpp).
 
-To check the functionality, I use [Catch2](https://github.com/catchorg/Catch2). Already existing tests are located in
-the [test](test) directory and should be used as orientation for your own DD types, where an executable is created
+To check the functionality, I use [Catch2](https://github.com/catchorg/Catch2). Already existing **tests** are located
+in the [test](test) directory and should be used as orientation for your own DD types, where an executable is created
 automatically from an existing test file when [building the tests](#white_check_mark-tests). To collect test coverage,
 execute `ctest -T Test -T Coverage` in a terminal window.
 
+A **statistics module** is available to analyze the behavior of implemented DD types during performance debugging. You
+can enable it via `-DFREDDY_STATS=ON`, for example, to measure the distribution of hash values for a specific
+application. To output experimental results, use the manager's stream insertion operator `<<`. Below is an excerpt of an
+**Edge Table** (ET) output, resulting from running the [usage example](#computer-usage):
+
+```console
+Variable 'b0' [pD]
+-------------------------------------------------------------
+ET #Elements                            |                   3
+ET Max. load                            |                 209
+ET #Buckets                             |                 239
+ET Insertion count                      |                   3
+ET Insertion probe length               |                1.00
+ET Unsuccessful lookup comparison count |                0.00
+ET Miss rate                            |               23.08
+ET Number of cleaned elements           |                   0
+ET Read/Write                           |                3.33
+ET Successful lookup count              |                  10
+ET Successful lookup probe length       |                1.00
+ET Successful lookup comparison count   |                1.00
+ET Hit rate                             |               76.92
+```
+
 While [leaks](https://unix.com/man-page/osx/1/leaks) or [Valgrind](https://github.com/tklengyel/valgrind) are
-recommended for dynamic code analysis, please use [clang-tidy](https://clang.llvm.org/extra/clang-tidy) respecting my
-[coding style](.clang-tidy) for static code analysis. By specifying the `-DCLANGTIDY=ON` option, such an analysis is
-performed. To format the code according to my [style guide](.clang-format), use
+recommended for **dynamic code analysis**, please use [clang-tidy](https://clang.llvm.org/extra/clang-tidy) respecting
+my [coding style](.clang-tidy) for **static code analysis**. By specifying the `-DCLANGTIDY=ON` option, such an analysis
+is performed. To **format** the code according to my [style guide](.clang-format), use
 [clang-format](https://clang.llvm.org/docs/ClangFormat.html) as follows:
 
 ```console
