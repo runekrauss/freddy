@@ -41,6 +41,7 @@ jobs:
         run: >
           cmake -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'
           -DCLANGTIDY=ON
+          -DFREDDY_STATS=ON
           -DFREDDY_TEST=ON
           -B build
 

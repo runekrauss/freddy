@@ -41,6 +41,7 @@ jobs:
           cmake --no-warn-unused-cli
           -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
           -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          -DFREDDY_STATS=ON
           -DFREDDY_TEST=ON
           -B build/${{ matrix.build_type }}
 

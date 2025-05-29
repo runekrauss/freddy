@@ -32,7 +32,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Configure CMake
-        run: cmake -DFREDDY_TEST=ON -B build
+        run: cmake -DFREDDY_STATS=ON -DFREDDY_TEST=ON -B build
 
       - name: Build FrEDDY
         run: cmake --build build
