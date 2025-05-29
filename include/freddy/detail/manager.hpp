@@ -14,9 +14,6 @@
 #include "node.hpp"                 // node
 #include "operation.hpp"            // operation
 #include "variable.hpp"             // variable
-#ifdef FREDDY_STATS
-#include "statistics.hpp"  // statistics
-#endif
 
 #include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered::erase_if
 
@@ -43,109 +40,89 @@
 namespace freddy::detail
 {
 
+// =====================================================================================================================
+// Types
+// =====================================================================================================================
+
 template <typename E, typename V>  // edge weight, node value
 class manager
 {
   public:  // methods that do not need to be wrapped
     auto friend operator<<(std::ostream& s, manager const& mgr) -> std::ostream&
     {
-        auto print = [&s](auto const& ht, auto const& prefix) {  // body content
-            s << std::format("{:2} {:36} | {:19}\n", prefix, "#Buckets", ht.bucket_count());
+        auto print_thead = [&s](std::string_view title) {
+            s << title << '\n';
+            s << std::format("{:-<61}\n", '-');
+        };
+
+        auto print_tbody = [&s](auto const& ht, auto const& prefix) {
             s << std::format("{:2} {:36} | {:19}\n", prefix, "#Elements", ht.size());
-            s << std::format("{:2} {:36} | {:19}", prefix, "Max. load", ht.max_load());
-        };
-#ifdef FREDDY_STATS  // output statistics in order to evaluate hashing quality
-        auto print_stats = [&s](auto const& ht, std::string_view prefix) {
-            s << std::format("{:2} {:36} | {:19}\n", prefix, "Insertion count", ht.get_stats().insertion.count);
-            if (ht.get_stats().insertion.count != 0)
+            s << std::format("{:2} {:36} | {:19}\n", prefix, "Max. load", ht.max_load());
+            s << std::format("{:2} {:36} | {:19}", prefix, "#Buckets", ht.bucket_count());  // How large do tables get?
+#ifdef BOOST_UNORDERED_ENABLE_STATS  // output statistics in order to evaluate hash quality and impact
+            auto const& stats = ht.get_stats();
+
+            s << std::format("\n{:2} {:36} | {:19}\n", prefix, "Insertion count", stats.insertion.count);
+            if (stats.insertion.count != 0)
             {  // operation was performed at least once
-                // average number of bucket groups accessed during insertion
+                // average number of bucket groups accessed during insertion (could indicate that tables are too large)
                 s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Insertion probe length",
-                                 ht.get_stats().insertion.probe_length.average);  // should be close to 1.0
+                                 stats.insertion.probe_length.average);  // should be close to 1.0
 
-                if (prefix == "CT")
-                {
-                    s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Read/Write",
-                                     static_cast<double>(ht.get_stats().successful_lookup.count) /
-                                         ht.get_stats().insertion.count);
-                }
-            }
-            s << std::format("{:2} {:36} | {:19}\n", prefix, "Successful lookup count",
-                             ht.get_stats().successful_lookup.count);
-            if (ht.get_stats().successful_lookup.count != 0)
-            {
-                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Successful lookup probe length",
-                                 ht.get_stats().successful_lookup.probe_length.average);
+                assert(stats.unsuccessful_lookup.count != 0);
+
                 // average number of elements compared during lookup
-                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Successful lookup comparison count",
-                                 ht.get_stats().successful_lookup.num_comparisons.average);
+                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Unsuccessful lookup comparison count",
+                                 stats.unsuccessful_lookup.num_comparisons.average);  // should be close to 0.0
+
+                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Miss rate",
+                                 (static_cast<double>(stats.insertion.count) /
+                                  (stats.insertion.count + stats.successful_lookup.count)) *
+                                     100);
+
+                assert(stats.insertion.count >= ht.size());
+
+                // indicates how well the GC works
+                s << std::format("{:2} {:36} | {:19}\n", prefix, "Number of cleaned elements",
+                                 stats.insertion.count - ht.size());
+                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Read/Write",  // How often is an element reused?
+                                 static_cast<double>(stats.successful_lookup.count) / stats.insertion.count);
             }
-            s << std::format("{:2} {:36} | {:19}", prefix, "Unsuccessful lookup count",
-                             ht.get_stats().unsuccessful_lookup.count);
-            if (ht.get_stats().unsuccessful_lookup.count != 0)
+
+            s << std::format("{:2} {:36} | {:19}", prefix, "Successful lookup count", stats.successful_lookup.count);
+            if (stats.successful_lookup.count != 0)
             {
-                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Unsuccessful lookup probe length",
-                                 ht.get_stats().unsuccessful_lookup.probe_length.average);
-                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Unsuccessful lookup comparison count",
-                                 ht.get_stats().unsuccessful_lookup.num_comparisons.average);  // should be close to 0.0
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup probe length",
+                                 stats.successful_lookup.probe_length.average);
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup comparison count",
+                                 stats.successful_lookup.num_comparisons.average);  // should be close to 1.0
+
+                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Hit rate",
+                                 (static_cast<double>(stats.successful_lookup.count) /
+                                  (stats.insertion.count + stats.successful_lookup.count)) *
+                                     100);
             }
+#endif
         };
 
-        auto print_gc = [&s](auto const& stats, auto const& prefix) {
-            s << std::format("{:2} {:36} | {:19}", prefix, "Number of garbage collection calls", stats.count);
-            if (stats.count != 0)
-            {
-                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Percentage of cleaned elements",
-                                 (stats.value / stats.count) * 100);
-            }
-        };
-#endif
         for (auto const x : mgr.lvl2var)  // variable with respect to the order
         {
-            s << "Variable '" << mgr.vl[x].l << "' [" << to_string(mgr.vl[x].t) << "]\n";  // table head
-            s << std::format("{:-<61}\n", '-');
-            print(mgr.vl[x].et, "ET");
-#ifdef FREDDY_STATS
+            print_thead("Variable '" + mgr.vl[x].l + "' [" + to_string(mgr.vl[x].t) + ']');
+            print_tbody(mgr.vl[x].et, "ET");
             s << '\n';
-            print_stats(mgr.vl[x].et, "ET");
-            s << '\n';
-            print_gc(mgr.vl[x].et_stats, "ET");
-#endif
-            s << '\n';
-            print(mgr.vl[x].nt, "NT");
-#ifdef FREDDY_STATS
-            s << '\n';
-            print_stats(mgr.vl[x].nt, "NT");
-            s << '\n';
-            print_gc(mgr.vl[x].nt_stats, "NT");
-#endif
+            print_tbody(mgr.vl[x].nt, "NT");
             s << "\n\n";
         }
 
-        s << "Constants\n";
-        s << std::format("{:-<61}\n", '-');
-        print(mgr.ec, "EC");
-#ifdef FREDDY_STATS
+        print_thead("Constants");
+        print_tbody(mgr.ec, "EC");
         s << '\n';
-        print_stats(mgr.ec, "EC");
-        s << '\n';
-        print_gc(mgr.ec_stats, "EC");
-#endif
-        s << '\n';
-        print(mgr.nc, "NC");
-#ifdef FREDDY_STATS
-        s << '\n';
-        print_stats(mgr.nc, "NC");
-        s << '\n';
-        print_gc(mgr.nc_stats, "NC");
-#endif
-        s << "\n\nCache\n";
-        s << std::format("{:-<61}\n", '-');
-        print(mgr.ct, "CT");
-#ifdef FREDDY_STATS
-        s << '\n';
-        print_stats(mgr.ct, "CT");
-#endif
+        print_tbody(mgr.nc, "NC");
+        s << "\n\n";
+
+        print_thead("Cache");
+        print_tbody(mgr.ct, "CT");
+
         return s;
     }
 
@@ -313,7 +290,7 @@ class manager
     [[nodiscard]] auto eval(edge_ptr const& f, std::vector<bool> const& as) const
     {
         assert(f);
-        assert(static_cast<std::int32_t>(as.size()) == var_count());  // assignment follows the made variable ordering
+        assert(std::cmp_equal(as.size(), var_count()));  // assignment follows the made variable ordering
 
         return agg(f->w, eval(f->v, as));
     }
@@ -378,7 +355,7 @@ class manager
                     lo = mul(f->v->br().lo, complement(g));
                     break;
                 }
-                default: assert(false);
+                default: assert(false); std::unreachable();
             }
         }
         else
@@ -393,7 +370,7 @@ class manager
                     lo = mul(complement(vars[f->v->br().x]), compose(f->v->br().lo, x, g));
                     break;
                 }
-                default: assert(false);
+                default: assert(false); std::unreachable();
             }
         }
 
@@ -519,43 +496,22 @@ class manager
         assert(start_lvl <= end_lvl);
 
         ct.clear();  // to avoid invalid results
-#ifdef FREDDY_STATS
-        auto cleanup = [](auto& ut, auto& stats) {
-            auto const old_size = ut.size();
-            auto const erased = boost::unordered::erase_if(ut, [](auto const& item) { return item.use_count() == 1; });
 
-            assert(old_size != 0);
-
-            stats.value += static_cast<double>(erased) / old_size;
-            ++stats.count;
-        };
-#else
         auto cleanup = [](auto& ut) {
             boost::unordered::erase_if(ut, [](auto const& item) {  // using an anti-drift mechanism
                 return item.use_count() == 1;  // only the UT references this edge/node => edge/node is dead
             });
         };
-#endif
+
         for (auto lvl = start_lvl; lvl <= end_lvl && lvl < var_count(); ++lvl)  // variables
         {  // an increased chance of deleting edges/nodes
-#ifdef FREDDY_STATS
-            cleanup(vl[lvl2var[lvl]].et, vl[lvl2var[lvl]].et_stats);
-            cleanup(vl[lvl2var[lvl]].nt, vl[lvl2var[lvl]].nt_stats);
-#else
             cleanup(vl[lvl2var[lvl]].et);
             cleanup(vl[lvl2var[lvl]].nt);
-#endif
         }
-
         if (end_lvl == var_count())  // constants
         {
-#ifdef FREDDY_STATS
-            cleanup(ec, ec_stats);
-            cleanup(nc, nc_stats);
-#else
             cleanup(ec);
             cleanup(nc);
-#endif
         }
     }
 
@@ -594,7 +550,7 @@ class manager
         boost::unordered_flat_set<node_ptr, hash, comp> marks;
         marks.reserve(config::ut_size);
 
-        for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
+        for (decltype(fs.size()) i = 0; i < fs.size(); ++i)
         {
             assert(fs[i]);
 
@@ -646,7 +602,7 @@ class manager
     // creates/reuses a node and an incoming edge
     auto virtual make_branch(std::int32_t, edge_ptr, edge_ptr) -> edge_ptr = 0;
 
-    [[nodiscard]] auto virtual merge(V const&, V const&) const -> V = 0;  // evaluates aggregates (subtrees)
+    auto virtual merge(V const&, V const&) const -> V = 0;  // evaluates aggregates (subtrees)
 
     auto virtual mul(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs multiplicatively
 
@@ -662,7 +618,7 @@ class manager
     [[nodiscard]] auto eval(node_ptr const& v, std::vector<bool> const& as) const -> V
     {
         assert(v);
-        assert(static_cast<std::int32_t>(as.size()) == var_count());
+        assert(std::cmp_equal(as.size(), var_count()));
 
         if (v->is_const())
         {
@@ -679,7 +635,7 @@ class manager
                 r = as[br.x] ? eval(br.hi, as) : eval(br.lo, as);
                 break;
             }
-            default: assert(false);
+            default: assert(false); std::unreachable();
         }
         return r;
     }
@@ -791,7 +747,8 @@ class manager
     }
 
     template <typename T>
-    auto foa(T&& obj, boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>& ut, std::int32_t const lvl)
+    auto foa(T&& obj, boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>& ut,
+             [[maybe_unused]] std::int32_t const lvl)
     {  // find or add node/edge
         assert(lvl >= 0);
         assert(lvl <= var_count());
@@ -950,11 +907,6 @@ class manager
     boost::unordered_flat_set<node_ptr, hash, comp> nc;  // constants
 
     std::vector<variable<E, V>> vl;
-#ifdef FREDDY_STATS  // regarding GC
-    statistics ec_stats;
-
-    statistics nc_stats;
-#endif
 };
 
 }  // namespace freddy::detail

@@ -252,7 +252,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     auto weighted_sum(std::vector<bmd> const& fs)
     {
         auto r = consts[0];
-        for (auto i = 0; std::cmp_less(i, fs.size()); ++i)
+        for (decltype(fs.size()) i = 0; i < fs.size(); ++i)
         {  // LSB...MSB
             r = add(r, mul(make_const(static_cast<std::int32_t>(std::pow(2, i)), 1), fs[i].f));
         }
@@ -447,7 +447,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
                       : uedge(w, unode(x, hi, lo));
     }
 
-    [[nodiscard]] auto merge(std::int32_t const& val1, std::int32_t const& val2) const noexcept -> std::int32_t override
+    auto merge(std::int32_t const& val1, std::int32_t const& val2) const noexcept -> std::int32_t override
     {
         return val1 + val2;
     }
@@ -641,7 +641,7 @@ auto inline bmd::path_count() const noexcept
 auto inline bmd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
-    assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
+    assert(std::cmp_equal(as.size(), mgr->var_count()));
 
     return mgr->eval(f, as);
 }

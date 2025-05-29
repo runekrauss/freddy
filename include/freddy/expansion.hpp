@@ -6,7 +6,7 @@
 
 #include <cassert>  // assert
 #include <cstdint>  // std::uint8_t
-#include <string>   // std::string
+#include <utility>  // std::unreachable
 
 // *********************************************************************************************************************
 // Namespaces
@@ -29,16 +29,14 @@ enum struct expansion : std::uint8_t
 // Functions
 // =====================================================================================================================
 
-auto inline to_string(expansion const t)
+auto constexpr to_string(expansion const t) noexcept
 {
-    std::string str;
     switch (t)
     {
-        case expansion::PD: str = "pD"; break;
-        case expansion::S: str = "S"; break;
-        default: assert(false);
+        case expansion::PD: return "pD";
+        case expansion::S: return "S";
+        default: assert(false); std::unreachable();
     }
-    return str;
 }
 
 }  // namespace freddy

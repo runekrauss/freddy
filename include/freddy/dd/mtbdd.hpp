@@ -383,8 +383,7 @@ class mtbdd_manager : public detail::manager<bool, V>
         return this->uedge(false, this->unode(x, std::move(hi), std::move(lo)));
     }
 
-    [[nodiscard]] auto merge([[maybe_unused]] V const& val1, [[maybe_unused]] V const& val2) const noexcept
-        -> V override
+    auto merge([[maybe_unused]] V const& val1, [[maybe_unused]] V const& val2) const noexcept -> V override
     {
         return 0;  // as no Davio expansion is used
     }
@@ -586,7 +585,7 @@ template <typename V>
 auto inline mtbdd<V>::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
-    assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
+    assert(std::cmp_equal(as.size(), mgr->var_count()));
 
     return mgr->eval(f, as);
 }

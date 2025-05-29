@@ -74,7 +74,7 @@ class sat
                 dimacs >> lit;
                 if (lit < 0)  // negative polarity
                 {
-                    assert(-lit <= static_cast<std::int32_t>(p.vars.size()));
+                    assert(std::cmp_less_equal(-lit, p.vars.size()));
 
                     auto const x = -lit - 1;
                     ++p.lits[x];
@@ -108,7 +108,7 @@ class sat
 
             sol.resize(p.vars.size());
 
-            for (auto i = 0; std::cmp_less(i, p.vars.size()); ++i)
+            for (decltype(p.vars.size()) i = 0; i < p.vars.size(); ++i)
             {
                 if (p.vars[i].has_value())  // variables that are not set can take any truth value
                 {

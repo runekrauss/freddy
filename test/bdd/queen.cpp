@@ -7,8 +7,7 @@
 #include <freddy/dd/bdd.hpp>  // dd::bdd
 
 #include <cassert>  // assert
-#include <cstdint>  // std::uint8_t
-#include <utility>  // std::cmp_less
+#include <cstdint>  // std::int32_t
 #include <vector>   // std::vector
 
 // *********************************************************************************************************************
@@ -24,27 +23,27 @@ namespace
 // Functions
 // =====================================================================================================================
 
-auto enc(std::uint8_t const n, dd::bdd_manager& mgr)
+auto enc(std::int32_t const n, dd::bdd_manager& mgr)
 {
     assert(n > 0);
 
     std::vector<std::vector<dd::bdd>> x(n, std::vector<dd::bdd>(n));
-    for (auto i = 0; std::cmp_less(i, n); ++i)
+    for (auto i = 0; i < n; ++i)
     {
-        for (auto j = 0; std::cmp_less(j, n); ++j)
+        for (auto j = 0; j < n; ++j)
         {
             x[i][j] = mgr.var();
         }
     }
 
     auto pred = mgr.one();
-    for (auto i = 0; std::cmp_less(i, n); ++i)
+    for (auto i = 0; i < n; ++i)
     {
         auto tmp = mgr.zero();
-        for (auto j = 0; std::cmp_less(j, n); ++j)
+        for (auto j = 0; j < n; ++j)
         {
             // two queens must not be in the same row
-            for (auto k = 0; std::cmp_less(k, n); ++k)
+            for (auto k = 0; k < n; ++k)
             {
                 if (k != j)
                 {
@@ -53,7 +52,7 @@ auto enc(std::uint8_t const n, dd::bdd_manager& mgr)
             }
 
             // two queens must not be in the same column
-            for (auto k = 0; std::cmp_less(k, n); ++k)
+            for (auto k = 0; k < n; ++k)
             {
                 if (k != i)
                 {
@@ -62,20 +61,20 @@ auto enc(std::uint8_t const n, dd::bdd_manager& mgr)
             }
 
             // two queens must not be along an up right diagonal
-            for (auto k = 0; std::cmp_less(k, n); ++k)
+            for (auto k = 0; k < n; ++k)
             {
                 auto const l = j + k - i;
-                if (l >= 0 && std::cmp_less(l, n) && k != i)
+                if (l >= 0 && l < n && k != i)
                 {
                     pred &= ~(x[i][j] & x[k][l]);
                 }
             }
 
             // two queens must not be along a down right diagonal
-            for (auto k = 0; std::cmp_less(k, n); ++k)
+            for (auto k = 0; k < n; ++k)
             {
                 auto const l = j + i - k;
-                if (l >= 0 && std::cmp_less(l, n) && k != i)
+                if (l >= 0 && l < n && k != i)
                 {
                     pred &= ~(x[i][j] & x[k][l]);
                 }

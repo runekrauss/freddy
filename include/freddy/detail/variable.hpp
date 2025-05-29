@@ -9,9 +9,6 @@
 #include "freddy/config.hpp"     // config::ut_size
 #include "freddy/expansion.hpp"  // expansion
 #include "node.hpp"              // node
-#ifdef FREDDY_STATS
-#include "statistics.hpp"  // statistics
-#endif
 
 #include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
 
@@ -51,11 +48,6 @@ struct variable
     boost::unordered_flat_set<std::shared_ptr<edge<E, V>>, hash, comp> et;
 
     boost::unordered_flat_set<std::shared_ptr<node<E, V>>, hash, comp> nt;
-#ifdef FREDDY_STATS
-    statistics et_stats;
-
-    statistics nt_stats;
-#endif
 };
 
 }  // namespace freddy::detail

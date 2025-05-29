@@ -335,7 +335,7 @@ class bdd_manager : public detail::manager<bool, bool>
                     h = complement(f);
                 }
                 break;
-            default: assert(false);
+            default: assert(false); std::unreachable();
         }
     }
 
@@ -511,7 +511,7 @@ class bdd_manager : public detail::manager<bool, bool>
         return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
     }
 
-    [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
+    auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
     {
         return !(val1 == val2);
     }
@@ -626,7 +626,7 @@ auto inline bdd::path_count() const noexcept
 auto inline bdd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
-    assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
+    assert(std::cmp_equal(as.size(), mgr->var_count()));
 
     return mgr->eval(f, as);
 }

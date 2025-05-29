@@ -20,7 +20,7 @@
 #include <sstream>      // std::ostringstream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
-#include <utility>      // std::move
+#include <utility>      // std::cmp_less
 #include <vector>       // std::vector
 
 // *********************************************************************************************************************
@@ -333,7 +333,7 @@ class bhd_manager : public detail::manager<bool, bool>
         if (is_exp(f))
         {
             std::vector<std::pair<std::int32_t, bool>> tmp;
-            for (auto i = 0; std::cmp_less(i, path.size()); ++i)
+            for (decltype(path.size()) i = 0; i < path.size(); ++i)
             {
                 if (path[i].has_value())
                 {
@@ -580,7 +580,7 @@ class bhd_manager : public detail::manager<bool, bool>
         return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
     }
 
-    [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
+    auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
     {
         return !(val1 == val2);
     }
@@ -708,7 +708,7 @@ auto inline bhd::path_count() const noexcept
 auto inline bhd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
-    assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
+    assert(std::cmp_equal(as.size(), mgr->var_count()));
 
     // since the last node in EXP is treated as a constant (1)
     auto exp_is_reached = [&as, this](auto const& f) {

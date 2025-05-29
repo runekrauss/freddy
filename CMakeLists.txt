@@ -12,7 +12,7 @@ endif()
 
 option(FREDDY_STATS "Calculate statistics")
 if(FREDDY_STATS)
-    add_compile_definitions(FREDDY_STATS BOOST_UNORDERED_ENABLE_STATS)
+    add_compile_definitions(BOOST_UNORDERED_ENABLE_STATS)
 endif()
 
 add_library(freddy INTERFACE)
