@@ -32,6 +32,15 @@
 #include <string_view>  // std::string_view
 #include <utility>      // std::move
 #include <vector>       // std::vector
+#ifdef __APPLE__
+#include <mach/mach.h>   // host_statistics64
+#include <sys/sysctl.h>  // CTL_HW
+#elifdef __linux__
+#include <fstream>  // std::ifstream
+#elifdef _WIN32
+#define NOMINMAX
+#include <windows.h>  // GlobalMemoryStatusEx
+#endif
 
 // *********************************************************************************************************************
 // Namespaces
@@ -615,6 +624,79 @@ class manager
     std::vector<std::int32_t> var2lvl;  // for reordering
 
   private:
+    [[maybe_unused]] auto static mem_usage()  // in % (fraction)
+    {
+#ifdef __APPLE__
+        vm_statistics64_data_t stats{};
+        auto count = HOST_VM_INFO64_COUNT;
+        if (host_statistics64(mach_host_self(), HOST_VM_INFO64, reinterpret_cast<host_info64_t>(&stats), &count) ==
+            KERN_SUCCESS)
+        {  // addition of active, inactive, and "wired" pages
+            vm_size_t page_size = 0;
+            host_page_size(mach_host_self(), &page_size);
+
+            std::array<std::int32_t, 2> mib = {CTL_HW, HW_MEMSIZE};  // management information base
+            std::size_t total{};
+            auto len = sizeof(total);
+
+            if (sysctl(mib.data(), mib.size(), &total, &len, nullptr, 0) == 0 && total > 0)
+            {  // How much RAM is utilized?
+                return static_cast<float>((stats.active_count + stats.inactive_count + stats.wire_count) * page_size) /
+                       static_cast<float>(total);
+            }
+        }
+#elifdef __linux__
+        std::ifstream meminfo{"/proc/meminfo"};
+        if (meminfo.is_open())
+        {  // estimation of the main memory used excluding buffers, cached data, etc.
+            std::string line;
+            std::size_t total = 0, other = 0, found_count = 0;
+            while (std::getline(meminfo, line))
+            {
+                if (line.starts_with("MemTotal:"))
+                {
+                    total = std::stoul(line.substr(9)) * 1024;  // kilobytes -> bytes
+                    ++found_count;
+                }
+                else if (line.starts_with("MemFree:"))
+                {
+                    other += std::stoul(line.substr(8)) * 1024;
+                    ++found_count;
+                }
+                else if (line.starts_with("Buffers:"))
+                {
+                    other += std::stoul(line.substr(8)) * 1024;
+                    ++found_count;
+                }
+                else if (line.starts_with("Cached:"))
+                {
+                    other += std::stoul(line.substr(7)) * 1024;
+                    ++found_count;
+                }
+
+                if (found_count == 4)
+                {
+                    break;
+                }
+            }
+
+            if (total >= other && total > 0)  // for safety reasons
+            {
+                return static_cast<float>(total - other) / static_cast<float>(total);
+            }
+        }
+#elifdef _WIN32
+        MEMORYSTATUSEX status;
+        status.dwLength = sizeof(status);
+        if (GlobalMemoryStatusEx(&status) && status.ullTotalPhys > 0)
+        {  // subtracting the free physical memory from the total main memory
+            return static_cast<float>(status.ullTotalPhys - status.ullAvailPhys) /
+                   static_cast<float>(status.ullTotalPhys);
+        }
+#endif
+        return 0.0f;  // unsupported platform
+    }
+
     [[nodiscard]] auto eval(node_ptr const& v, std::vector<bool> const& as) const -> V
     {
         assert(v);

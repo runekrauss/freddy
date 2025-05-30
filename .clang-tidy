@@ -12,6 +12,7 @@ Checks: |
   -cppcoreguidelines-avoid-magic-numbers,
   -cppcoreguidelines-avoid-non-const-global-variables,
   -cppcoreguidelines-non-private-member-variables-in-classes,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
   google-*,
   -google-build-using-namespace,
   hicpp-*,
