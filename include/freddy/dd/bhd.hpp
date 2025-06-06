@@ -259,14 +259,14 @@ class bhd_manager : public detail::manager<bool, bool>
     }
 
   private:
-    auto static tmls() -> std::array<edge_ptr, 2>
+    static auto tmls() -> std::array<edge_ptr, 2>
     {
         auto const leaf = std::make_shared<detail::node<bool, bool>>(false);
         return std::array<edge_ptr, 2>{std::make_shared<detail::edge<bool, bool>>(false, leaf),
                                        std::make_shared<detail::edge<bool, bool>>(true, leaf)};
     }
 
-    auto static transform(std::vector<bhd> const& fs) -> std::vector<edge_ptr>
+    static auto transform(std::vector<bhd> const& fs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> gs;
         gs.reserve(fs.size());
@@ -605,14 +605,14 @@ class bhd_manager : public detail::manager<bool, bool>
     std::size_t cost{};  // determine when EXPs are made depending on the heuristic
 };
 
-auto inline bhd::operator~() const
+inline auto bhd::operator~() const
 {
     assert(mgr);
 
     return bhd{mgr->complement(f), mgr};
 }
 
-auto inline bhd::operator&=(bhd const& rhs) -> bhd&
+inline auto bhd::operator&=(bhd const& rhs) -> bhd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -621,7 +621,7 @@ auto inline bhd::operator&=(bhd const& rhs) -> bhd&
     return *this;
 }
 
-auto inline bhd::operator|=(bhd const& rhs) -> bhd&
+inline auto bhd::operator|=(bhd const& rhs) -> bhd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -630,7 +630,7 @@ auto inline bhd::operator|=(bhd const& rhs) -> bhd&
     return *this;
 }
 
-auto inline bhd::operator^=(bhd const& rhs) -> bhd&
+inline auto bhd::operator^=(bhd const& rhs) -> bhd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -639,28 +639,28 @@ auto inline bhd::operator^=(bhd const& rhs) -> bhd&
     return *this;
 }
 
-auto inline bhd::is_zero() const noexcept
+inline auto bhd::is_zero() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->zero();
 }
 
-auto inline bhd::is_one() const noexcept
+inline auto bhd::is_one() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->one();
 }
 
-auto inline bhd::is_exp() const noexcept
+inline auto bhd::is_exp() const noexcept
 {
     assert(mgr);
 
     return mgr->is_exp(f);
 }
 
-auto inline bhd::high() const
+inline auto bhd::high() const
 {
     assert(mgr);
     assert(!f->v->is_const());
@@ -668,7 +668,7 @@ auto inline bhd::high() const
     return bhd{f->v->br().hi, mgr};
 }
 
-auto inline bhd::low() const
+inline auto bhd::low() const
 {
     assert(mgr);
     assert(!f->v->is_const());
@@ -677,35 +677,35 @@ auto inline bhd::low() const
 }
 
 template <typename T, typename... Ts>
-auto inline bhd::fn(T const a, Ts... args) const
+inline auto bhd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
     return bhd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
-auto inline bhd::size() const
+inline auto bhd::size() const
 {
     assert(mgr);
 
     return mgr->size({*this});
 }
 
-auto inline bhd::depth() const
+inline auto bhd::depth() const
 {
     assert(mgr);
 
     return mgr->depth({*this});
 }
 
-auto inline bhd::path_count() const noexcept
+inline auto bhd::path_count() const noexcept
 {
     assert(mgr);
 
     return mgr->path_count(f);
 }
 
-auto inline bhd::eval(std::vector<bool> const& as) const noexcept
+inline auto bhd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
     assert(std::cmp_equal(as.size(), mgr->var_count()));
@@ -732,21 +732,21 @@ auto inline bhd::eval(std::vector<bool> const& as) const noexcept
     return exp_is_reached(f) ? std::nullopt : std::make_optional(mgr->eval(f, as));
 }
 
-auto inline bhd::has_const(bool const c) const
+inline auto bhd::has_const(bool const c) const
 {
     assert(mgr);
 
     return mgr->has_const(f, c);
 }
 
-auto inline bhd::is_essential(std::int32_t const x) const
+inline auto bhd::is_essential(std::int32_t const x) const
 {
     assert(mgr);
 
     return mgr->is_essential(f, x);
 }
 
-auto inline bhd::ite(bhd const& g, bhd const& h) const
+inline auto bhd::ite(bhd const& g, bhd const& h) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -755,7 +755,7 @@ auto inline bhd::ite(bhd const& g, bhd const& h) const
     return bhd{mgr->ite(f, g.f, h.f), mgr};
 }
 
-auto inline bhd::compose(std::int32_t const x, bhd const& g) const
+inline auto bhd::compose(std::int32_t const x, bhd const& g) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -763,42 +763,42 @@ auto inline bhd::compose(std::int32_t const x, bhd const& g) const
     return bhd{mgr->compose(f, x, g.f), mgr};
 }
 
-auto inline bhd::restr(std::int32_t const x, bool const a) const
+inline auto bhd::restr(std::int32_t const x, bool const a) const
 {
     assert(mgr);
 
     return bhd{mgr->restr(f, x, a), mgr};
 }
 
-auto inline bhd::exist(std::int32_t const x) const
+inline auto bhd::exist(std::int32_t const x) const
 {
     assert(mgr);
 
     return bhd{mgr->exist(f, x), mgr};
 }
 
-auto inline bhd::forall(std::int32_t const x) const
+inline auto bhd::forall(std::int32_t const x) const
 {
     assert(mgr);
 
     return bhd{mgr->forall(f, x), mgr};
 }
 
-auto inline bhd::sat() const
+inline auto bhd::sat() const
 {
     assert(mgr);
 
     return mgr->sat(f);
 }
 
-auto inline bhd::uc() const
+inline auto bhd::uc() const
 {
     assert(mgr);
 
     return mgr->uc(f);
 }
 
-auto inline bhd::print(std::ostream& s) const
+inline auto bhd::print(std::ostream& s) const
 {
     assert(mgr);
 

@@ -277,7 +277,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     }
 
   private:
-    auto static normw(edge_ptr const& f, edge_ptr const& g) noexcept
+    static auto normw(edge_ptr const& f, edge_ptr const& g) noexcept
     {
         assert(f);
         assert(g);
@@ -285,7 +285,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         return g->w < 0 || (f->w < 0 && g->w == 0) ? -std::gcd(f->w, g->w) : std::gcd(f->w, g->w);
     }
 
-    auto static tmls() -> std::array<edge_ptr, 2>
+    static auto tmls() -> std::array<edge_ptr, 2>
     {
         auto const leaf = std::make_shared<detail::node<std::int32_t, std::int32_t>>(1);
 
@@ -293,7 +293,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
                                        std::make_shared<detail::edge<std::int32_t, std::int32_t>>(1, leaf)};
     }
 
-    auto static transform(std::vector<bmd> const& fs) -> std::vector<edge_ptr>
+    static auto transform(std::vector<bmd> const& fs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> gs;
         gs.reserve(fs.size());
@@ -504,7 +504,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     }
 };
 
-auto inline bmd::operator+=(bmd const& rhs) -> bmd&
+inline auto bmd::operator+=(bmd const& rhs) -> bmd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -513,7 +513,7 @@ auto inline bmd::operator+=(bmd const& rhs) -> bmd&
     return *this;
 }
 
-auto inline bmd::operator-=(bmd const& rhs) -> bmd&
+inline auto bmd::operator-=(bmd const& rhs) -> bmd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -522,7 +522,7 @@ auto inline bmd::operator-=(bmd const& rhs) -> bmd&
     return *this;
 }
 
-auto inline bmd::operator*=(bmd const& rhs) -> bmd&
+inline auto bmd::operator*=(bmd const& rhs) -> bmd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -531,21 +531,21 @@ auto inline bmd::operator*=(bmd const& rhs) -> bmd&
     return *this;
 }
 
-auto inline bmd::operator-() const
+inline auto bmd::operator-() const
 {
     assert(mgr);
 
     return bmd{mgr->neg(f), mgr};
 }
 
-auto inline bmd::operator~() const
+inline auto bmd::operator~() const
 {
     assert(mgr);
 
     return bmd{mgr->complement(f), mgr};
 }
 
-auto inline bmd::operator&=(bmd const& rhs) -> bmd&
+inline auto bmd::operator&=(bmd const& rhs) -> bmd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -554,7 +554,7 @@ auto inline bmd::operator&=(bmd const& rhs) -> bmd&
     return *this;
 }
 
-auto inline bmd::operator|=(bmd const& rhs) -> bmd&
+inline auto bmd::operator|=(bmd const& rhs) -> bmd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -563,7 +563,7 @@ auto inline bmd::operator|=(bmd const& rhs) -> bmd&
     return *this;
 }
 
-auto inline bmd::operator^=(bmd const& rhs) -> bmd&
+inline auto bmd::operator^=(bmd const& rhs) -> bmd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -572,28 +572,28 @@ auto inline bmd::operator^=(bmd const& rhs) -> bmd&
     return *this;
 }
 
-auto inline bmd::is_zero() const noexcept
+inline auto bmd::is_zero() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->zero();
 }
 
-auto inline bmd::is_one() const noexcept
+inline auto bmd::is_one() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->one();
 }
 
-auto inline bmd::is_two() const noexcept
+inline auto bmd::is_two() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->two();
 }
 
-auto inline bmd::high() const
+inline auto bmd::high() const
 {
     assert(mgr);
     assert(!f->v->is_const());
@@ -601,7 +601,7 @@ auto inline bmd::high() const
     return bmd{f->v->br().hi, mgr};
 }
 
-auto inline bmd::low() const
+inline auto bmd::low() const
 {
     assert(mgr);
     assert(!f->v->is_const());
@@ -610,35 +610,35 @@ auto inline bmd::low() const
 }
 
 template <typename T, typename... Ts>
-auto inline bmd::fn(T const a, Ts... args) const
+inline auto bmd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
     return bmd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
-auto inline bmd::size() const
+inline auto bmd::size() const
 {
     assert(mgr);
 
     return mgr->size({*this});
 }
 
-auto inline bmd::depth() const
+inline auto bmd::depth() const
 {
     assert(mgr);
 
     return mgr->depth({*this});
 }
 
-auto inline bmd::path_count() const noexcept
+inline auto bmd::path_count() const noexcept
 {
     assert(mgr);
 
     return mgr->path_count(f);
 }
 
-auto inline bmd::eval(std::vector<bool> const& as) const noexcept
+inline auto bmd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
     assert(std::cmp_equal(as.size(), mgr->var_count()));
@@ -646,21 +646,21 @@ auto inline bmd::eval(std::vector<bool> const& as) const noexcept
     return mgr->eval(f, as);
 }
 
-auto inline bmd::has_const(std::int32_t const c) const
+inline auto bmd::has_const(std::int32_t const c) const
 {
     assert(mgr);
 
     return mgr->has_const(f, c);
 }
 
-auto inline bmd::is_essential(std::int32_t const x) const
+inline auto bmd::is_essential(std::int32_t const x) const
 {
     assert(mgr);
 
     return mgr->is_essential(f, x);
 }
 
-auto inline bmd::ite(bmd const& g, bmd const& h) const
+inline auto bmd::ite(bmd const& g, bmd const& h) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -669,7 +669,7 @@ auto inline bmd::ite(bmd const& g, bmd const& h) const
     return bmd{mgr->ite(f, g.f, h.f), mgr};
 }
 
-auto inline bmd::compose(std::int32_t const x, bmd const& g) const
+inline auto bmd::compose(std::int32_t const x, bmd const& g) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -677,28 +677,28 @@ auto inline bmd::compose(std::int32_t const x, bmd const& g) const
     return bmd{mgr->compose(f, x, g.f), mgr};
 }
 
-auto inline bmd::restr(std::int32_t const x, bool const a) const
+inline auto bmd::restr(std::int32_t const x, bool const a) const
 {
     assert(mgr);
 
     return bmd{mgr->restr(f, x, a), mgr};
 }
 
-auto inline bmd::exist(std::int32_t const x) const
+inline auto bmd::exist(std::int32_t const x) const
 {
     assert(mgr);
 
     return bmd{mgr->exist(f, x), mgr};
 }
 
-auto inline bmd::forall(std::int32_t const x) const
+inline auto bmd::forall(std::int32_t const x) const
 {
     assert(mgr);
 
     return bmd{mgr->forall(f, x), mgr};
 }
 
-auto inline bmd::print(std::ostream& s) const
+inline auto bmd::print(std::ostream& s) const
 {
     assert(mgr);
 

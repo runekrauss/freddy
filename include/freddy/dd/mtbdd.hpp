@@ -263,7 +263,7 @@ class mtbdd_manager : public detail::manager<bool, V>
   private:
     using edge_ptr = std::shared_ptr<detail::edge<bool, V>>;
 
-    auto static tmls() -> std::array<edge_ptr, 2>
+    static auto tmls() -> std::array<edge_ptr, 2>
     {
         auto const leaf0 = std::make_shared<detail::node<bool, V>>(static_cast<V>(0));
         auto const leaf1 = std::make_shared<detail::node<bool, V>>(static_cast<V>(1));
@@ -272,7 +272,7 @@ class mtbdd_manager : public detail::manager<bool, V>
                                        std::make_shared<detail::edge<bool, V>>(false, leaf1)};
     }
 
-    auto static transform(std::vector<mtbdd<V>> const& fs) -> std::vector<edge_ptr>
+    static auto transform(std::vector<mtbdd<V>> const& fs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> gs;
         gs.reserve(fs.size());
@@ -431,7 +431,7 @@ class mtbdd_manager : public detail::manager<bool, V>
 };
 
 template <typename V>
-auto inline mtbdd<V>::operator+=(mtbdd const& rhs) -> mtbdd&
+inline auto mtbdd<V>::operator+=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -441,7 +441,7 @@ auto inline mtbdd<V>::operator+=(mtbdd const& rhs) -> mtbdd&
 }
 
 template <typename V>
-auto inline mtbdd<V>::operator-=(mtbdd const& rhs) -> mtbdd&
+inline auto mtbdd<V>::operator-=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -451,7 +451,7 @@ auto inline mtbdd<V>::operator-=(mtbdd const& rhs) -> mtbdd&
 }
 
 template <typename V>
-auto inline mtbdd<V>::operator*=(mtbdd const& rhs) -> mtbdd&
+inline auto mtbdd<V>::operator*=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -461,7 +461,7 @@ auto inline mtbdd<V>::operator*=(mtbdd const& rhs) -> mtbdd&
 }
 
 template <typename V>
-auto inline mtbdd<V>::operator-() const
+inline auto mtbdd<V>::operator-() const
 {
     assert(mgr);
 
@@ -469,7 +469,7 @@ auto inline mtbdd<V>::operator-() const
 }
 
 template <typename V>
-auto inline mtbdd<V>::operator~() const
+inline auto mtbdd<V>::operator~() const
 {
     assert(mgr);
 
@@ -477,7 +477,7 @@ auto inline mtbdd<V>::operator~() const
 }
 
 template <typename V>
-auto inline mtbdd<V>::operator&=(mtbdd const& rhs) -> mtbdd&
+inline auto mtbdd<V>::operator&=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -487,7 +487,7 @@ auto inline mtbdd<V>::operator&=(mtbdd const& rhs) -> mtbdd&
 }
 
 template <typename V>
-auto inline mtbdd<V>::operator|=(mtbdd const& rhs) -> mtbdd&
+inline auto mtbdd<V>::operator|=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -497,7 +497,7 @@ auto inline mtbdd<V>::operator|=(mtbdd const& rhs) -> mtbdd&
 }
 
 template <typename V>
-auto inline mtbdd<V>::operator^=(mtbdd const& rhs) -> mtbdd&
+inline auto mtbdd<V>::operator^=(mtbdd const& rhs) -> mtbdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -507,7 +507,7 @@ auto inline mtbdd<V>::operator^=(mtbdd const& rhs) -> mtbdd&
 }
 
 template <typename V>
-auto inline mtbdd<V>::is_zero() const noexcept
+inline auto mtbdd<V>::is_zero() const noexcept
 {
     assert(mgr);
 
@@ -515,7 +515,7 @@ auto inline mtbdd<V>::is_zero() const noexcept
 }
 
 template <typename V>
-auto inline mtbdd<V>::is_one() const noexcept
+inline auto mtbdd<V>::is_one() const noexcept
 {
     assert(mgr);
 
@@ -523,7 +523,7 @@ auto inline mtbdd<V>::is_one() const noexcept
 }
 
 template <typename V>
-auto inline mtbdd<V>::is_two() const noexcept
+inline auto mtbdd<V>::is_two() const noexcept
 {
     assert(mgr);
 
@@ -531,7 +531,7 @@ auto inline mtbdd<V>::is_two() const noexcept
 }
 
 template <typename V>
-auto inline mtbdd<V>::high() const
+inline auto mtbdd<V>::high() const
 {
     assert(mgr);
     assert(!f->v->is_const());
@@ -540,7 +540,7 @@ auto inline mtbdd<V>::high() const
 }
 
 template <typename V>
-auto inline mtbdd<V>::low() const
+inline auto mtbdd<V>::low() const
 {
     assert(mgr);
     assert(!f->v->is_const());
@@ -550,7 +550,7 @@ auto inline mtbdd<V>::low() const
 
 template <typename V>
 template <typename T, typename... Ts>
-auto inline mtbdd<V>::fn(T const a, Ts... args) const
+inline auto mtbdd<V>::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
@@ -558,7 +558,7 @@ auto inline mtbdd<V>::fn(T const a, Ts... args) const
 }
 
 template <typename V>
-auto inline mtbdd<V>::size() const
+inline auto mtbdd<V>::size() const
 {
     assert(mgr);
 
@@ -566,7 +566,7 @@ auto inline mtbdd<V>::size() const
 }
 
 template <typename V>
-auto inline mtbdd<V>::depth() const
+inline auto mtbdd<V>::depth() const
 {
     assert(mgr);
 
@@ -574,7 +574,7 @@ auto inline mtbdd<V>::depth() const
 }
 
 template <typename V>
-auto inline mtbdd<V>::path_count() const noexcept
+inline auto mtbdd<V>::path_count() const noexcept
 {
     assert(mgr);
 
@@ -582,7 +582,7 @@ auto inline mtbdd<V>::path_count() const noexcept
 }
 
 template <typename V>
-auto inline mtbdd<V>::eval(std::vector<bool> const& as) const noexcept
+inline auto mtbdd<V>::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
     assert(std::cmp_equal(as.size(), mgr->var_count()));
@@ -591,7 +591,7 @@ auto inline mtbdd<V>::eval(std::vector<bool> const& as) const noexcept
 }
 
 template <typename V>
-auto inline mtbdd<V>::has_const(V const c) const
+inline auto mtbdd<V>::has_const(V const c) const
 {
     assert(mgr);
 
@@ -599,7 +599,7 @@ auto inline mtbdd<V>::has_const(V const c) const
 }
 
 template <typename V>
-auto inline mtbdd<V>::is_essential(std::int32_t const x) const
+inline auto mtbdd<V>::is_essential(std::int32_t const x) const
 {
     assert(mgr);
 
@@ -607,7 +607,7 @@ auto inline mtbdd<V>::is_essential(std::int32_t const x) const
 }
 
 template <typename V>
-auto inline mtbdd<V>::ite(mtbdd const& g, mtbdd const& h) const
+inline auto mtbdd<V>::ite(mtbdd const& g, mtbdd const& h) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -617,7 +617,7 @@ auto inline mtbdd<V>::ite(mtbdd const& g, mtbdd const& h) const
 }
 
 template <typename V>
-auto inline mtbdd<V>::compose(std::int32_t const x, mtbdd const& g) const
+inline auto mtbdd<V>::compose(std::int32_t const x, mtbdd const& g) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -626,7 +626,7 @@ auto inline mtbdd<V>::compose(std::int32_t const x, mtbdd const& g) const
 }
 
 template <typename V>
-auto inline mtbdd<V>::restr(std::int32_t const x, bool const a) const
+inline auto mtbdd<V>::restr(std::int32_t const x, bool const a) const
 {
     assert(mgr);
 
@@ -634,7 +634,7 @@ auto inline mtbdd<V>::restr(std::int32_t const x, bool const a) const
 }
 
 template <typename V>
-auto inline mtbdd<V>::exist(std::int32_t const x) const
+inline auto mtbdd<V>::exist(std::int32_t const x) const
 {
     assert(mgr);
 
@@ -642,7 +642,7 @@ auto inline mtbdd<V>::exist(std::int32_t const x) const
 }
 
 template <typename V>
-auto inline mtbdd<V>::forall(std::int32_t const x) const
+inline auto mtbdd<V>::forall(std::int32_t const x) const
 {
     assert(mgr);
 
@@ -650,7 +650,7 @@ auto inline mtbdd<V>::forall(std::int32_t const x) const
 }
 
 template <typename V>
-auto inline mtbdd<V>::print(std::ostream& s) const
+inline auto mtbdd<V>::print(std::ostream& s) const
 {
     assert(mgr);
 

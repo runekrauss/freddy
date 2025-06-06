@@ -220,7 +220,7 @@ class bdd_manager : public detail::manager<bool, bool>
     }
 
   private:
-    auto static tmls() -> std::array<edge_ptr, 2>
+    static auto tmls() -> std::array<edge_ptr, 2>
     {
         // choose the 0-leaf due to complemented edges in order to ensure canonicity
         auto const leaf = std::make_shared<detail::node<bool, bool>>(false);
@@ -229,7 +229,7 @@ class bdd_manager : public detail::manager<bool, bool>
                                        std::make_shared<detail::edge<bool, bool>>(true, leaf)};
     }
 
-    auto static transform(std::vector<bdd> const& fs) -> std::vector<edge_ptr>
+    static auto transform(std::vector<bdd> const& fs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> gs;
         gs.reserve(fs.size());
@@ -530,14 +530,14 @@ class bdd_manager : public detail::manager<bool, bool>
     }
 };
 
-auto inline bdd::operator~() const
+inline auto bdd::operator~() const
 {
     assert(mgr);
 
     return bdd{mgr->complement(f), mgr};
 }
 
-auto inline bdd::operator&=(bdd const& rhs) -> bdd&
+inline auto bdd::operator&=(bdd const& rhs) -> bdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -546,7 +546,7 @@ auto inline bdd::operator&=(bdd const& rhs) -> bdd&
     return *this;
 }
 
-auto inline bdd::operator|=(bdd const& rhs) -> bdd&
+inline auto bdd::operator|=(bdd const& rhs) -> bdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -555,7 +555,7 @@ auto inline bdd::operator|=(bdd const& rhs) -> bdd&
     return *this;
 }
 
-auto inline bdd::operator^=(bdd const& rhs) -> bdd&
+inline auto bdd::operator^=(bdd const& rhs) -> bdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -564,21 +564,21 @@ auto inline bdd::operator^=(bdd const& rhs) -> bdd&
     return *this;
 }
 
-auto inline bdd::is_zero() const noexcept
+inline auto bdd::is_zero() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->zero();
 }
 
-auto inline bdd::is_one() const noexcept
+inline auto bdd::is_one() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->one();
 }
 
-auto inline bdd::high() const
+inline auto bdd::high() const
 {
     assert(mgr);
     assert(!f->v->is_const());
@@ -586,7 +586,7 @@ auto inline bdd::high() const
     return bdd{f->v->br().hi, mgr};
 }
 
-auto inline bdd::low() const
+inline auto bdd::low() const
 {
     assert(mgr);
     assert(!f->v->is_const());
@@ -595,35 +595,35 @@ auto inline bdd::low() const
 }
 
 template <typename T, typename... Ts>
-auto inline bdd::fn(T const a, Ts... args) const
+inline auto bdd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
     return bdd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
-auto inline bdd::size() const
+inline auto bdd::size() const
 {
     assert(mgr);
 
     return mgr->size({*this});
 }
 
-auto inline bdd::depth() const
+inline auto bdd::depth() const
 {
     assert(mgr);
 
     return mgr->depth({*this});
 }
 
-auto inline bdd::path_count() const noexcept
+inline auto bdd::path_count() const noexcept
 {
     assert(mgr);
 
     return mgr->path_count(f);
 }
 
-auto inline bdd::eval(std::vector<bool> const& as) const noexcept
+inline auto bdd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
     assert(std::cmp_equal(as.size(), mgr->var_count()));
@@ -631,21 +631,21 @@ auto inline bdd::eval(std::vector<bool> const& as) const noexcept
     return mgr->eval(f, as);
 }
 
-auto inline bdd::has_const(bool const c) const
+inline auto bdd::has_const(bool const c) const
 {
     assert(mgr);
 
     return mgr->has_const(f, c);
 }
 
-auto inline bdd::is_essential(std::int32_t const x) const
+inline auto bdd::is_essential(std::int32_t const x) const
 {
     assert(mgr);
 
     return mgr->is_essential(f, x);
 }
 
-auto inline bdd::ite(bdd const& g, bdd const& h) const
+inline auto bdd::ite(bdd const& g, bdd const& h) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -654,7 +654,7 @@ auto inline bdd::ite(bdd const& g, bdd const& h) const
     return bdd{mgr->ite(f, g.f, h.f), mgr};
 }
 
-auto inline bdd::compose(std::int32_t const x, bdd const& g) const
+inline auto bdd::compose(std::int32_t const x, bdd const& g) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -662,35 +662,35 @@ auto inline bdd::compose(std::int32_t const x, bdd const& g) const
     return bdd{mgr->compose(f, x, g.f), mgr};
 }
 
-auto inline bdd::restr(std::int32_t const x, bool const a) const
+inline auto bdd::restr(std::int32_t const x, bool const a) const
 {
     assert(mgr);
 
     return bdd{mgr->restr(f, x, a), mgr};
 }
 
-auto inline bdd::exist(std::int32_t const x) const
+inline auto bdd::exist(std::int32_t const x) const
 {
     assert(mgr);
 
     return bdd{mgr->exist(f, x), mgr};
 }
 
-auto inline bdd::forall(std::int32_t const x) const
+inline auto bdd::forall(std::int32_t const x) const
 {
     assert(mgr);
 
     return bdd{mgr->forall(f, x), mgr};
 }
 
-auto inline bdd::sharpsat() const
+inline auto bdd::sharpsat() const
 {
     assert(mgr);
 
     return mgr->sharpsat(f);
 }
 
-auto inline bdd::print(std::ostream& s) const
+inline auto bdd::print(std::ostream& s) const
 {
     assert(mgr);
 

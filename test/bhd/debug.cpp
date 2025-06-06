@@ -140,7 +140,7 @@ class sat
         std::vector<std::vector<std::int32_t>> clauses;  // 2x is stored if x is negative, otherwise 2x+1
     };
 
-    auto static simplify(formula& q, std::int32_t const x)
+    static auto simplify(formula& q, std::int32_t const x)
     {
         assert(std::cmp_less(x, q.lits.size()));
 
@@ -178,7 +178,7 @@ class sat
         return stat::UNKN;
     }
 
-    auto static up(formula& q)
+    static auto up(formula& q)
     {
         if (q.clauses.empty())
         {

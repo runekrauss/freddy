@@ -39,7 +39,10 @@
 #include <fstream>  // std::ifstream
 #elifdef _WIN32
 #define NOMINMAX
-#include <windows.h>  // GlobalMemoryStatusEx
+// clang-format off
+#include <windows.h>
+// clang-format on
+#include <psapi.h>  // PERFORMANCE_INFORMATION
 #endif
 
 // *********************************************************************************************************************
@@ -577,7 +580,7 @@ class manager
     }
 
     // many optimizations are possible depending on the DD type
-    auto virtual apply(E const& w, edge_ptr const& f) -> edge_ptr
+    virtual auto apply(E const& w, edge_ptr const& f) -> edge_ptr
     {
         assert(f);
 
@@ -585,7 +588,7 @@ class manager
     }
 
     // NOLINTBEGIN
-    auto virtual ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr  // as there are different versions
+    virtual auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr  // as there are different versions
     {
         assert(f);
         assert(g);
@@ -595,27 +598,27 @@ class manager
     }
     // NOLINTEND
 
-    auto virtual add(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs additively
+    virtual auto add(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs additively
 
-    [[nodiscard]] auto virtual agg(E const&, V const&) const -> V = 0;  // aggregates an edge weight and a node value
+    [[nodiscard]] virtual auto agg(E const&, V const&) const -> V = 0;  // aggregates an edge weight and a node value
 
     // adjusts a pair weight according to the DD type
-    [[nodiscard]] auto virtual comb(E const&, E const&) const -> E = 0;
+    [[nodiscard]] virtual auto comb(E const&, E const&) const -> E = 0;
 
-    auto virtual complement(edge_ptr const&) -> edge_ptr = 0;  // computes NOT
+    virtual auto complement(edge_ptr const&) -> edge_ptr = 0;  // computes NOT
 
-    auto virtual conj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects conjuncts logically (AND)
+    virtual auto conj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects conjuncts logically (AND)
 
-    auto virtual disj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects disjuncts logically (OR)
+    virtual auto disj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects disjuncts logically (OR)
 
     // creates/reuses a node and an incoming edge
-    auto virtual make_branch(std::int32_t, edge_ptr, edge_ptr) -> edge_ptr = 0;
+    virtual auto make_branch(std::int32_t, edge_ptr, edge_ptr) -> edge_ptr = 0;
 
-    auto virtual merge(V const&, V const&) const -> V = 0;  // evaluates aggregates (subtrees)
+    virtual auto merge(V const&, V const&) const -> V = 0;  // evaluates aggregates (subtrees)
 
-    auto virtual mul(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs multiplicatively
+    virtual auto mul(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs multiplicatively
 
-    [[nodiscard]] auto virtual regw() const -> E = 0;  // returns the regular weight of an edge
+    [[nodiscard]] virtual auto regw() const -> E = 0;  // returns the regular weight of an edge
 
     std::vector<edge_ptr> vars;  // DD variables that are never cleared
 
@@ -624,77 +627,67 @@ class manager
     std::vector<std::int32_t> var2lvl;  // for reordering
 
   private:
-    [[maybe_unused]] auto static mem_usage()  // in % (fraction)
+    [[maybe_unused]] static auto avail_mem()  // in % (fraction)
     {
 #ifdef __APPLE__
-        vm_statistics64_data_t stats{};
+        vm_statistics64_data_t stats;
         auto count = HOST_VM_INFO64_COUNT;
         if (host_statistics64(mach_host_self(), HOST_VM_INFO64, reinterpret_cast<host_info64_t>(&stats), &count) ==
             KERN_SUCCESS)
-        {  // addition of active, inactive, and "wired" pages
-            vm_size_t page_size = 0;
-            host_page_size(mach_host_self(), &page_size);
-
+        {  // addition of free, inactive, purgeable, and speculative pages
             std::array<std::int32_t, 2> mib = {CTL_HW, HW_MEMSIZE};  // management information base
             std::size_t total{};
             auto len = sizeof(total);
+            sysctl(mib.data(), mib.size(), &total, &len, nullptr, 0);
 
-            if (sysctl(mib.data(), mib.size(), &total, &len, nullptr, 0) == 0 && total > 0)
-            {  // How much RAM is utilized?
-                return static_cast<float>((stats.active_count + stats.inactive_count + stats.wire_count) * page_size) /
-                       static_cast<float>(total);
-            }
+            assert(total > 0);
+
+            vm_size_t page_size{};
+            host_page_size(mach_host_self(), &page_size);  // bytes
+
+            assert(page_size > 0);
+
+            // How much main memory (RAM) is available?
+            return static_cast<float>(
+                       (stats.free_count + stats.inactive_count + stats.purgeable_count + stats.speculative_count) *
+                       page_size) /
+                   static_cast<float>(total);
         }
 #elifdef __linux__
         std::ifstream meminfo{"/proc/meminfo"};
         if (meminfo.is_open())
-        {  // estimation of the main memory used excluding buffers, cached data, etc.
+        {  // estimation of free physical memory including buffers, cached data, etc.
             std::string line;
-            std::size_t total = 0, other = 0, found_count = 0;
+            auto total = 0, available = 0;
             while (std::getline(meminfo, line))
             {
-                if (line.starts_with("MemTotal:"))
+                std::string_view view{line};
+                if (view.starts_with("MemTotal:"))
                 {
-                    total = std::stoul(line.substr(9)) * 1024;  // kilobytes -> bytes
-                    ++found_count;
+                    total = std::stoi(view.data() + 9);  // kilobytes
                 }
-                else if (line.starts_with("MemFree:"))
-                {
-                    other += std::stoul(line.substr(8)) * 1024;
-                    ++found_count;
-                }
-                else if (line.starts_with("Buffers:"))
-                {
-                    other += std::stoul(line.substr(8)) * 1024;
-                    ++found_count;
-                }
-                else if (line.starts_with("Cached:"))
-                {
-                    other += std::stoul(line.substr(7)) * 1024;
-                    ++found_count;
-                }
-
-                if (found_count == 4)
-                {
+                else if (view.starts_with("MemAvailable:"))
+                {  // even if the file contents are not completely standardized, this value comes after total memory
+                    available = std::stoi(view.data() + 13);
                     break;
                 }
             }
 
-            if (total >= other && total > 0)  // for safety reasons
-            {
-                return static_cast<float>(total - other) / static_cast<float>(total);
-            }
+            assert(total > 0);
+
+            return static_cast<float>(available) / static_cast<float>(total);
         }
 #elifdef _WIN32
-        MEMORYSTATUSEX status;
-        status.dwLength = sizeof(status);
-        if (GlobalMemoryStatusEx(&status) && status.ullTotalPhys > 0)
-        {  // subtracting the free physical memory from the total main memory
-            return static_cast<float>(status.ullTotalPhys - status.ullAvailPhys) /
-                   static_cast<float>(status.ullTotalPhys);
+        PERFORMANCE_INFORMATION info;  // as it additionally contains standby pages for caching
+        info.cb = sizeof(info);
+        if (GetPerformanceInfo(&info, sizeof(info)))  // for safety reasons
+        {
+            assert(info.PhysicalTotal > 0);
+
+            return static_cast<float>(info.PhysicalAvailable) / static_cast<float>(info.PhysicalTotal);
         }
 #endif
-        return 0.0f;  // unsupported platform
+        return 0.0f;  // unsupported platform or fallback
     }
 
     [[nodiscard]] auto eval(node_ptr const& v, std::vector<bool> const& as) const -> V

@@ -86,11 +86,11 @@ struct comp
 // Constants
 // =====================================================================================================================
 
-auto inline constexpr P1 = 12583037;  // prime
+inline auto constexpr P1 = 12583037;  // prime
 
-auto inline constexpr P2 = 4256383;
+inline auto constexpr P2 = 4256383;
 
-auto inline constexpr P3 = 741563;
+inline auto constexpr P3 = 741563;
 
 // =====================================================================================================================
 // Functions
@@ -98,11 +98,11 @@ auto inline constexpr P3 = 741563;
 
 template <typename T, typename Callable>
 requires std::integral<T>
-auto inline parallel_for(T const a, T const b, Callable func)
+inline auto parallel_for(T const a, T const b, Callable func)
 {
     assert(b >= a);
 
-    auto static const n = std::thread::hardware_concurrency();
+    static auto const n = std::thread::hardware_concurrency();
 
     assert(n > 0);
 
@@ -138,7 +138,7 @@ auto inline parallel_for(T const a, T const b, Callable func)
     }
 }
 
-auto inline replace_all(std::string& str, std::string_view from, std::string_view to)
+inline auto replace_all(std::string& str, std::string_view from, std::string_view to)
 {
     assert(!from.empty());
 

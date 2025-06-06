@@ -46,9 +46,9 @@ class operation  // for caching
 
     auto operator=(operation&&) noexcept -> operation& = default;
 
-    [[nodiscard]] auto virtual hash() const -> std::size_t = 0;  // computes the hash code
+    [[nodiscard]] virtual auto hash() const -> std::size_t = 0;  // computes the hash code
 
-    [[nodiscard]] auto virtual has_same_input(operation const&) const -> bool = 0;  // compares inputs
+    [[nodiscard]] virtual auto has_same_input(operation const&) const -> bool = 0;  // compares inputs
 };
 
 }  // namespace freddy::detail
