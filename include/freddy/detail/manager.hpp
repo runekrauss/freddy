@@ -822,8 +822,7 @@ class manager
     }
 
     template <typename T>
-    auto foa(T&& obj, boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>& ut,
-             [[maybe_unused]] std::int32_t const lvl)
+    auto foa(T&& obj, boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>& ut, std::int32_t const lvl)
     {  // find or add node/edge
         assert(lvl >= 0);
         assert(lvl <= var_count());
@@ -833,7 +832,7 @@ class manager
         {
             if (ut.size() == ut.max_load())
             {  // make sure that at least one more node/edge can be inserted
-                gc();
+                gc(0, lvl);
                 if (ut.load_factor() <= ut.max_load_factor() * (1.0f - config::dead_factor))
                 {
                     ut.rehash(static_cast<std::size_t>(std::ceil(0.5f * ut.bucket_count())));
