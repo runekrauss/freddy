@@ -45,6 +45,5 @@ PackConstructorInitializers: Never
 PointerAlignment: Left
 SpacesBeforeTrailingComments: 2
 SpacesInContainerLiterals: false
-Standard: Auto
 TabWidth: 4
 ...
