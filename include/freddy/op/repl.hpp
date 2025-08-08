@@ -8,7 +8,6 @@
 
 #include <cassert>     // assert
 #include <functional>  // std::hash
-#include <memory>      // std::shared_ptr
 #include <utility>     // std::move
 
 // *********************************************************************************************************************
@@ -26,34 +25,42 @@ template <typename E, typename V>
 class repl : public detail::operation  // 1-path replacement
 {
   public:
-    using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
-
-    repl(edge_ptr f, bool const a) :
-            // for finding a cache result based on replacement input
+    // for finding a cache result based on replacement input
+    repl(detail::edge_ptr<E, V> f, bool const a) :
             f{std::move(f)},
             a{a}
     {
         assert(this->f);
     }
 
-    edge_ptr r;  // replacement result
+    auto result() noexcept -> detail::edge_ptr<E, V>&
+    {
+        return r;
+    }
+
+    [[nodiscard]] auto result() const noexcept -> detail::edge_ptr<E, V> const&
+    {
+        return r;
+    }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<edge_ptr>()(f) * detail::P1 + std::hash<bool>()(a) * detail::P2;
+        return std::hash<detail::edge_ptr<E, V>>()(f) * detail::P1 + std::hash<bool>()(a) * detail::P2;
     }
 
-    [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
+    [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
     {
-        auto other = static_cast<repl const&>(op);
+        auto& other = static_cast<repl const&>(op);
 
         return f == other.f && a == other.a;
     }
 
-    edge_ptr f;  // instance for the replacement
+    detail::edge_ptr<E, V> f;  // instance for the replacement
 
     bool a;  // current evaluation
+
+    detail::edge_ptr<E, V> r;  // replacement result
 };
 
 }  // namespace freddy::op

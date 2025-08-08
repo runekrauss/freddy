@@ -4,7 +4,7 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "edge.hpp"  // as DD operations are normally implemented using edges
+#include "edge.hpp"  // as DD operations are normally implemented using edges/nodes
 
 #include <cstddef>   // std::size_t
 #include <typeinfo>  // typeid
@@ -23,32 +23,32 @@ namespace freddy::detail
 class operation  // for caching
 {
   public:
-    auto operator()() const
+    auto operator()() const noexcept(noexcept(hash()))
     {  // avoid an identical hash with the same input but different operation
         return typeid(*this).hash_code() ^ hash();
     }
 
-    auto friend operator==(operation const& lhs, operation const& rhs)
+    friend auto operator==(operation const& lhs, operation const& rhs) noexcept(noexcept(lhs.equals(rhs)))
     {
-        return typeid(lhs) == typeid(rhs) && lhs.has_same_input(rhs);
+        return typeid(lhs) == typeid(rhs) && lhs.equals(rhs);
     }
+
+    operation(operation const&) = delete;
+
+    auto operator=(operation const&) = delete;
+
+    auto operator=(operation&&) = delete;  // since an operation is to be written directly to the CT
 
     virtual ~operation() noexcept = default;
 
   protected:
-    operation() = default;
-
-    operation(operation const&) = default;
+    operation() noexcept = default;
 
     operation(operation&&) noexcept = default;
 
-    auto operator=(operation const&) -> operation& = default;
-
-    auto operator=(operation&&) noexcept -> operation& = default;
-
     [[nodiscard]] virtual auto hash() const -> std::size_t = 0;  // computes the hash code
 
-    [[nodiscard]] virtual auto has_same_input(operation const&) const -> bool = 0;  // compares inputs
+    [[nodiscard]] virtual auto equals(operation const&) const -> bool = 0;  // compares inputs
 };
 
 }  // namespace freddy::detail

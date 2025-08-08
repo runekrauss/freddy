@@ -7,9 +7,8 @@
 #include "freddy/detail/operation.hpp"  // detail::operation
 
 #include <cassert>     // assert
-#include <cstdint>     // std::int32_t
 #include <functional>  // std::hash
-#include <memory>      // std::shared_ptr
+#include <tuple>       // std::tie
 #include <utility>     // std::move
 
 // *********************************************************************************************************************
@@ -27,39 +26,46 @@ template <typename E, typename V>
 class restr : public detail::operation  // variable substitution
 {
   public:
-    using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
-
-    restr(edge_ptr f, std::int32_t const x, bool const a) :
-            // for finding a cache result based on substitution input
+    // for finding a cache result based on substitution input
+    restr(detail::edge_ptr<E, V> f, detail::var_index const x, bool const a) :
             f{std::move(f)},
             x{x},
             a{a}
     {
         assert(this->f);
-        assert(x >= 0);
     }
 
-    edge_ptr r;  // substitution result
+    auto result() noexcept -> detail::edge_ptr<E, V>&
+    {
+        return r;
+    }
+
+    [[nodiscard]] auto result() const noexcept -> detail::edge_ptr<E, V> const&
+    {
+        return r;
+    }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return (std::hash<edge_ptr>()(f) + std::hash<std::int32_t>()(x)) * detail::P1 +
+        return (std::hash<detail::edge_ptr<E, V>>()(f) + std::hash<detail::var_index>()(x)) * detail::P1 +
                std::hash<bool>()(a) * detail::P2;
     }
 
-    [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
+    [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
     {
-        auto other = static_cast<restr const&>(op);
+        auto& other = static_cast<restr const&>(op);
 
-        return f == other.f && x == other.x && a == other.a;
+        return std::tie(f, x, a) == std::tie(other.f, other.x, other.a);
     }
 
-    edge_ptr f;  // substitution operand
+    detail::edge_ptr<E, V> f;  // substitution operand
 
-    std::int32_t x;  // variable to assign
+    detail::var_index x;  // variable to assign
 
     bool a;  // truth value for the variable
+
+    detail::edge_ptr<E, V> r;  // substitution result
 };
 
 }  // namespace freddy::op

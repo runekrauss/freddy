@@ -5,8 +5,8 @@
 // *********************************************************************************************************************
 
 #include "freddy/detail/manager.hpp"  // detail::manager
-#include "freddy/op/add.hpp"          // op::add
 #include "freddy/op/mul.hpp"          // op::mul
+#include "freddy/op/plus.hpp"         // op::plus
 
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
@@ -114,21 +114,21 @@ class bmd  // binary moment diagram
     {
         assert(f);
 
-        return f->v == g.f->v;
+        return f->ch() == g.f->ch();
     }
 
     [[nodiscard]] auto weight() const noexcept
     {
         assert(f);
 
-        return f->w;
+        return f->weight();
     }
 
     [[nodiscard]] auto is_const() const noexcept
     {
         assert(f);
 
-        return f->v->is_const();
+        return f->ch()->is_const();
     }
 
     [[nodiscard]] auto is_zero() const noexcept;
@@ -141,7 +141,7 @@ class bmd  // binary moment diagram
     {
         assert(!is_const());
 
-        return f->v->br().x;
+        return f->ch()->br().x;
     }
 
     [[nodiscard]] auto high() const;
@@ -200,8 +200,8 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     bmd_manager() :
             manager{tmls()}
     {
-        consts.push_back(make_const(2, 1));
-        consts.push_back(make_const(-1, 1));
+        make_const(2, 1, true);
+        make_const(-1, 1, true);
     }
 
     auto var(std::string_view l = {})
@@ -212,9 +212,9 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     auto var(std::int32_t const i) noexcept
     {
         assert(i >= 0);
-        assert(i < var_count());
+        //assert(i < var_count());
 
-        return bmd{vars[i], this};
+        return bmd{get_var(i), this};
     }
 
     auto constant(std::int32_t const w)
@@ -224,17 +224,17 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
 
     auto zero() noexcept
     {
-        return bmd{consts[0], this};
+        return bmd{get_const(0), this};
     }
 
     auto one() noexcept
     {
-        return bmd{consts[1], this};
+        return bmd{get_const(1), this};
     }
 
     auto two() noexcept
     {
-        return bmd{consts[2], this};
+        return bmd{get_const(2), this};
     }
 
     [[nodiscard]] auto size(std::vector<bmd> const& fs) const
@@ -251,10 +251,10 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
 
     auto weighted_sum(std::vector<bmd> const& fs)
     {
-        auto r = consts[0];
+        auto r = get_const(0);
         for (decltype(fs.size()) i = 0; i < fs.size(); ++i)
         {  // LSB...MSB
-            r = add(r, mul(make_const(static_cast<std::int32_t>(std::pow(2, i)), 1), fs[i].f));
+            r = plus(r, mul(make_const(static_cast<std::int32_t>(std::pow(2, i)), 1), fs[i].f));
         }
         return bmd{r, this};
     }
@@ -263,8 +263,8 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     {
         assert(!fs.empty());
 
-        return bmd{add(apply(static_cast<std::int32_t>(-std::pow(2, fs.size() - 1)), fs.back().f),
-                       weighted_sum({fs.begin(), fs.end() - 1}).f),
+        return bmd{plus(apply(static_cast<std::int32_t>(-std::pow(2, fs.size() - 1)), fs.back().f),
+                        weighted_sum({fs.begin(), fs.end() - 1}).f),
                    this};
     }
 
@@ -282,7 +282,8 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         assert(f);
         assert(g);
 
-        return g->w < 0 || (f->w < 0 && g->w == 0) ? -std::gcd(f->w, g->w) : std::gcd(f->w, g->w);
+        return g->weight() < 0 || (f->weight() < 0 && g->weight() == 0) ? -std::gcd(f->weight(), g->weight())
+                                                                        : std::gcd(f->weight(), g->weight());
     }
 
     static auto tmls() -> std::array<edge_ptr, 2>
@@ -306,7 +307,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     {
         assert(f);
 
-        return f == consts[0] ? f : mul(consts[3], f);
+        return f == get_const(0) ? f : mul(get_const(3), f);
     }
 
     auto sub(edge_ptr const& f, edge_ptr const& g)
@@ -314,7 +315,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         assert(f);
         assert(g);
 
-        return add(f, neg(g));
+        return plus(f, neg(g));
     }
 
     auto antiv(edge_ptr const& f, edge_ptr const& g)
@@ -322,7 +323,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         assert(f);
         assert(g);
 
-        return sub(add(f, g), mul(consts[2], mul(f, g)));
+        return sub(plus(f, g), mul(get_const(2), mul(f, g)));
     }
 
     auto apply(std::int32_t const& w, edge_ptr const& f) -> edge_ptr override
@@ -333,34 +334,34 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         {
             return f;
         }
-        if (w == 0 || f->w == 0)
+        if (w == 0 || f->weight() == 0)
         {
-            return consts[0];
+            return get_const(0);
         }
-        return uedge(comb(w, f->w), f->v);
+        return uedge(comb(w, f->weight()), f->ch());
     }
 
-    auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
+    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         assert(f);
         assert(g);
 
-        if (f == consts[0])
+        if (f == get_const(0))
         {
             return g;
         }
-        if (g == consts[0])
+        if (g == get_const(0))
         {
             return f;
         }
-        if (f->v == g->v)
+        if (f->ch() == g->ch())
         {
-            return f->w + g->w == 0 ? consts[0] : uedge(f->w + g->w, f->v);
+            return f->weight() + g->weight() == 0 ? get_const(0) : uedge(f->weight() + g->weight(), f->ch());
         }
 
         // increase the probability of reusing previously computed results (rearrange)
         std::int32_t w = 0;
-        if (std::abs(f->w) <= std::abs(g->w))
+        if (std::abs(f->weight()) <= std::abs(g->weight()))
         {
             std::swap(f, g);
             w = normw(f, g);
@@ -369,19 +370,19 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         {
             w = normw(g, f);
         }
-        f = uedge(f->w / w, f->v);
-        g = uedge(g->w / w, g->v);
+        f = uedge(f->weight() / w, f->ch());
+        g = uedge(g->weight() / w, g->ch());
 
-        op::add op{f, g};
+        op::plus op{f, g};
         if (auto const* const ent = cached(op))
         {
-            return apply(w, ent->r);
+            return apply(w, ent->result());
         }
 
         auto const x = top_var(f, g);
-        auto const r = make_branch(x, add(cof(f, x, true), cof(g, x, true)), add(cof(f, x, false), cof(g, x, false)));
+        auto const r = make_branch(x, plus(cof(f, x, true), cof(g, x, true)), plus(cof(f, x, false), cof(g, x, false)));
 
-        op.r = r;
+        op.result() = r;
         cache(std::move(op));
 
         return apply(w, r);
@@ -401,7 +402,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     {
         assert(f);
 
-        return sub(consts[1], f);
+        return sub(get_const(1), f);
     }
 
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -417,24 +418,24 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         assert(f);
         assert(g);
 
-        if (f == consts[0])
+        if (f == get_const(0))
         {
             return g;
         }
-        if (g == consts[0])
+        if (g == get_const(0))
         {
             return f;
         }
-        return sub(add(f, g), mul(f, g));
+        return sub(plus(f, g), mul(f, g));
     }
 
-    auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
+    auto make_branch(detail::var_index const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
     {
         assert(x < var_count());
         assert(hi);
         assert(lo);
 
-        if (hi == consts[0])  // redundancy rule
+        if (hi == get_const(0))  // redundancy rule
         {
             return lo;
         }
@@ -443,7 +444,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
 
         assert(w != 0);
 
-        return w != 1 ? uedge(w, unode(x, uedge(hi->w / w, hi->v), uedge(lo->w / w, lo->v)))
+        return w != 1 ? uedge(w, unode(x, uedge(hi->weight() / w, hi->ch()), uedge(lo->weight() / w, lo->ch())))
                       : uedge(w, unode(x, hi, lo));
     }
 
@@ -457,42 +458,42 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
         assert(f);
         assert(g);
 
-        if (f == consts[0] || g == consts[0])
+        if (f == get_const(0) || g == get_const(0))
         {
-            return consts[0];
+            return get_const(0);
         }
-        if (f->v->is_const())
+        if (f->ch()->is_const())
         {
-            return apply(f->w, g);
+            return apply(f->weight(), g);
         }
-        if (g->v->is_const())
+        if (g->ch()->is_const())
         {
-            return apply(g->w, f);
+            return apply(g->weight(), f);
         }
 
         // rearrange
-        auto const w = f->w * g->w;
-        if (f->v->operator()() <= g->v->operator()())
+        auto const w = f->weight() * g->weight();
+        if (f->ch()->operator()() <= g->ch()->operator()())
         {
             std::swap(f, g);
         }
-        f = uedge(1, f->v);
-        g = uedge(1, g->v);
+        f = uedge(1, f->ch());
+        g = uedge(1, g->ch());
 
         op::mul op{f, g};
         if (auto const* const ent = cached(op))
         {
-            return apply(w, ent->r);
+            return apply(w, ent->result());
         }
 
         auto const x = top_var(f, g);
         auto const r =
             make_branch(x,
-                        add(mul(cof(f, x, true), cof(g, x, true)),
-                            add(mul(cof(f, x, true), cof(g, x, false)), mul(cof(f, x, false), cof(g, x, true)))),
+                        plus(mul(cof(f, x, true), cof(g, x, true)),
+                             plus(mul(cof(f, x, true), cof(g, x, false)), mul(cof(f, x, false), cof(g, x, true)))),
                         mul(cof(f, x, false), cof(g, x, false)));
 
-        op.r = r;
+        op.result() = r;
         cache(std::move(op));
 
         return apply(w, r);
@@ -509,7 +510,7 @@ inline auto bmd::operator+=(bmd const& rhs) -> bmd&
     assert(mgr);
     assert(mgr == rhs.mgr);
 
-    f = mgr->add(f, rhs.f);
+    f = mgr->plus(f, rhs.f);
     return *this;
 }
 
@@ -596,17 +597,17 @@ inline auto bmd::is_two() const noexcept
 inline auto bmd::high() const
 {
     assert(mgr);
-    assert(!f->v->is_const());
+    assert(!f->ch()->is_const());
 
-    return bmd{f->v->br().hi, mgr};
+    return bmd{f->ch()->br().hi, mgr};
 }
 
 inline auto bmd::low() const
 {
     assert(mgr);
-    assert(!f->v->is_const());
+    assert(!f->ch()->is_const());
 
-    return bmd{f->v->br().lo, mgr};
+    return bmd{f->ch()->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>

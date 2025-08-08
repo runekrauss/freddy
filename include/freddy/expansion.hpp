@@ -29,7 +29,7 @@ enum struct expansion : std::uint8_t
 // Functions
 // =====================================================================================================================
 
-auto constexpr to_string(expansion const t) noexcept
+constexpr auto to_string(expansion const t) noexcept
 {
     switch (t)
     {

@@ -1,78 +1,101 @@
-cmake_minimum_required(VERSION 3.25)
-project(freddy LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.20) # due to C++23
+project(FrEDDY LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD 23) # elifdef
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if(MSVC)
-    add_compile_options(/W4 /permissive-)
+  add_compile_options(/W4 /permissive-)
 else()
-    add_compile_options(-Wall -Wextra -pedantic)
-endif()
-
-option(FREDDY_STATS "Calculate statistics")
-if(FREDDY_STATS)
-    add_compile_definitions(BOOST_UNORDERED_ENABLE_STATS)
+  add_compile_options(-Wall -Wextra -pedantic)
 endif()
 
 add_library(freddy INTERFACE)
 target_include_directories(freddy INTERFACE include)
 
-find_package(Boost QUIET NO_MODULE)
+find_package(Boost 1.88.0 QUIET NO_MODULE) # for performance reasons
 if(NOT Boost_FOUND)
-    include(FetchContent)
-    FetchContent_Declare(
-        boost_unordered  # so that Boost does not have to be fully downloaded and to speed up the compile time
-        GIT_REPOSITORY https://github.com/MikePopoloski/boost_unordered
-        GIT_TAG v1.87.1
-        GIT_SHALLOW 1
-        SYSTEM
-    )
-    FetchContent_MakeAvailable(boost_unordered)
+  include(FetchContent) # FetchContent_Declare
 
-    target_link_libraries(freddy INTERFACE boost_unordered)
+  message(STATUS "Fetching/Preparing Boost 1.88.0 modules")
+
+  set(BOOST_ENABLE_CMAKE ON)
+  set(BOOST_INCLUDE_LIBRARIES smart_ptr unordered variant2) # dummies to not configure all Boost modules
+
+  FetchContent_Declare(Boost
+    URL https://github.com/boostorg/boost/releases/download/boost-1.88.0/boost-1.88.0-cmake.tar.xz
+    URL_HASH SHA256=f48b48390380cfb94a629872346e3a81370dc498896f16019ade727ab72eb1ec
+    DOWNLOAD_EXTRACT_TIMESTAMP ON
+  )
+  FetchContent_MakeAvailable(Boost)
+
+  message(STATUS "Fetching/Preparing Boost 1.88.0 modules - done")
+
+  target_include_directories(freddy SYSTEM INTERFACE
+    ${Boost_SOURCE_DIR}/libs/smart_ptr/include
+    ${Boost_SOURCE_DIR}/libs/unordered/include
+    ${Boost_SOURCE_DIR}/libs/variant2/include
+    # their dependencies
+    ${Boost_SOURCE_DIR}/libs/assert/include
+    ${Boost_SOURCE_DIR}/libs/config/include
+    ${Boost_SOURCE_DIR}/libs/container_hash/include
+    ${Boost_SOURCE_DIR}/libs/core/include
+    ${Boost_SOURCE_DIR}/libs/describe/include
+    ${Boost_SOURCE_DIR}/libs/mp11/include
+    ${Boost_SOURCE_DIR}/libs/predef/include
+    ${Boost_SOURCE_DIR}/libs/static_assert/include
+    ${Boost_SOURCE_DIR}/libs/throw_exception/include
+  )
+endif()
+
+option(FREDDY_STATS "Calculate statistics")
+if(FREDDY_STATS)
+  target_compile_definitions(freddy INTERFACE BOOST_UNORDERED_ENABLE_STATS)
 endif()
 
 option(CLANGTIDY "Check code")
 if(CLANGTIDY)
-    find_program(CLANG_TIDY clang-tidy REQUIRED)
-    set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY} -extra-arg=-Wno-unknown-warning-option -fix-errors ${CMAKE_CXX_CLANG_TIDY})
+  find_program(CLANG_TIDY clang-tidy REQUIRED)
+  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY} -extra-arg=-Wno-unknown-warning-option) # -fix-errors
 endif()
 
 option(FREDDY_TEST "Build tests")
 if(FREDDY_TEST)
-    find_package(Catch2 QUIET)
-    if(NOT Catch2_FOUND)
-        include(FetchContent)
-        FetchContent_Declare(
-            Catch2
-            GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-            GIT_TAG v3.8.1
-            GIT_SHALLOW 1
-            SYSTEM
-        )
-        FetchContent_MakeAvailable(Catch2)
+  find_package(Catch2 3.9.0 QUIET) # for the sake of robustness
+  if(NOT Catch2_FOUND)
+    include(FetchContent) # FetchContent_MakeAvailable
 
-        set_target_properties(Catch2 PROPERTIES CXX_CLANG_TIDY "")
-        set_target_properties(Catch2WithMain PROPERTIES CXX_CLANG_TIDY "")
-    endif()
+    message(STATUS "Fetching/Preparing Catch2 3.9.0")
 
-    if(NOT WIN32)
-        set(CMAKE_CXX_FLAGS "-fprofile-arcs -ftest-coverage")
-    endif()
+    FetchContent_Declare(Catch2
+      GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+      GIT_TAG v3.9.0
+      GIT_SHALLOW 1
+      SYSTEM
+    )
+    FetchContent_MakeAvailable(Catch2)
 
-    include(CTest)
-    include(Catch)
-    message(STATUS "Building tests")
-    file(GLOB FILENAMES test/**/*.cpp)
-    foreach(FILE IN LISTS FILENAMES)
-        get_filename_component(DIR_PATH ${FILE} PATH)
-        get_filename_component(DIR_NAME ${DIR_PATH} NAME)
-        get_filename_component(FILE_NAME ${FILE} NAME_WE)
-        set(TEST_NAME ${DIR_NAME}_${FILE_NAME})
-        add_executable(${TEST_NAME} ${FILE})
-        target_link_libraries(${TEST_NAME} PRIVATE Catch2::Catch2WithMain freddy)
-        #add_test(NAME ${TEST_NAME} COMMAND ${TEST_NAME})
-        catch_discover_tests(${TEST_NAME})
-    endforeach()
+    set_target_properties(Catch2 PROPERTIES CXX_CLANG_TIDY "")
+    set_target_properties(Catch2WithMain PROPERTIES CXX_CLANG_TIDY "")
+
+    message(STATUS "Fetching/Preparing Catch2 3.9.0 - done")
+  endif()
+
+  if(NOT WIN32)
+    set(CMAKE_CXX_FLAGS "-fprofile-arcs -ftest-coverage")
+  endif()
+
+  enable_testing()
+  include(Catch) # catch_discover_tests
+
+  file(GLOB FILENAMES test/**/*.cpp)
+  foreach(FILE IN LISTS FILENAMES)
+    get_filename_component(DIR_PATH ${FILE} PATH)
+    get_filename_component(DIR_NAME ${DIR_PATH} NAME)
+    get_filename_component(FILE_NAME ${FILE} NAME_WE)
+    set(TEST_NAME ${DIR_NAME}-${FILE_NAME})
+    add_executable(${TEST_NAME} ${FILE})
+    target_link_libraries(${TEST_NAME} PRIVATE Catch2::Catch2WithMain freddy)
+    catch_discover_tests(${TEST_NAME}) # instead of add_test for a more detailed overview
+  endforeach()
 endif()

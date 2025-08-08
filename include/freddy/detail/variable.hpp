@@ -6,16 +6,19 @@
 
 #include "common.hpp"            // comp
 #include "edge.hpp"              // edge
-#include "freddy/config.hpp"     // config::ut_size
 #include "freddy/expansion.hpp"  // expansion
 #include "node.hpp"              // node
 
+#include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
+#include <boost/variant2/variant.hpp>
 
 #include <cassert>      // assert
+#include <cstddef>      // std::size_t
 #include <memory>       // std::shared_ptr
 #include <string>       // std::string
 #include <string_view>  // std::string_view
+#include <type_traits>  // std::is_nothrow_move_constructible_v
 
 // *********************************************************************************************************************
 // Namespaces
@@ -28,26 +31,45 @@ namespace freddy::detail
 // Types
 // =====================================================================================================================
 
+template <typename T>
+using utable = boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>;  // unique table
+
 template <typename E, typename V>
-struct variable
+class variable final
 {
-    variable(expansion const t, std::string_view l) :
+  public:
+    variable(expansion const t, std::string_view l, std::size_t const ut_size = {}) :
             t{t},
             l{l}
     {
         assert(!l.empty());  // for presentation reasons
 
-        et.reserve(config::ut_size);  // rehash(ceil(config::ut_size / 0.875))
-        nt.reserve(config::ut_size);
+        et.reserve(ut_size);  // rehash(ceil(ut_size / 0.875))
+        nt.reserve(ut_size);
     }
 
-    expansion t;
+    variable(variable const&) = delete;
 
-    std::string l;  // name
+    variable(variable&&) noexcept(std::is_nothrow_move_constructible_v<utable<edge<E, V>>> &&
+                                  std::is_nothrow_move_constructible_v<utable<node<E, V>>>) = default;
 
-    boost::unordered_flat_set<std::shared_ptr<edge<E, V>>, hash, comp> et;
+    auto operator=(variable const&) = delete;
 
-    boost::unordered_flat_set<std::shared_ptr<node<E, V>>, hash, comp> nt;
+    auto operator=(variable&&) = delete;  // as a variable should uniquely belong to a list
+
+    ~variable() noexcept(std::is_nothrow_destructible_v<utable<edge<E, V>>> &&
+                         std::is_nothrow_destructible_v<utable<node<E, V>>>) = default;
+
+  private:
+    friend manager<E, V>;
+
+    expansion t;  // decomposition type
+
+    std::string l;  // (immutable) name
+
+    utable<edge<E, V>> et;
+
+    utable<node<E, V>> nt;
 };
 
 }  // namespace freddy::detail

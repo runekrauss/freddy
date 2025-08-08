@@ -23,7 +23,7 @@ namespace
 // Functions
 // =====================================================================================================================
 
-auto enc(std::int32_t const n, dd::bdd_manager& mgr)
+auto enc(std::int32_t const n, dd::bdd_manager& mgr)  // NOLINT(readability-function-cognitive-complexity)
 {
     assert(n > 0);
 

@@ -90,21 +90,21 @@ class bhd  // binary hybrid diagram
     {
         assert(f);
 
-        return f->v == g.f->v;
+        return f->ch() == g.f->ch();
     }
 
     [[nodiscard]] auto is_complemented() const noexcept
     {
         assert(f);
 
-        return f->w;
+        return f->weight();
     }
 
     [[nodiscard]] auto is_const() const noexcept
     {
         assert(f);
 
-        return f->v->is_const();
+        return f->ch()->is_const();
     }
 
     [[nodiscard]] auto is_zero() const noexcept;
@@ -117,7 +117,7 @@ class bhd  // binary hybrid diagram
     {
         assert(!is_const());
 
-        return f->v->br().x;
+        return f->ch()->br().x;
     }
 
     [[nodiscard]] auto high() const;
@@ -186,8 +186,8 @@ class bhd_manager : public detail::manager<bool, bool>
     bhd_manager() :
             manager{tmls()}
     {
-        consts.push_back(make_const(false, true));  // last node in EXP is treated as a constant
-        consts.push_back(make_const(true, true));   // for reasons of consistency
+        make_const(false, true, true);  // last node in EXP is treated as a constant
+        make_const(true, true, true);   // for reasons of consistency
     }
 
     bhd_manager(bhd_heuristic const heur, std::size_t const cost) :
@@ -212,24 +212,24 @@ class bhd_manager : public detail::manager<bool, bool>
     auto var(std::int32_t const i) noexcept
     {
         assert(i >= 0);
-        assert(i < var_count());
+        //assert(i < var_count());
 
-        return bhd{vars[i], this};
+        return bhd{get_var(i), this};
     }
 
     auto zero() noexcept
     {
-        return bhd{consts[0], this};
+        return bhd{get_const(0), this};
     }
 
     auto one() noexcept
     {
-        return bhd{consts[1], this};
+        return bhd{get_const(1), this};
     }
 
     auto exp() noexcept
     {
-        return bhd{consts[2], this};
+        return bhd{get_const(2), this};
     }
 
     [[nodiscard]] auto size(std::vector<bhd> const& fs) const
@@ -277,7 +277,7 @@ class bhd_manager : public detail::manager<bool, bool>
 
     [[nodiscard]] auto is_exp(edge_ptr const& f) const noexcept
     {
-        return f == consts[2] || f == consts[3];
+        return f == get_const(2) || f == get_const(3);
     }
 
     auto sat(edge_ptr const& f, std::vector<bool>& path, bool const m, std::vector<std::vector<bool>>& sols) const
@@ -290,7 +290,7 @@ class bhd_manager : public detail::manager<bool, bool>
             return;
         }
 
-        if (f->v->is_const())
+        if (f->ch()->is_const())
         {
             if (m)
             {  // complement bit is odd => satisfying solution
@@ -299,11 +299,11 @@ class bhd_manager : public detail::manager<bool, bool>
             return;
         }
 
-        path[f->v->br().x] = false;  // truth value is independent of complemented edges
-        sat(f->v->br().lo, path, comb(m, f->v->br().lo->w), sols);
+        path[f->ch()->br().x] = false;  // truth value is independent of complemented edges
+        sat(f->ch()->br().lo, path, comb(m, f->ch()->br().lo->weight()), sols);
 
-        path[f->v->br().x] = true;
-        sat(f->v->br().hi, path, comb(m, f->v->br().hi->w), sols);
+        path[f->ch()->br().x] = true;
+        sat(f->ch()->br().hi, path, comb(m, f->ch()->br().hi->weight()), sols);
     }
 
     [[nodiscard]] auto sat(edge_ptr const& f) const
@@ -312,14 +312,14 @@ class bhd_manager : public detail::manager<bool, bool>
 
         std::vector<std::vector<bool>> sols;  // initial variable ordering applies
 
-        if (f == consts[1])
+        if (f == get_const(1))
         {
             sols.emplace_back(var_count());  // assignment consisting of only "false" is one solution
         }
-        else if (f != consts[0] && !is_exp(f))
+        else if (f != get_const(0) && !is_exp(f))
         {                                         // collect solutions
             std::vector<bool> path(var_count());  // maximum depth
-            sat(f, path, f->w, sols);
+            sat(f, path, f->weight(), sols);
         }
 
         return sols;
@@ -345,18 +345,18 @@ class bhd_manager : public detail::manager<bool, bool>
             return;
         }
 
-        if (f->v->is_const())
+        if (f->ch()->is_const())
         {
             return;
         }
 
-        path[f->v->br().x] = false;
-        uc(f->v->br().lo, path, uclauses);
+        path[f->ch()->br().x] = false;
+        uc(f->ch()->br().lo, path, uclauses);
 
-        path[f->v->br().x] = true;
-        uc(f->v->br().hi, path, uclauses);
+        path[f->ch()->br().x] = true;
+        uc(f->ch()->br().hi, path, uclauses);
 
-        path[f->v->br().x].reset();
+        path[f->ch()->br().x].reset();
     }
 
     auto uc(edge_ptr const& f)
@@ -385,57 +385,57 @@ class bhd_manager : public detail::manager<bool, bool>
             return f;
         }
 
-        if (f->v->is_const())
+        if (f->ch()->is_const())
         {
             if (m)
             {
-                return f == consts[0] ? consts[2] : f;
+                return f == get_const(0) ? get_const(2) : f;
             }
 
-            return f == consts[0] ? f : consts[2];
+            return f == get_const(0) ? f : get_const(2);
         }
 
         op::repl op{f, m};
         if (auto const* const ent = cached(op))
         {
-            return ent->r;
+            return ent->result();
         }
 
-        auto hi = f->w ? repl(f->v->br().hi, !m) : repl(f->v->br().hi, m);
-        auto lo = f->w ? repl(f->v->br().lo, !m) : repl(f->v->br().lo, m);
+        auto hi = f->weight() ? repl(f->ch()->br().hi, !m) : repl(f->ch()->br().hi, m);
+        auto lo = f->weight() ? repl(f->ch()->br().lo, !m) : repl(f->ch()->br().lo, m);
         if (hi == lo)
         {
-            op.r = hi;
-            return cache(std::move(op))->r;
+            op.result() = hi;
+            return cache(std::move(op))->result();
         }
 
         // normalize if needed
-        auto w = lo->w;
+        auto w = lo->weight();
         if (w)
         {
             hi = complement(hi);
             lo = complement(lo);
         }
-        w = f->w ? !w : w;  // due to bit flipping
+        w = f->weight() ? !w : w;  // due to bit flipping
 
-        op.r = uedge(w, unode(f->v->br().x, std::move(hi), std::move(lo)));
-        return cache(std::move(op))->r;
+        op.result() = uedge(w, unode(f->ch()->br().x, std::move(hi), std::move(lo)));
+        return cache(std::move(op))->result();
     }
 
-    auto compr(edge_ptr const& f, edge_ptr const& g, std::int32_t const x, bool const a)
+    auto compr(edge_ptr const& f, edge_ptr const& g, detail::var_index const x, bool const a)
     {  // EXPs remain at the same level for validation reasons
         assert(f);
         assert(g);
-        assert(x == top_var(f, g));
+        //assert(x == top_var(f, g));
 
         auto gx = cof(g, x, a);
-        if (is_exp(gx) && !f->v->is_const() && f->v->br().x != x)
+        if (is_exp(gx) && !f->ch()->is_const() && f->ch()->br().x != x)
         {  // f is below g => hide in EXP
             return gx;
         }
 
         auto fx = cof(f, x, a);
-        if (is_exp(fx) && !g->v->is_const() && g->v->br().x != x)
+        if (is_exp(fx) && !g->ch()->is_const() && g->ch()->br().x != x)
         {
             return fx;
         }
@@ -447,7 +447,7 @@ class bhd_manager : public detail::manager<bool, bool>
     {  // conjunction without making EXPs
         assert(f);
         assert(g);
-        assert(x == top_var(f, g));
+        //assert(x == top_var(f, g));
 
         return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
     }
@@ -456,22 +456,22 @@ class bhd_manager : public detail::manager<bool, bool>
     {  // heuristic that makes EXPs from a predetermined BDD level
         assert(f);
         assert(g);
-        assert(x == top_var(f, g));
+        //assert(x == top_var(f, g));
 
-        if (f->v->is_const() || std::cmp_less(f->v->br().x, cost))
+        if (f->ch()->is_const() || std::cmp_less(f->ch()->br().x, cost))
         {
-            return g->v->is_const() || std::cmp_less(g->v->br().x, cost)
+            return g->ch()->is_const() || std::cmp_less(g->ch()->br().x, cost)
                        ? make_branch(x, compr(f, g, x, true), compr(f, g, x, false))
                        : repl(f);
         }
-        return g->v->is_const() || std::cmp_less(g->v->br().x, cost) ? repl(g) : consts[2];
+        return g->ch()->is_const() || std::cmp_less(g->ch()->br().x, cost) ? repl(g) : get_const(2);
     }
 
     auto mem_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
     {  // heuristic that makes EXPs when a peak BDD size (nodes and edges) in KB is reached
         assert(f);
         assert(g);
-        assert(x == top_var(f, g));
+        //assert(x == top_var(f, g));
 
         if (((static_cast<float>(node_count()) * sizeof(detail::node<bool, bool>) +
               static_cast<float>(edge_count()) * sizeof(detail::edge<bool, bool>)) /
@@ -482,7 +482,7 @@ class bhd_manager : public detail::manager<bool, bool>
         return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
     }
 
-    auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
+    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         assert(f);
         assert(g);
@@ -504,7 +504,7 @@ class bhd_manager : public detail::manager<bool, bool>
     {
         assert(f);
 
-        return !f->w ? uedge(true, f->v) : uedge(false, f->v);
+        return !f->weight() ? uedge(true, f->ch()) : uedge(false, f->ch());
     }
 
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -513,34 +513,34 @@ class bhd_manager : public detail::manager<bool, bool>
         assert(g);
 
         // constant terminal cases
-        if (f == consts[0] || g == consts[0])
+        if (f == get_const(0) || g == get_const(0))
         {
-            return consts[0];
+            return get_const(0);
         }
-        if (f == consts[1])
+        if (f == get_const(1))
         {
             return g;
         }
-        if (g == consts[1])
+        if (g == get_const(1))
         {
             return f;
         }
-        if (f->v == g->v)
+        if (f->ch() == g->ch())
         {
-            if (f->w == g->w)
+            if (f->weight() == g->weight())
             {
                 return f;
             }
             if (!has_const(f, true))
             {  // f & !f = 0
-                return consts[0];
+                return get_const(0);
             }  // EXP is never removed
         }
 
         // EXP terminal cases
         if (is_exp(f))
         {
-            return is_exp(g) ? consts[2] : repl(g);
+            return is_exp(g) ? get_const(2) : repl(g);
         }
         if (is_exp(g))
         {
@@ -550,11 +550,11 @@ class bhd_manager : public detail::manager<bool, bool>
         op::conj op{f, g};
         if (auto const* const ent = cached(op))
         {
-            return ent->r;
+            return ent->result();
         }
 
-        op.r = heur(f, g, top_var(f, g));
-        return cache(std::move(op))->r;
+        op.result() = heur(f, g, top_var(f, g));
+        return cache(std::move(op))->result();
     }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -565,7 +565,7 @@ class bhd_manager : public detail::manager<bool, bool>
         return complement(conj(complement(f), complement(g)));
     }
 
-    auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
+    auto make_branch(detail::var_index const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
     {
         assert(x < var_count());
         assert(hi);
@@ -576,7 +576,7 @@ class bhd_manager : public detail::manager<bool, bool>
             return hi;
         }
 
-        auto const w = lo->w;
+        auto const w = lo->weight();
         return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
     }
 
@@ -599,7 +599,7 @@ class bhd_manager : public detail::manager<bool, bool>
     }
 
     // heuristic conjunction used to decrease BDDs
-    std::function<edge_ptr(edge_ptr const&, edge_ptr const&, std::int32_t)> heur{
+    std::function<edge_ptr(edge_ptr const&, edge_ptr const&, detail::var_index)> heur{
         [this](auto const& f, auto const& g, auto const x) { return no_heur(f, g, x); }};
 
     std::size_t cost{};  // determine when EXPs are made depending on the heuristic
@@ -635,7 +635,7 @@ inline auto bhd::operator^=(bhd const& rhs) -> bhd&
     assert(mgr);
     assert(mgr == rhs.mgr);
 
-    f = mgr->add(f, rhs.f);
+    f = mgr->plus(f, rhs.f);
     return *this;
 }
 
@@ -663,17 +663,17 @@ inline auto bhd::is_exp() const noexcept
 inline auto bhd::high() const
 {
     assert(mgr);
-    assert(!f->v->is_const());
+    assert(!f->ch()->is_const());
 
-    return bhd{f->v->br().hi, mgr};
+    return bhd{f->ch()->br().hi, mgr};
 }
 
 inline auto bhd::low() const
 {
     assert(mgr);
-    assert(!f->v->is_const());
+    assert(!f->ch()->is_const());
 
-    return bhd{f->v->br().lo, mgr};
+    return bhd{f->ch()->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>
@@ -719,11 +719,11 @@ inline auto bhd::eval(std::vector<bool> const& as) const noexcept
             {
                 return true;
             }
-            if (f->v->is_const())
+            if (f->ch()->is_const())
             {
                 return false;
             }
-            return as[f->v->br().x] ? self(self, f->v->br().hi) : self(self, f->v->br().lo);
+            return as[f->ch()->br().x] ? self(self, f->ch()->br().hi) : self(self, f->ch()->br().lo);
         };
 
         return trv(trv, f);
