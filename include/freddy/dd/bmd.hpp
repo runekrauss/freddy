@@ -212,7 +212,7 @@ class bmd_manager : public detail::manager<std::int32_t, std::int32_t>
     auto var(std::int32_t const i) noexcept
     {
         assert(i >= 0);
-        //assert(i < var_count());
+        // assert(i < var_count());
 
         return bmd{get_var(i), this};
     }

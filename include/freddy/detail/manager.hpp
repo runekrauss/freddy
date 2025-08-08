@@ -330,7 +330,7 @@ class manager
         std::vector<std::uint_fast32_t> ds(fs.size());
 
         parallel_for(decltype(ds.size()){0}, ds.size(), [&ds, &fs, this](std::size_t const i) {
-            //std::cout << std::this_thread::get_id() << std::endl;
+            // std::cout << std::this_thread::get_id() << std::endl;
             ds[i] = longest_path_rec(fs[i]);
         });
 

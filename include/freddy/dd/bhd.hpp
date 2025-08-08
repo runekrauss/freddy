@@ -212,7 +212,7 @@ class bhd_manager : public detail::manager<bool, bool>
     auto var(std::int32_t const i) noexcept
     {
         assert(i >= 0);
-        //assert(i < var_count());
+        // assert(i < var_count());
 
         return bhd{get_var(i), this};
     }
@@ -426,7 +426,7 @@ class bhd_manager : public detail::manager<bool, bool>
     {  // EXPs remain at the same level for validation reasons
         assert(f);
         assert(g);
-        //assert(x == top_var(f, g));
+        // assert(x == top_var(f, g));
 
         auto gx = cof(g, x, a);
         if (is_exp(gx) && !f->ch()->is_const() && f->ch()->br().x != x)
@@ -447,7 +447,7 @@ class bhd_manager : public detail::manager<bool, bool>
     {  // conjunction without making EXPs
         assert(f);
         assert(g);
-        //assert(x == top_var(f, g));
+        // assert(x == top_var(f, g));
 
         return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
     }
@@ -456,7 +456,7 @@ class bhd_manager : public detail::manager<bool, bool>
     {  // heuristic that makes EXPs from a predetermined BDD level
         assert(f);
         assert(g);
-        //assert(x == top_var(f, g));
+        // assert(x == top_var(f, g));
 
         if (f->ch()->is_const() || std::cmp_less(f->ch()->br().x, cost))
         {
@@ -471,7 +471,7 @@ class bhd_manager : public detail::manager<bool, bool>
     {  // heuristic that makes EXPs when a peak BDD size (nodes and edges) in KB is reached
         assert(f);
         assert(g);
-        //assert(x == top_var(f, g));
+        // assert(x == top_var(f, g));
 
         if (((static_cast<float>(node_count()) * sizeof(detail::node<bool, bool>) +
               static_cast<float>(edge_count()) * sizeof(detail::edge<bool, bool>)) /
