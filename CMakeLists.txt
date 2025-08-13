@@ -56,7 +56,7 @@ endif()
 option(CLANGTIDY "Check code")
 if(CLANGTIDY)
   find_program(CLANG_TIDY clang-tidy REQUIRED)
-  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY} -extra-arg=-Wno-unknown-warning-option) # -fix-errors
+  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY} -extra-arg=-Wno-unknown-warning-option ${CMAKE_CXX_CLANG_TIDY}) # -fix-errors
 endif()
 
 option(FREDDY_TEST "Build tests")
@@ -85,7 +85,7 @@ if(FREDDY_TEST)
     set(CMAKE_CXX_FLAGS "-fprofile-arcs -ftest-coverage")
   endif()
 
-  enable_testing()
+  include(CTest) # enable_testing() and for generating coverage information
   include(Catch) # catch_discover_tests
 
   file(GLOB FILENAMES test/**/*.cpp)

@@ -1,0 +1,106 @@
+name: CI/CD
+
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/ci-cd.yml'
+      - 'CMakeLists.txt'
+      - '.clang-format'
+      - '.clang-tidy'
+      - '**/*.cpp'
+      - '**/*.hpp'
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    name: ${{ matrix.os }} (${{ matrix.build_type }})
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: read
+    defaults:
+      run:
+        shell: bash # since the default shell on Windows runners was changed to PowerShell
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        build_type: [Debug, Release]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: vcpkg install boost-smart-ptr boost-unordered boost-variant2 catch2 # as caching is storage-intensive here
+
+      # should come after checkout
+      - name: Set up cache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.os }}-${{ matrix.build_type }}
+          max-size: 10G    # GitHub cache limit
+          variant: sccache # recommended for stable Windows support
+
+      - name: Configure project
+        run: |
+          args="cmake --no-warn-unused-cli
+            -B build/${{ matrix.build_type }}
+            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+            -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+            -DCMAKE_CXX_COMPILER_LAUNCHER=sccache
+            -DFREDDY_STATS=ON
+            -DFREDDY_TEST=ON"
+
+          if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.build_type }}" == "Debug" ]]; then
+            args+=" -DCLANGTIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'"
+          fi
+
+          cmake $args
+
+      - name: Build binaries
+        # Windows has a multi-config generator
+        run: >
+          cmake --build build/${{ matrix.build_type }}
+          --config ${{ matrix.build_type }}
+          -j3 # since all macOS machines offer at least 3 cores
+
+      - name: Run tests
+        if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Debug'
+        working-directory: ${{ github.workspace }}/build/${{ matrix.build_type }}
+        run: ctest --output-on-failure -j4
+
+      - name: Measure coverage
+        if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Debug'
+        working-directory: ${{ github.workspace }}/build/${{ matrix.build_type }}
+        run: |
+          cov=$(ctest -T Coverage | grep -o '[^ ]*%' | sed 's/%//')
+          if (( cov < 80 )); then
+            echo "Test coverage ($cov%) below 80%"
+            exit 1
+          fi
+
+  cd:
+    name: Code Formatting
+    runs-on: ubuntu-latest # since ClangFormat is pre-installed there
+    if: github.ref == 'refs/heads/main'
+    needs: ci
+    permissions:
+      contents: write # to be able to create a commit
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Format code
+        run: find . -iname '*.hpp' -o -iname '*.cpp' | xargs clang-format -i
+
+      - name: Push changes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git diff --exit-code || (git commit -a -m 'Format code' && git push)
