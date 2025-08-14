@@ -13,7 +13,7 @@ endif()
 add_library(freddy INTERFACE)
 target_include_directories(freddy INTERFACE include)
 
-find_package(Boost 1.88.0 QUIET NO_MODULE) # for performance reasons
+find_package(Boost QUIET NO_MODULE)
 if(NOT Boost_FOUND)
   include(FetchContent) # FetchContent_Declare
 
@@ -23,7 +23,7 @@ if(NOT Boost_FOUND)
   set(BOOST_INCLUDE_LIBRARIES smart_ptr unordered variant2) # dummies to not configure all Boost modules
 
   FetchContent_Declare(Boost
-    URL https://github.com/boostorg/boost/releases/download/boost-1.88.0/boost-1.88.0-cmake.tar.xz
+    URL https://github.com/boostorg/boost/releases/download/boost-1.88.0/boost-1.88.0-cmake.tar.xz # performance reasons
     URL_HASH SHA256=f48b48390380cfb94a629872346e3a81370dc498896f16019ade727ab72eb1ec
     DOWNLOAD_EXTRACT_TIMESTAMP ON
   )
@@ -61,7 +61,7 @@ endif()
 
 option(FREDDY_TEST "Build tests")
 if(FREDDY_TEST)
-  find_package(Catch2 3.9.0 QUIET) # for the sake of robustness
+  find_package(Catch2 QUIET)
   if(NOT Catch2_FOUND)
     include(FetchContent) # FetchContent_MakeAvailable
 
@@ -69,7 +69,7 @@ if(FREDDY_TEST)
 
     FetchContent_Declare(Catch2
       GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-      GIT_TAG v3.9.0
+      GIT_TAG v3.9.0 # for the sake of robustness
       GIT_SHALLOW 1
       SYSTEM
     )
