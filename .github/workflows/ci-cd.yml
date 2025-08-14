@@ -5,7 +5,6 @@ on:
     paths:
       - '.github/workflows/ci-cd.yml'
       - 'CMakeLists.txt'
-      - '.clang-format'
       - '.clang-tidy'
       - '**/*.cpp'
       - '**/*.hpp'
@@ -55,7 +54,7 @@ jobs:
           max-size: 10G # GitHub cache limit
           variant: ${{ env.CACHE }}
 
-      - name: Configure project
+      - name: Configure project # depending on "linting", as Clang-Tidy is only pre-installed on Ubuntu
         run: |
           args="--no-warn-unused-cli
             -B build/${{ matrix.build_type }}
@@ -67,7 +66,7 @@ jobs:
           "
 
           if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.build_type }}" == "Debug" ]]; then
-            args+="-DCLANGTIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'"
+            args+="-DCLANG_TIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'"
           fi
 
           cmake $args
@@ -76,6 +75,7 @@ jobs:
         # Windows has a multi-config generator, all macOS machines offer at least 3 cores
         run: cmake --build build/${{ matrix.build_type }} --config ${{ matrix.build_type }} -j3
 
+        # testing on Ubuntu, as the associated VM is one of the fastest runners
       - name: Run tests
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}/build/${{ matrix.build_type }}
@@ -85,7 +85,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Debug'
         working-directory: ${{ github.workspace }}/build/${{ matrix.build_type }}
         run: |
-          cov_min=80
+          cov_min=90
           cov=$(ctest -T Coverage | grep -o '[^ ]*%' | sed 's/%//')
           if (( cov < cov_min )); then
             echo "\e[31mTest coverage ($cov%) below $cov_min%\e[0m"
