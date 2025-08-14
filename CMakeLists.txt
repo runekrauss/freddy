@@ -53,10 +53,10 @@ if(FREDDY_STATS)
   target_compile_definitions(freddy INTERFACE BOOST_UNORDERED_ENABLE_STATS)
 endif()
 
-option(CLANGTIDY "Check code")
-if(CLANGTIDY)
-  find_program(CLANG_TIDY clang-tidy REQUIRED)
-  set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY} -extra-arg=-Wno-unknown-warning-option ${CMAKE_CXX_CLANG_TIDY}) # -fix-errors
+option(CLANG_TIDY "Check code")
+if(CLANG_TIDY)
+  find_program(CLANGTIDY clang-tidy REQUIRED)
+  set(CMAKE_CXX_CLANG_TIDY ${CLANGTIDY} -extra-arg=-Wno-unknown-warning-option ${CMAKE_CXX_CLANG_TIDY}) # -fix-errors
 endif()
 
 option(FREDDY_TEST "Build tests")
