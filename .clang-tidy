@@ -37,7 +37,7 @@ Checks: |
 
   readability-*,
   -readability-identifier-length,        # f, g, ...
-  -readability-isolate-declaration,      # because grouping constants can be stylistically acceptable
+  -readability-isolate-declaration,      # because grouping variables can be stylistically acceptable
   -readability-magic-numbers,            # as with cppcoreguidelines-avoid-magic-numbers
   -readability-math-missing-parentheses, # w * P1 + v * P2
   -readability-named-parameter,          # similar to hicpp-named-parameter
