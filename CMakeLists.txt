@@ -17,19 +17,19 @@ find_package(Boost QUIET NO_MODULE)
 if(NOT Boost_FOUND)
   include(FetchContent) # FetchContent_Declare
 
-  message(STATUS "Fetching/Preparing Boost 1.88.0 modules")
+  message(STATUS "Fetching/Preparing Boost 1.89.0 modules")
 
   set(BOOST_ENABLE_CMAKE ON)
   set(BOOST_INCLUDE_LIBRARIES smart_ptr unordered variant2) # dummies to not configure all Boost modules
 
   FetchContent_Declare(Boost
-    URL https://github.com/boostorg/boost/releases/download/boost-1.88.0/boost-1.88.0-cmake.tar.xz # performance reasons
-    URL_HASH SHA256=f48b48390380cfb94a629872346e3a81370dc498896f16019ade727ab72eb1ec
+    URL https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-cmake.tar.xz # performance reasons
+    URL_HASH SHA256=67acec02d0d118b5de9eb441f5fb707b3a1cdd884be00ca24b9a73c995511f74
     DOWNLOAD_EXTRACT_TIMESTAMP ON
   )
   FetchContent_MakeAvailable(Boost)
 
-  message(STATUS "Fetching/Preparing Boost 1.88.0 modules - done")
+  message(STATUS "Fetching/Preparing Boost 1.89.0 modules - done")
 
   target_include_directories(freddy SYSTEM INTERFACE
     ${Boost_SOURCE_DIR}/libs/smart_ptr/include
@@ -65,11 +65,11 @@ if(FREDDY_TEST)
   if(NOT Catch2_FOUND)
     include(FetchContent) # FetchContent_MakeAvailable
 
-    message(STATUS "Fetching/Preparing Catch2 3.9.0")
+    message(STATUS "Fetching/Preparing Catch2 3.9.1")
 
     FetchContent_Declare(Catch2
       GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-      GIT_TAG v3.9.0 # for the sake of robustness
+      GIT_TAG v3.9.1 # for the sake of robustness
       GIT_SHALLOW 1
       SYSTEM
     )
@@ -78,7 +78,7 @@ if(FREDDY_TEST)
     set_target_properties(Catch2 PROPERTIES CXX_CLANG_TIDY "")
     set_target_properties(Catch2WithMain PROPERTIES CXX_CLANG_TIDY "")
 
-    message(STATUS "Fetching/Preparing Catch2 3.9.0 - done")
+    message(STATUS "Fetching/Preparing Catch2 3.9.1 - done")
   endif()
 
   if(NOT WIN32)

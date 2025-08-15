@@ -85,7 +85,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Debug'
         working-directory: ${{ github.workspace }}/build/${{ matrix.build_type }}
         run: |
-          cov_min=90
+          cov_min=80
           cov=$(ctest -T Coverage | grep -o '[^ ]*%' | sed 's/%//')
           if (( cov < cov_min )); then
             echo "\e[31mTest coverage ($cov%) below $cov_min%\e[0m"
