@@ -17,7 +17,7 @@ find_package(Boost QUIET NO_MODULE)
 if(NOT Boost_FOUND)
   include(FetchContent) # FetchContent_Declare
 
-  message(STATUS "Fetching/Preparing Boost 1.89.0 modules")
+  message(STATUS "Fetching/Preparing Boost modules")
 
   set(BOOST_ENABLE_CMAKE ON)
   set(BOOST_INCLUDE_LIBRARIES smart_ptr unordered variant2) # dummies to not configure all Boost modules
@@ -29,7 +29,7 @@ if(NOT Boost_FOUND)
   )
   FetchContent_MakeAvailable(Boost)
 
-  message(STATUS "Fetching/Preparing Boost 1.89.0 modules - done")
+  message(STATUS "Fetching/Preparing Boost modules - done")
 
   target_include_directories(freddy SYSTEM INTERFACE
     ${Boost_SOURCE_DIR}/libs/smart_ptr/include
@@ -65,7 +65,7 @@ if(FREDDY_TEST)
   if(NOT Catch2_FOUND)
     include(FetchContent) # FetchContent_MakeAvailable
 
-    message(STATUS "Fetching/Preparing Catch2 3.9.1")
+    message(STATUS "Fetching/Preparing Catch2")
 
     FetchContent_Declare(Catch2
       GIT_REPOSITORY https://github.com/catchorg/Catch2.git
@@ -78,7 +78,7 @@ if(FREDDY_TEST)
     set_target_properties(Catch2 PROPERTIES CXX_CLANG_TIDY "")
     set_target_properties(Catch2WithMain PROPERTIES CXX_CLANG_TIDY "")
 
-    message(STATUS "Fetching/Preparing Catch2 3.9.1 - done")
+    message(STATUS "Fetching/Preparing Catch2 - done")
   endif()
 
   if(NOT WIN32)
