@@ -198,9 +198,9 @@ class manager
     }
 
   protected:  // generally intended for overriding and wrapping methods
-    using edge_ptr = edge_ptr<E, V>;
+    using edge_ptr = std::shared_ptr<edge<E, V>>;
 
-    using node_ptr = node_ptr<E, V>;
+    using node_ptr = std::shared_ptr<node<E, V>>;
 
     static auto constexpr UT_SIZE = 1679;  // default minimum capacity of a UT (per DD level)
 

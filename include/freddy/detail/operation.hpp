@@ -23,7 +23,7 @@ namespace freddy::detail
 class operation  // for caching
 {
   public:
-    auto operator()() const noexcept(noexcept(hash()))
+    auto operator()() const noexcept
     {  // avoid an identical hash with the same input but different operation
         return typeid(*this).hash_code() ^ hash();
     }
@@ -46,7 +46,7 @@ class operation  // for caching
 
     operation(operation&&) noexcept = default;
 
-    [[nodiscard]] virtual auto hash() const -> std::size_t = 0;  // computes the hash code
+    [[nodiscard]] virtual auto hash() const noexcept -> std::size_t = 0;  // computes the hash code
 
     [[nodiscard]] virtual auto equals(operation const&) const noexcept -> bool = 0;  // compares inputs
 };
