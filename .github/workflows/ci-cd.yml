@@ -78,7 +78,7 @@ jobs:
       - name: Run tests
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}/build/${{ matrix.build_type }}
-        run: ctest --output-on-failure -j4
+        run: ctest --output-on-failure -j1
 
       - name: Measure coverage
         if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Debug'
