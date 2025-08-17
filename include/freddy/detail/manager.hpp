@@ -540,7 +540,6 @@ class manager
 
     auto gc(var_index const start_lvl, var_index const end_lvl) noexcept
     {
-        assert(start_lvl >= 0);
         assert(start_lvl <= var_count());  // constants can also be taken into account
         assert(end_lvl <= var_count());
         assert(start_lvl <= end_lvl);
