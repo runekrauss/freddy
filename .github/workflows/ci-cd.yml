@@ -41,7 +41,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Install dependencies
         run: vcpkg install boost-smart-ptr boost-unordered boost-variant2 catch2 # as caching is storage-intensive here
@@ -50,8 +50,7 @@ jobs:
       - name: Set up cache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ matrix.os }}-${{ matrix.build_type }}
-          max-size: 10G # GitHub cache limit
+          key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ github.head_ref || github.ref_name }}
           variant: ${{ env.CACHE }}
 
       - name: Configure project # depending on "linting", as Clang-Tidy is only pre-installed on Ubuntu
@@ -102,7 +101,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Format code
         run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format -i
