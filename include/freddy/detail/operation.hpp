@@ -28,7 +28,7 @@ class operation  // for caching
         return typeid(*this).hash_code() ^ hash();
     }
 
-    friend auto operator==(operation const& lhs, operation const& rhs) noexcept(noexcept(lhs.equals(rhs)))
+    friend auto operator==(operation const& lhs, operation const& rhs) noexcept
     {
         return typeid(lhs) == typeid(rhs) && lhs.equals(rhs);
     }
@@ -48,7 +48,7 @@ class operation  // for caching
 
     [[nodiscard]] virtual auto hash() const -> std::size_t = 0;  // computes the hash code
 
-    [[nodiscard]] virtual auto equals(operation const&) const -> bool = 0;  // compares inputs
+    [[nodiscard]] virtual auto equals(operation const&) const noexcept -> bool = 0;  // compares inputs
 };
 
 }  // namespace freddy::detail
