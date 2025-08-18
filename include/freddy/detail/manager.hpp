@@ -156,7 +156,7 @@ class manager
 
     [[nodiscard]] auto node_count() const noexcept
     {
-        return std::accumulate(vl.begin(), vl.end(), 0,
+        return std::accumulate(vl.begin(), vl.end(), 0uz,
                                [](std::size_t const sum, auto const& var) { return sum + var.nt.size(); }) +
                nc.size();
     }
