@@ -22,7 +22,7 @@ jobs:
     permissions:
       contents: read
     env:
-      CACHE: sccache # recommended for stable Windows support
+      CACHE: ccache # recommended for stable Windows support
     defaults:
       run:
         shell: bash # since the default shell on Windows runners was changed to PowerShell
@@ -78,7 +78,7 @@ jobs:
       - name: Run tests
         if: matrix.os == 'ubuntu-latest'
         working-directory: ${{ github.workspace }}/build/${{ matrix.build_type }}
-        run: ctest --output-on-failure -j1
+        run: ctest --output-on-failure -j4
 
       - name: Measure coverage
         if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Debug'
