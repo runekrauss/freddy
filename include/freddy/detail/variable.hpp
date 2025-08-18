@@ -60,12 +60,11 @@ class variable final
     ~variable() noexcept(std::is_nothrow_destructible_v<utable<edge<E, V>>> &&
                          std::is_nothrow_destructible_v<utable<node<E, V>>>) = default;
 
+    std::string l;  // (immutable) name
   private:
     friend manager<E, V>;
 
     expansion t;  // decomposition type
-
-    std::string l;  // (immutable) name
 
     utable<edge<E, V>> et;
 
