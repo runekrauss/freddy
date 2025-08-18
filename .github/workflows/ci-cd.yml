@@ -22,7 +22,7 @@ jobs:
     permissions:
       contents: read
     env:
-      CACHE: ccache # recommended for stable Windows support
+      CACHE: sccache # recommended for stable Windows support
 
     strategy:
       fail-fast: false
@@ -34,7 +34,7 @@ jobs:
             os_name: macOS
           - os: ubuntu-latest
             os_name: Linux
-          - os: windows-latest
+          - os: windows-2025
             os_name: Windows
 
     steps:
