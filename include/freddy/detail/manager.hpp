@@ -58,10 +58,18 @@ namespace freddy::detail
 // Types
 // =====================================================================================================================
 
+#ifdef _WIN32
+template <typename E, typename V>
+auto operator<<(std::ostream&, manager<E, V> const&) -> std::ostream&;
+#endif
+
 template <typename E, typename V>  // edge weight, node value
 class manager
 {
   public:  // methods that do not need to be wrapped
+#ifdef _WIN32
+    template <typename, typename>
+#endif
     friend auto operator<<(std::ostream& s, manager const& mgr) -> std::ostream&
     {
         auto print_thead = [&s](std::string_view title) {
