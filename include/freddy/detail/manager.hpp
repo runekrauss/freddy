@@ -243,10 +243,10 @@ class manager
     {
         assert(consts.size() >= 2);
 
-        var2lvl.push_back(var_count());
-        lvl2var.push_back(var_count());
+        var2lvl.push_back(static_cast<var_index>(var_count()));
+        lvl2var.push_back(static_cast<var_index>(var_count()));
         vl.emplace_back(t, l.empty() ? 'x' + std::to_string(var_count()) : l);
-        vars.push_back(uedge(regw(), unode(var_count() - 1, consts[1], consts[0])));
+        vars.push_back(uedge(regw(), unode(static_cast<var_index>(var_count()) - 1, consts[1], consts[0])));
 
         return vars[var_count() - 1];
     }
@@ -509,7 +509,7 @@ class manager
 
     auto unode(V c)
     {
-        return foa(node<E, V>{std::move(c)}, nc, var_count());
+        return foa(node<E, V>{std::move(c)}, nc, static_cast<var_index>(var_count()));
     }
 
     auto uedge(E w, node_ptr v)
@@ -518,7 +518,7 @@ class manager
 
         if (v->is_const())
         {
-            return foa(edge<E, V>{std::move(w), std::move(v)}, ec, var_count());
+            return foa(edge<E, V>{std::move(w), std::move(v)}, ec, static_cast<var_index>(var_count()));
         }
         // v is labeled by variable
         auto const x = v->inner.x;
