@@ -35,6 +35,9 @@ template <typename T>
 using utable = boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>;  // unique table
 
 template <typename E, typename V>
+auto operator<<(std::ostream&, manager<E, V> const&) -> std::ostream&;
+
+template <typename E, typename V>
 class variable final
 {
   public:
@@ -63,7 +66,7 @@ class variable final
   private:
     friend class manager<E, V>;
 
-    friend auto operator<<(std::ostream&, manager<E, V> const&) -> std::ostream&;
+    friend auto operator<< <E, V>(std::ostream&, manager<E, V> const&) -> std::ostream&;
 
     expansion t;  // decomposition type
 
