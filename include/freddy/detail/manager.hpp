@@ -68,7 +68,7 @@ class manager
 
     [[nodiscard]] auto var_count() const noexcept
     {
-        //assert(vl.size() <= std::numeric_limits<var_index>::max() + static_cast<std::size_t>(1));
+        // assert(vl.size() <= std::numeric_limits<var_index>::max() + static_cast<std::size_t>(1));
 
         return vl.size();
     }
@@ -909,10 +909,10 @@ auto operator<<(std::ostream& s, manager<E, V> const& mgr) -> std::ostream&
             s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Unsuccessful lookup comparison count",
                              stats.unsuccessful_lookup.num_comparisons.average);  // should be close to 0.0
 
-            s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Miss rate",
-                             (static_cast<double>(stats.insertion.count) /
-                              (stats.insertion.count + stats.successful_lookup.count)) *
-                                 100);
+            s << std::format(
+                "{:2} {:36} | {:19.2f}\n", prefix, "Miss rate",
+                (static_cast<double>(stats.insertion.count) / (stats.insertion.count + stats.successful_lookup.count)) *
+                    100);
 
             assert(stats.insertion.count >= ht.size());
 
@@ -941,10 +941,10 @@ auto operator<<(std::ostream& s, manager<E, V> const& mgr) -> std::ostream&
 
     for (auto const x : mgr.lvl2var)  // variable with respect to the order
     {
-        print_thead(std::string{"Variable \""} + mgr.vl[x].get_l().data() + "\" [" + to_string(mgr.vl[x].t) + ']');
-        print_tbody(mgr.vl[x].get_et(), "ET");
+        print_thead("Variable \"" + mgr.vl[x].l + "\" [" + to_string(mgr.vl[x].t) + ']');
+        print_tbody(mgr.vl[x].et, "ET");
         s << '\n';
-        print_tbody(mgr.vl[x].get_nt(), "NT");
+        print_tbody(mgr.vl[x].nt, "NT");
         s << "\n\n";
     }
 

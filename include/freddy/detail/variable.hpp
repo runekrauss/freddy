@@ -63,14 +63,6 @@ class variable final
     ~variable() noexcept(std::is_nothrow_destructible_v<utable<edge<E, V>>> &&
                          std::is_nothrow_destructible_v<utable<node<E, V>>>) = default;
 
-    [[nodiscard]] auto get_t() const noexcept { return t; };
-
-    [[nodiscard]] auto get_l() const noexcept -> std::string_view { return l; };
-
-    [[nodiscard]] auto get_et() const noexcept -> utable<edge<E, V>> const& { return et; };
-
-    [[nodiscard]] auto get_nt() const noexcept -> utable<node<E, V>> const& { return nt; };
-
   private:
     friend manager<E, V>;
 
