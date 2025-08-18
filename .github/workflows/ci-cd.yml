@@ -46,7 +46,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          echo $VCPKG_ROOT
+          echo $VCPKG_INSTALLATION_ROOT
           vcpkg install boost-smart-ptr boost-unordered boost-variant2 catch2 # as caching is storage-intensive here
 
       # should come after checkout
