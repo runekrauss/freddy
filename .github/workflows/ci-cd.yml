@@ -44,6 +44,9 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      - name: Install dependencies
+        run: vcpkg install boost-smart-ptr boost-unordered boost-variant2 catch2 # as caching is storage-intensive here
+
       # should come after checkout
       - name: Set up cache
         uses: hendrikmuhs/ccache-action@v1.2
