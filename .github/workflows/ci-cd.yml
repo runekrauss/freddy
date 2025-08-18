@@ -60,6 +60,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
             -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
             -DCMAKE_CXX_COMPILER_LAUNCHER=${{ env.CACHE }}
+            -DCMAKE_TOOLCHAIN_FILE=$VCPKG_INSTALLATION_ROOT/scripts/buildsystems/vcpkg.cmake
             -DFREDDY_STATS=ON
             -DFREDDY_TEST=ON
           "
