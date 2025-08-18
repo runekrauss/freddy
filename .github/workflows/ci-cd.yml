@@ -52,19 +52,7 @@ jobs:
           variant: ${{ env.CACHE }}
 
       - name: Configure project # depending on "linting", as Clang-Tidy is only pre-installed on Ubuntu
-        run: |
-          args="--no-warn-unused-cli
-            -B build/${{ matrix.build_type }}
-            -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
-            -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-            -DCMAKE_CXX_COMPILER_LAUNCHER=${{ env.CACHE }}
-            -DFREDDY_STATS=ON
-            -DFREDDY_TEST=ON
-          "
-
-
-
-          cmake $args
+        run: cmake --no-warn-unused-cli -B build/${{ matrix.build_type }} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DCMAKE_CXX_COMPILER_LAUNCHER=${{ env.CACHE }} -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Build binaries
         # Windows has a multi-config generator, all macOS machines offer at least 3 cores
