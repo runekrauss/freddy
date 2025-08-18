@@ -45,9 +45,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Install dependencies
-        run: |
-          echo ${{env.VCPKG_INSTALLATION_ROOT}}
-          vcpkg install boost-smart-ptr boost-unordered boost-variant2 catch2 # as caching is storage-intensive here
+        run: vcpkg install boost-smart-ptr boost-unordered boost-variant2 catch2 # as caching is storage-intensive here
 
       # should come after checkout
       - name: Set up cache
@@ -58,8 +56,7 @@ jobs:
 
       - name: Configure project # depending on "linting", as Clang-Tidy is only pre-installed on Ubuntu
         run: |
-          args="--no-warn-unused-cli
-            -B build/${{ matrix.build_type }}
+          args="-B build/${{ matrix.build_type }}
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
             -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
             -DCMAKE_CXX_COMPILER_LAUNCHER=${{ env.CACHE }}
