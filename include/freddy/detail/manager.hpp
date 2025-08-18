@@ -121,7 +121,7 @@ class manager
 
         for (auto const x : mgr.lvl2var)  // variable with respect to the order
         {
-            print_thead(std::string{"Variable \""} + mgr.vl[x].lbl().data() + "\" [" + to_string(mgr.vl[x].t) + ']');
+            print_thead("Variable \"" + mgr.vl[x].l + "\" [" + to_string(mgr.vl[x].t) + ']');
             print_tbody(mgr.vl[x].et, "ET");
             s << '\n';
             print_tbody(mgr.vl[x].nt, "NT");
@@ -927,7 +927,7 @@ class manager
         }
 
         s << 'v' << f->v << " [shape=" << (vl[f->v->inner.x].t == expansion::S ? "circle" : "octagon,regular=true")
-          << ",style=filled,color=black,fontcolor=white,label=\"" << vl[f->v->inner.x].lbl() << "\"];\n";
+          << ",style=filled,color=black,fontcolor=white,label=\"" << vl[f->v->inner.x].l << "\"];\n";
         s << "{ rank=same; x" << f->v->inner.x << "; v" << f->v << "; }\n";
         s << 'v' << f->v << " -> v" << f->v->inner.hi->v << " [color=blue,dir=none,label=\" " << f->v->inner.hi->w
           << " \"];\n";
