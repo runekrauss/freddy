@@ -39,8 +39,8 @@ class variable final
 {
   public:
     variable(expansion const t, std::string_view l, std::size_t const ut_size = {}) :
-            l{l},
-            t{t}
+            t{t},
+            l{l}
     {
         assert(!l.empty());  // for presentation reasons
 
@@ -60,12 +60,17 @@ class variable final
     ~variable() noexcept(std::is_nothrow_destructible_v<utable<edge<E, V>>> &&
                          std::is_nothrow_destructible_v<utable<node<E, V>>>) = default;
 
-    std::string l;  // (immutable) name
+    auto lbl() const noexcept -> std::string_view
+    {
+        return l;
+    }
 
   private:
     friend manager<E, V>;
 
     expansion t;  // decomposition type
+
+    std::string l;  // (immutable) name
 
     utable<edge<E, V>> et;
 
