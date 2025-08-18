@@ -35,7 +35,7 @@ template <typename T>
 using utable = boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>;  // unique table
 
 template <typename E, typename V>
-std::ostream& operator<<(std::ostream&, const manager<E, V>&);
+auto operator<<(std::ostream&, manager<E, V> const&) -> std::ostream&;
 
 template <typename E, typename V>
 class variable final
