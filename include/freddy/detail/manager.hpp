@@ -62,83 +62,7 @@ template <typename E, typename V>  // edge weight, node value
 class manager
 {
   public:  // methods that do not need to be wrapped
-    friend auto operator<<(std::ostream& s, manager const& mgr) -> std::ostream&
-    {
-        auto print_thead = [&s](std::string_view title) {
-            s << title << '\n';
-            s << std::format("{:-<61}\n", '-');
-        };
-
-        auto print_tbody = [&s](auto const& ht, auto const& prefix) {
-            s << std::format("{:2} {:36} | {:19}\n", prefix, "#Elements", ht.size());
-            s << std::format("{:2} {:36} | {:19}\n", prefix, "Max. load", ht.max_load());
-            s << std::format("{:2} {:36} | {:19}", prefix, "#Buckets", ht.bucket_count());  // How large do tables get?
-#ifdef BOOST_UNORDERED_ENABLE_STATS  // output statistics in order to evaluate hash quality and impact
-            auto const& stats = ht.get_stats();
-
-            s << std::format("\n{:2} {:36} | {:19}\n", prefix, "Insertion count", stats.insertion.count);
-            if (stats.insertion.count != 0)
-            {  // operation was performed at least once
-                // average number of bucket groups accessed during insertion (could indicate that tables are too large)
-                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Insertion probe length",
-                                 stats.insertion.probe_length.average);  // should be close to 1.0
-
-                assert(stats.unsuccessful_lookup.count != 0);
-
-                // average number of elements compared during lookup
-                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Unsuccessful lookup comparison count",
-                                 stats.unsuccessful_lookup.num_comparisons.average);  // should be close to 0.0
-
-                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Miss rate",
-                                 (static_cast<double>(stats.insertion.count) /
-                                  (stats.insertion.count + stats.successful_lookup.count)) *
-                                     100);
-
-                assert(stats.insertion.count >= ht.size());
-
-                // indicates how well the GC works
-                s << std::format("{:2} {:36} | {:19}\n", prefix, "Number of cleaned elements",
-                                 stats.insertion.count - ht.size());
-                s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Read/Write",  // How often is an element reused?
-                                 static_cast<double>(stats.successful_lookup.count) / stats.insertion.count);
-            }
-
-            s << std::format("{:2} {:36} | {:19}", prefix, "Successful lookup count", stats.successful_lookup.count);
-            if (stats.successful_lookup.count != 0)
-            {
-                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup probe length",
-                                 stats.successful_lookup.probe_length.average);
-                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup comparison count",
-                                 stats.successful_lookup.num_comparisons.average);  // should be close to 1.0
-
-                s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Hit rate",
-                                 (static_cast<double>(stats.successful_lookup.count) /
-                                  (stats.insertion.count + stats.successful_lookup.count)) *
-                                     100);
-            }
-#endif
-        };
-
-        for (auto const x : mgr.lvl2var)  // variable with respect to the order
-        {
-            print_thead(std::string{"Variable \""} + mgr.vl[x].get_l().data() + "\" [" + to_string(mgr.vl[x].t) + ']');
-            print_tbody(mgr.vl[x].get_et(), "ET");
-            s << '\n';
-            print_tbody(mgr.vl[x].get_nt(), "NT");
-            s << "\n\n";
-        }
-
-        print_thead("Constants");
-        print_tbody(mgr.ec, "EC");
-        s << '\n';
-        print_tbody(mgr.nc, "NC");
-        s << "\n\n";
-
-        print_thead("Cache");
-        print_tbody(mgr.ct, "CT");
-
-        return s;
-    }
+    friend auto operator<< <>(std::ostream&, manager<E, V> const&) -> std::ostream&;
 
     virtual ~manager() noexcept(std::is_nothrow_destructible_v<E> && std::is_nothrow_destructible_v<V>) = default;
 
@@ -956,5 +880,84 @@ class manager
 
     std::vector<variable<E, V>> vl;
 };
+
+template <typename E, typename V>
+auto operator<<(std::ostream& s, manager<E, V> const& mgr) -> std::ostream&
+{
+    auto print_thead = [&s](std::string_view title) {
+        s << title << '\n';
+        s << std::format("{:-<61}\n", '-');
+    };
+
+    auto print_tbody = [&s](auto const& ht, auto const& prefix) {
+        s << std::format("{:2} {:36} | {:19}\n", prefix, "#Elements", ht.size());
+        s << std::format("{:2} {:36} | {:19}\n", prefix, "Max. load", ht.max_load());
+        s << std::format("{:2} {:36} | {:19}", prefix, "#Buckets", ht.bucket_count());  // How large do tables get?
+#ifdef BOOST_UNORDERED_ENABLE_STATS  // output statistics in order to evaluate hash quality and impact
+        auto const& stats = ht.get_stats();
+
+        s << std::format("\n{:2} {:36} | {:19}\n", prefix, "Insertion count", stats.insertion.count);
+        if (stats.insertion.count != 0)
+        {  // operation was performed at least once
+            // average number of bucket groups accessed during insertion (could indicate that tables are too large)
+            s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Insertion probe length",
+                             stats.insertion.probe_length.average);  // should be close to 1.0
+
+            assert(stats.unsuccessful_lookup.count != 0);
+
+            // average number of elements compared during lookup
+            s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Unsuccessful lookup comparison count",
+                             stats.unsuccessful_lookup.num_comparisons.average);  // should be close to 0.0
+
+            s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Miss rate",
+                             (static_cast<double>(stats.insertion.count) /
+                              (stats.insertion.count + stats.successful_lookup.count)) *
+                                 100);
+
+            assert(stats.insertion.count >= ht.size());
+
+            // indicates how well the GC works
+            s << std::format("{:2} {:36} | {:19}\n", prefix, "Number of cleaned elements",
+                             stats.insertion.count - ht.size());
+            s << std::format("{:2} {:36} | {:19.2f}\n", prefix, "Read/Write",  // How often is an element reused?
+                             static_cast<double>(stats.successful_lookup.count) / stats.insertion.count);
+        }
+
+        s << std::format("{:2} {:36} | {:19}", prefix, "Successful lookup count", stats.successful_lookup.count);
+        if (stats.successful_lookup.count != 0)
+        {
+            s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup probe length",
+                             stats.successful_lookup.probe_length.average);
+            s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Successful lookup comparison count",
+                             stats.successful_lookup.num_comparisons.average);  // should be close to 1.0
+
+            s << std::format("\n{:2} {:36} | {:19.2f}", prefix, "Hit rate",
+                             (static_cast<double>(stats.successful_lookup.count) /
+                              (stats.insertion.count + stats.successful_lookup.count)) *
+                                 100);
+        }
+#endif
+    };
+
+    for (auto const x : mgr.lvl2var)  // variable with respect to the order
+    {
+        print_thead(std::string{"Variable \""} + mgr.vl[x].get_l().data() + "\" [" + to_string(mgr.vl[x].t) + ']');
+        print_tbody(mgr.vl[x].get_et(), "ET");
+        s << '\n';
+        print_tbody(mgr.vl[x].get_nt(), "NT");
+        s << "\n\n";
+    }
+
+    print_thead("Constants");
+    print_tbody(mgr.ec, "EC");
+    s << '\n';
+    print_tbody(mgr.nc, "NC");
+    s << "\n\n";
+
+    print_thead("Cache");
+    print_tbody(mgr.ct, "CT");
+
+    return s;
+}
 
 }  // namespace freddy::detail
