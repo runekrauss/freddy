@@ -525,7 +525,7 @@ class bdd_manager : public detail::manager<bool, bool>
     }
 
     [[nodiscard]] auto regw() const noexcept -> bool override
-    {
+     {
         return false;  // means a regular (non-complemented) edge
     }
 };
