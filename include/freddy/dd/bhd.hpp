@@ -337,7 +337,7 @@ class bhd_manager : public detail::manager<bool, bool>
             {
                 if (path[i].has_value())
                 {
-                    tmp.emplace_back(i, *path[i]);
+                    tmp.emplace_back(static_cast<std::int32_t>(i), *path[i]);
                 }
             }
             uclauses.push_back(std::move(tmp));
