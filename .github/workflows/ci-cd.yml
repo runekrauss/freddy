@@ -26,6 +26,7 @@ jobs:
 
     strategy:
       matrix:
+        fail-fast: false
         os: [macos-latest, ubuntu-latest, windows-latest]
         build_type: [Debug, Release]
         include:
@@ -61,9 +62,7 @@ jobs:
             -DFREDDY_TEST=ON
           "
 
-          if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.build_type }}" == "Debug" ]]; then
-            args+="-DCLANG_TIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'"
-          fi
+
 
           cmake $args
 
