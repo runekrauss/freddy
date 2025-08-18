@@ -14,7 +14,7 @@ add_library(freddy INTERFACE)
 target_include_directories(freddy INTERFACE include)
 
 find_package(Boost QUIET NO_MODULE)
-if(NOT Boost_FOUND)
+if(Boost_FOUND)
   include(FetchContent) # FetchContent_Declare
 
   message(STATUS "Fetching/Preparing Boost modules")
@@ -62,7 +62,7 @@ endif()
 option(FREDDY_TEST "Build tests")
 if(FREDDY_TEST)
   find_package(Catch2 QUIET)
-  if(NOT Catch2_FOUND)
+  if(Catch2_FOUND)
     include(FetchContent) # FetchContent_MakeAvailable
 
     message(STATUS "Fetching/Preparing Catch2")
