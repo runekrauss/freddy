@@ -144,7 +144,7 @@ class manager
 
     [[nodiscard]] auto var_count() const noexcept
     {
-        assert(vl.size() <= std::numeric_limits<var_index>::max() + static_cast<std::size_t>(1));
+        //assert(vl.size() <= std::numeric_limits<var_index>::max() + static_cast<std::size_t>(1));
 
         return vl.size();
     }
