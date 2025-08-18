@@ -60,7 +60,7 @@ class variable final
     ~variable() noexcept(std::is_nothrow_destructible_v<utable<edge<E, V>>> &&
                          std::is_nothrow_destructible_v<utable<node<E, V>>>) = default;
 
-    auto lbl() const noexcept -> std::string_view
+    [[nodiscard]] auto lbl() const noexcept -> std::string_view
     {
         return l;
     }
