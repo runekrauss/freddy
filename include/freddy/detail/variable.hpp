@@ -71,6 +71,8 @@ class variable final
   private:
     friend manager<E, V>;
 
+    friend auto operator<<(std::ostream&, manager<E, V> const&) -> std::ostream&;
+
     expansion t;  // decomposition type
 
     std::string l;  // (immutable) name
