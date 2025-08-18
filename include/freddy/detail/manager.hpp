@@ -58,18 +58,10 @@ namespace freddy::detail
 // Types
 // =====================================================================================================================
 
-#ifdef _WIN32
-template <typename E, typename V>
-auto operator<<(std::ostream&, manager<E, V> const&) -> std::ostream&;
-#endif
-
 template <typename E, typename V>  // edge weight, node value
 class manager
 {
   public:  // methods that do not need to be wrapped
-#ifdef _WIN32
-    template <typename, typename>
-#endif
     friend auto operator<<(std::ostream& s, manager const& mgr) -> std::ostream&
     {
         auto print_thead = [&s](std::string_view title) {
@@ -129,10 +121,10 @@ class manager
 
         for (auto const x : mgr.lvl2var)  // variable with respect to the order
         {
-            print_thead("Variable \"" + mgr.vl[x].l + "\" [" + to_string(mgr.vl[x].t) + ']');
-            print_tbody(mgr.vl[x].et, "ET");
+            print_thead(std::string{"Variable \""} + mgr.vl[x].get_l().data() + "\" [" + to_string(mgr.vl[x].get_t()) + ']');
+            print_tbody(mgr.vl[x].get_et(), "ET");
             s << '\n';
-            print_tbody(mgr.vl[x].nt, "NT");
+            print_tbody(mgr.vl[x].get_nt(), "NT");
             s << "\n\n";
         }
 
