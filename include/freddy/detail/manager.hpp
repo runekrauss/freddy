@@ -163,7 +163,7 @@ class manager
 
     [[nodiscard]] auto edge_count() const noexcept
     {
-        return std::accumulate(vl.begin(), vl.end(), 0,
+        return std::accumulate(vl.begin(), vl.end(), 0uz,
                                [](std::size_t const sum, auto const& var) { return sum + var.et.size(); }) +
                ec.size();
     }
