@@ -39,8 +39,8 @@ class variable final
 {
   public:
     variable(expansion const t, std::string_view l, std::size_t const ut_size = {}) :
-            t{t},
-            l{l}
+            l{l},
+            t{t}
     {
         assert(!l.empty());  // for presentation reasons
 
@@ -61,6 +61,7 @@ class variable final
                          std::is_nothrow_destructible_v<utable<node<E, V>>>) = default;
 
     std::string l;  // (immutable) name
+
   private:
     friend manager<E, V>;
 
