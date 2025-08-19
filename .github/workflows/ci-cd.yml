@@ -44,19 +44,19 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
-        # should come after checkout
-      - name: Set up cache
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ${{ matrix.os }}-${{ toLower(matrix.build_type) }}-${{ github.head_ref || github.ref_name }}
-          variant: ${{ env.CACHE }}
-
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/build/${{ matrix.build_type }}/_deps
-          key: ${{ matrix.os }}-${{ toLower(matrix.build_type) }}-${{ hashFiles('CMakeLists.txt') }}
+          key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: ${{ matrix.os }}-${{ matrix.build_type }}-
+
+        # should come after checkout
+      - name: Set up ${{ env.CACHE }}
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ github.head_ref || github.ref_name }}
+          variant: ${{ env.CACHE }}
 
       - name: Configure project # depending on "linting", as Clang-Tidy is only pre-installed on Ubuntu
         run: |
