@@ -63,7 +63,6 @@ jobs:
           args="-B build/${{ matrix.build_type }}
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
             -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-            -DCMAKE_C_COMPILER_LAUNCHER=${{ env.CACHE }}
             -DCMAKE_CXX_COMPILER_LAUNCHER=${{ env.CACHE }}
             -DFREDDY_STATS=ON
             -DFREDDY_TEST=ON
@@ -91,6 +90,7 @@ jobs:
         run: |
           cov_min=80
           cov=$(ctest -T Coverage | grep -o '[^ ]*%' | sed 's/%//' | cut -d. -f1)
+          echo $cov
           if (( cov < cov_min )); then
             echo "\e[31mTest coverage ($cov%) below $cov_min%\e[0m"
             exit 1
