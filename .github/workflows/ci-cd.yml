@@ -50,7 +50,6 @@ jobs:
         with:
           key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ github.head_ref || github.ref_name }}
           variant: ${{ env.CACHE }}
-          create-symlink: true
 
       - name: Cache dependencies
         uses: actions/cache@v4
