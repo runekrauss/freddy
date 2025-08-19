@@ -66,7 +66,6 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=${{ env.CACHE }}
             -DFREDDY_STATS=ON
             -DFREDDY_TEST=ON
-            -G "Ninja"
           "
 
           if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.build_type }}" == "Debug" ]]; then
@@ -77,13 +76,13 @@ jobs:
 
       - name: Build binaries
         # Windows has a multi-config generator, all macOS machines offer at least 3 cores
-        run: cmake --build build/${{ matrix.build_type }} --config ${{ matrix.build_type }} -j3
+        run: cmake --build build/${{ matrix.build_type }} --config ${{ matrix.build_type }} -j8
 
         # testing on Ubuntu, as the associated VM is one of the fastest runners
       - name: Run tests
         if: matrix.os == 'ubuntu-latest'
         working-directory: ./build/${{ matrix.build_type }}
-        run: ctest --output-on-failure -j4
+        run: ctest --output-on-failure -j8
 
       - name: Measure coverage
         if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Debug'

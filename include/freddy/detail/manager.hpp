@@ -40,7 +40,7 @@
 #elifdef __linux__
 #include <fstream>  // std::ifstream
 #elifdef _WIN32
-// #define NOMINMAX
+#define NOMINMAX
 // clang-format off
 #include <windows.h>
 // clang-format on
@@ -882,9 +882,9 @@ class manager
 };
 
 template <typename E, typename V>
-auto operator<<(std::ostream& s, manager<E, V> const&) -> std::ostream&
+auto operator<<(std::ostream& s, manager<E, V> const& mgr) -> std::ostream&
 {
-    /*auto print_thead = [&s](std::string_view title) {
+    auto print_thead = [&s](std::string_view title) {
         s << title << '\n';
         s << std::format("{:-<61}\n", '-');
     };
@@ -955,7 +955,7 @@ auto operator<<(std::ostream& s, manager<E, V> const&) -> std::ostream&
     s << "\n\n";
 
     print_thead("Cache");
-    print_tbody(mgr.ct, "CT");*/
+    print_tbody(mgr.ct, "CT");
 
     return s;
 }
