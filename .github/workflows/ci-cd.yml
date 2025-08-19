@@ -22,7 +22,7 @@ jobs:
     permissions:
       contents: read
     env:
-      CACHE: sccache # recommended for stable Windows support
+      CACHE: ccache # recommended for stable Windows support
     defaults:
       run:
         shell: bash # since the default shell on Windows runners was changed to PowerShell
@@ -50,6 +50,7 @@ jobs:
         with:
           key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ github.head_ref || github.ref_name }}
           variant: ${{ env.CACHE }}
+          create-symlink: true
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -90,7 +91,6 @@ jobs:
         run: |
           cov_min=80
           cov=$(ctest -T Coverage | grep -o '[^ ]*%' | sed 's/%//' | cut -d. -f1)
-          echo $cov
           if (( cov < cov_min )); then
             echo "\e[31mTest coverage ($cov%) below $cov_min%\e[0m"
             exit 1
