@@ -47,6 +47,13 @@ jobs:
       - name: Install dependencies
         run: vcpkg install boost-smart-ptr boost-unordered boost-variant2 catch2 # as caching is storage-intensive here
 
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/build/${{ matrix.build_type }}/_deps
+          key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: ${{ matrix.os }}-${{ matrix.build_type }}-
+
       # should come after checkout
       - name: Set up cache
         uses: hendrikmuhs/ccache-action@v1.2
