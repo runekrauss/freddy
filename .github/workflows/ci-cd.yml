@@ -22,7 +22,7 @@ jobs:
     permissions:
       contents: read
     env:
-      CACHE: ccache # recommended for stable Windows support
+      CACHE: sccache # recommended for stable Windows support
     defaults:
       run:
         shell: bash # since the default shell on Windows runners was changed to PowerShell
