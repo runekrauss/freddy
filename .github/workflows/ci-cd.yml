@@ -66,8 +66,6 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=${{ env.CACHE }}
             -DFREDDY_STATS=ON
             -DFREDDY_TEST=ON
-            -DCMAKE_CXX_COMPILER=sccache
-            -DCMAKE_CXX_COMPILER_ARG1=cl.exe
             -G Ninja
           "
 
