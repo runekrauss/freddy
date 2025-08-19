@@ -37,7 +37,7 @@ jobs:
             os_name: macOS
           - os: ubuntu-latest
             os_name: Linux
-          - os: windows-2025
+          - os: windows-latest
             os_name: Windows
 
     steps:
@@ -76,13 +76,13 @@ jobs:
 
       - name: Build binaries
         # Windows has a multi-config generator, all macOS machines offer at least 3 cores
-        run: cmake --build build/${{ matrix.build_type }} --config ${{ matrix.build_type }} -j8
+        run: cmake --build build/${{ matrix.build_type }} --config ${{ matrix.build_type }} -j7
 
         # testing on Ubuntu, as the associated VM is one of the fastest runners
       - name: Run tests
         if: matrix.os == 'ubuntu-latest'
         working-directory: ./build/${{ matrix.build_type }}
-        run: ctest --output-on-failure -j8
+        run: ctest --output-on-failure -j7
 
       - name: Measure coverage
         if: matrix.os == 'ubuntu-latest' && matrix.build_type == 'Debug'
