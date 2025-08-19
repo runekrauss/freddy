@@ -23,7 +23,6 @@ jobs:
       contents: read
     env:
       CACHE: sccache # recommended for stable Windows support
-      SCCACHE_GHA_ENABLED: true
     defaults:
       run:
         shell: bash # since the default shell on Windows runners was changed to PowerShell
@@ -54,9 +53,9 @@ jobs:
 
       # should come after checkout
       - name: Set up cache
-        uses: mozilla-actions/sccache-action@v0.0.9
-
-
+        run: |
+          cargo install sccache --locked
+          sccache --show-stats | awk -F\" '/Cache location/ {print $2}'
 
       - name: Configure project # depending on "linting", as Clang-Tidy is only pre-installed on Ubuntu
         run: |
