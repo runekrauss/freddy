@@ -30,14 +30,14 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest, ubuntu-latest, windows-2019]
         build_type: [Debug, Release]
         include:
           - os: macos-latest
             os_name: macOS
           - os: ubuntu-latest
             os_name: Linux
-          - os: windows-latest
+          - os: windows-2019
             os_name: Windows
 
     steps:
@@ -55,7 +55,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/build/${{ matrix.build_type }}/_deps
-          key: ${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt') }}
+          key: deps-${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: ${{ matrix.os }}-${{ matrix.build_type }}-
 
       - name: Configure project # depending on "linting", as Clang-Tidy is only pre-installed on Ubuntu
