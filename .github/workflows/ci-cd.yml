@@ -68,6 +68,7 @@ jobs:
             -DFREDDY_TEST=ON
             -DCMAKE_CXX_COMPILER=sccache
             -DCMAKE_CXX_COMPILER_ARG1=cl.exe
+            -G Ninja
           "
 
           if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.build_type }}" == "Debug" ]]; then
