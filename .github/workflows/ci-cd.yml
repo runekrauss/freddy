@@ -76,7 +76,7 @@ jobs:
 
       - name: Build binaries
         # Windows has a multi-config generator, all macOS machines offer at least 3 cores
-        run: cmake --build build/${{ matrix.build_type }} --config ${{ matrix.build_type }} -j4
+        run: cmake --build build/${{ matrix.build_type }} --config ${{ matrix.build_type }} -j3
 
         # testing on Ubuntu, as the associated VM is one of the fastest runners
       - name: Run tests
