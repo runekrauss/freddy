@@ -37,7 +37,7 @@ jobs:
             os_name: macOS
           - os: ubuntu-latest
             os_name: Linux
-          - os: windows-latest
+          - os: windows-2025
             os_name: Windows
 
     steps:
