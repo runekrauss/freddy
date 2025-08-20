@@ -6,14 +6,22 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_program(Ccache ccache)
 if(Ccache)
+  message(STATUS "Using Ccache")
+
   if(MSVC)
     file(COPY_FILE ${Ccache} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
 
     set(CMAKE_VS_GLOBALS
       "CLToolExe=cl.exe"
       "CLToolPath=${CMAKE_BINARY_DIR}"
+      "TrackFileAccess=false"
+      "UseMultiToolTask=true"
     )
+  else()
+    set(CMAKE_CXX_COMPILER_LAUNCHER ${Ccache})
   endif()
+
+  message(STATUS "Using Ccache - done")
 endif()
 
 if(MSVC)
@@ -67,8 +75,8 @@ endif()
 
 option(CLANG_TIDY "Check code")
 if(CLANG_TIDY)
-  find_program(CLANGTIDY clang-tidy REQUIRED)
-  set(CMAKE_CXX_CLANG_TIDY ${CLANGTIDY} -extra-arg=-Wno-unknown-warning-option ${CMAKE_CXX_CLANG_TIDY}) # -fix-errors
+  find_program(ClangTidy clang-tidy REQUIRED)
+  set(CMAKE_CXX_CLANG_TIDY ${ClangTidy} -extra-arg=-Wno-unknown-warning-option ${CMAKE_CXX_CLANG_TIDY}) # -fix-errors
 endif()
 
 option(FREDDY_TEST "Build tests")

@@ -63,7 +63,6 @@ jobs:
           args="-B build/${{ matrix.build_type }}
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
             -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
-            -DCMAKE_CXX_COMPILER_LAUNCHER=${{ env.CACHE }}
             -DFREDDY_STATS=ON
             -DFREDDY_TEST=ON
           "
