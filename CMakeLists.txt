@@ -13,7 +13,7 @@ if(Ccache)
       "CLToolExe=cl.exe"
       "CLToolPath=${CMAKE_BINARY_DIR}"
       "TrackFileAccess=false"
-      "UseMultiToolTask=true"
+      "UseMultiToolTask=false"
       "DebugInformationFormat=OldStyle"
     )
   endif()
