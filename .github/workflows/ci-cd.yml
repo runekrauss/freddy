@@ -56,7 +56,7 @@ jobs:
         with:
           path: ${{ github.workspace }}/build/${{ matrix.build_type }}/_deps
           key: deps-${{ matrix.os }}-${{ matrix.build_type }}-${{ hashFiles('CMakeLists.txt') }}
-          restore-keys: ${{ matrix.os }}-${{ matrix.build_type }}-
+          restore-keys: deps-${{ matrix.os }}-${{ matrix.build_type }}-
 
       - name: Configure project # depending on "linting", as Clang-Tidy is only pre-installed on Ubuntu
         run: |
