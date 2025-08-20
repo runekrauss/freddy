@@ -4,9 +4,11 @@ project(FrEDDY LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23) # elifdef
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_program(ccache_exe ccache)
-if(ccache_exe)
-  message(STATUS "TEST")
+find_program(Ccache ccache)
+if(Ccache)
+  if(MSVC)
+    message(STATUS "${Ccache} ${CMAKE_BINARY_DIR}")
+  endif()
 endif()
 
 if(MSVC)
