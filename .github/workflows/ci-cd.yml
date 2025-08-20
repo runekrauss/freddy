@@ -50,6 +50,42 @@ jobs:
           restore-keys: deps-${{ github.job }}-${{ env.REF }}-
 
       - name: Configure project
+        run: cmake -G Ninja -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DFREDDY_STATS=ON -DFREDDY_TEST=ON
+
+      - name: Build binaries
+        run: cmake --build build
+
+  msvc:
+    name: MSVC (Windows)
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash # since the default shell on Windows runners was changed to PowerShell
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Install cache
+        run: |
+          choco install ccache
+          echo "CACHE_DIR=$(ccache --get-config cache_dir)" >> $GITHUB_ENV
+
+      - name: Set up cache
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CACHE_DIR }}
+          key: ccache-${{ github.job }}-${{ env.REF }}-${{ github.event.repository.pushed_at }}
+          restore-keys: ccache-${{ github.job }}-${{ env.REF }}-
+
+      - name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: ${{ github.workspace }}/build/_deps
+          key: deps-${{ github.job }}-${{ env.REF }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ github.job }}-${{ env.REF }}-
+
+      - name: Configure project
         run: cmake -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Build binaries
