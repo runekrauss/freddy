@@ -4,7 +4,7 @@ project(FrEDDY LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23) # elifdef
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_program(Sccache ccache)
+find_program(Sccache sccache)
 if(Sccache)
   if(MSVC)
     message(STATUS "sccache gefunden: ${Sccache}")
