@@ -12,7 +12,6 @@ if(Ccache)
     set(CMAKE_VS_GLOBALS
       "CLToolExe=cl.exe"
       "CLToolPath=${CMAKE_BINARY_DIR}"
-      "UseMultiToolTask=true"
     )
   endif()
 endif()
