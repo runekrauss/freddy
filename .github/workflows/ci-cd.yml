@@ -49,14 +49,12 @@ jobs:
 
       - name: Configure project
         run: >
-          cmake -B build/${{ matrix.build_type }}
-          -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+          cmake -B build/${{ matrix.build_type }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
           -DCLANG_TIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'
           -DFREDDY_STATS=ON -DFREDDY_TEST=ON
-          -j4
 
       - name: Build binaries
-        run: cmake --build build/${{ matrix.build_type }}
+        run: cmake --build build/${{ matrix.build_type }} -j4
 
       - name: Run tests
         working-directory: ./build/${{ matrix.build_type }}
