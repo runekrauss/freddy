@@ -124,3 +124,24 @@ jobs:
 
       - name: Build binaries
         run: cmake --build build --config Release -j4
+
+  format:
+    name: Code Formatting
+    runs-on: ubuntu-latest # since ClangFormat is pre-installed there
+    if: github.ref == 'refs/heads/main'
+    needs: [gcc, clang, msvc]
+    permissions:
+      contents: write # to be able to create a commit
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Format code
+        run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format -i
+
+      - name: Push changes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git diff --exit-code || (git commit -a -m 'style: format code' && git push)
