@@ -30,17 +30,10 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
-      - name: Install cache
-        run: |
-          brew install ccache
-          echo "CACHE_DIR=$(ccache --get-config cache_dir)" >> $GITHUB_ENV
-
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: hendrikmuhs/ccache-action@v1.2
         with:
-          path: ${{ env.CACHE_DIR }}
-          key: ccache-${{ github.job }}-${{ env.REF }}-${{ github.event.repository.pushed_at }}
-          restore-keys: ccache-${{ github.job }}-${{ env.REF }}-
+          key: ${{ github.job }}-${{ env.REF }}
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -58,25 +51,15 @@ jobs:
   msvc:
     name: MSVC (Windows)
     runs-on: windows-latest
-    defaults:
-      run:
-        shell: bash # since the default shell on Windows runners was changed to PowerShell
 
     steps:
       - name: Check out repository
         uses: actions/checkout@v5
 
-      - name: Install cache
-        run: |
-          choco install ccache
-          echo "CACHE_DIR=$(ccache --get-config cache_dir)" >> $GITHUB_ENV
-
       - name: Set up cache
-        uses: actions/cache@v4
+        uses: hendrikmuhs/ccache-action@v1.2
         with:
-          path: ${{ env.CACHE_DIR }}
-          key: ccache-${{ github.job }}-${{ env.REF }}-${{ github.event.repository.pushed_at }}
-          restore-keys: ccache-${{ github.job }}-${{ env.REF }}-
+          key: ${{ github.job }}-${{ env.REF }}
 
       - name: Cache dependencies
         uses: actions/cache@v4
