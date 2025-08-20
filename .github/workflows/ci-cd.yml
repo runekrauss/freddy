@@ -60,6 +60,8 @@ jobs:
 
       - name: Configure project # depending on "linting", as Clang-Tidy is only pre-installed on Ubuntu
         run: |
+          set VSLANG=1033
+          
           args="-B build/${{ matrix.build_type }}
             -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
             -DCMAKE_COMPILE_WARNING_AS_ERROR=ON

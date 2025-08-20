@@ -7,13 +7,11 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_program(Ccache sccache)
 if(Ccache)
   if(MSVC)
-    file(COPY_FILE ${Ccache} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
+    file(COPY ${Ccache} DESTINATION ${CMAKE_BINARY_DIR}/cl.exe)
 
     set(CMAKE_VS_GLOBALS
       "CLToolExe=cl.exe"
       "CLToolPath=${CMAKE_BINARY_DIR}"
-      "TrackFileAccess=false"
-      "UseMultiToolTask=true"
       "DebugInformationFormat=OldStyle"
     )
   endif()
