@@ -4,10 +4,10 @@ project(FrEDDY LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23) # elifdef
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_program(Ccache ccache)
-if(Ccache)
+find_program(Sccache sccache)
+if(Sccache)
   if(MSVC)
-    file(COPY_FILE ${Ccache} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
+    file(COPY_FILE ${Sccache} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
 
     set(CMAKE_VS_GLOBALS
       "CLToolExe=cl.exe"
