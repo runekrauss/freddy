@@ -4,19 +4,16 @@ project(FrEDDY LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 23) # elifdef
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_program(Sccache sccache)
-if(Sccache)
+find_program(Ccache ccache)
+if(Ccache)
   if(MSVC)
-    message(STATUS "sccache gefunden: ${Sccache}")
-    file(COPY_FILE ${Sccache} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
-
-    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "OldStyle")
+    file(COPY_FILE ${Ccache} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
 
     set(CMAKE_VS_GLOBALS
       "CLToolExe=cl.exe"
       "CLToolPath=${CMAKE_BINARY_DIR}"
       "TrackFileAccess=false"
-      "UseMultiToolTask=false"
+      "UseMultiToolTask=true"
       "DebugInformationFormat=OldStyle"
     )
   endif()
