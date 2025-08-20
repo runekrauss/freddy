@@ -39,19 +39,18 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ${{ env.CACHE_DIR }}
-          key: ccache-${{ github.job }}-${{ env.REF }}
+          key: ccache-${{ github.job }}-${{ env.REF }}-${{ github.event.repository.pushed_at }}
+          restore-keys: ccache-${{ github.job }}-${{ env.REF }}-
 
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/build/_deps
-          key: deps-${{ github.job }}-${{ env.REF }}
+          key: deps-${{ github.job }}-${{ env.REF }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ github.job }}-${{ env.REF }}-
 
       - name: Configure project
         run: cmake -G Ninja -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Build binaries
         run: cmake --build build
-
-      - name: Print statistics
-        run: ccache --print-stats
