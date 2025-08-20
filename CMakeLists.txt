@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_program(Ccache sccache)
 if(Ccache)
   if(MSVC)
-    file(COPY ${Ccache} DESTINATION ${CMAKE_BINARY_DIR}/cl.exe)
+    file(COPY_FILE ${Ccache} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
 
     set(CMAKE_VS_GLOBALS
       "CLToolExe=cl.exe"
