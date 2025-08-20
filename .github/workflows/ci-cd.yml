@@ -66,8 +66,6 @@ jobs:
             -DCMAKE_CXX_COMPILER_LAUNCHER=${{ env.CACHE }}
             -DFREDDY_STATS=ON
             -DFREDDY_TEST=ON
-            -G Ninja
-            -DCMAKE_CXX_COMPILER=gcc
           "
 
           if [[ "${{ matrix.os }}" == "ubuntu-latest" && "${{ matrix.build_type }}" == "Debug" ]]; then
