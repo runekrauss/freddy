@@ -16,6 +16,7 @@ if(Ccache)
       "UseMultiToolTask=false"
       "DebugInformationFormat=OldStyle"
     )
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "OldStyle")
   endif()
 endif()
 
