@@ -40,7 +40,7 @@
 #elifdef __linux__
 #include <fstream>  // std::ifstream
 #elifdef _WIN32
-// #define NOMINMAX
+#define NOMINMAX
 // clang-format off
 #include <windows.h>
 // clang-format on
