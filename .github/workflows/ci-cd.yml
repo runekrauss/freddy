@@ -69,7 +69,10 @@ jobs:
           restore-keys: deps-${{ github.job }}-${{ env.REF }}-
 
       - name: Configure project
-        run: cmake -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DFREDDY_STATS=ON -DFREDDY_TEST=ON
+        run: >
+          cmake -B build
+          -DCMAKE_BUILD_TYPE=Release -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+          -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Build binaries
         run: cmake --build build
