@@ -12,7 +12,7 @@ on:
     branches: [main]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ env.REF }}
   cancel-in-progress: true
 
 permissions:
