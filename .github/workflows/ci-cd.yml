@@ -10,16 +10,18 @@ on:
       - '**/*.hpp'
   push:
     branches: [main]
+  schedule:
+    - cron: '0 3 */6 * *' # "weekly" due to potential package upgrades
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }} # as REF is not available here
   cancel-in-progress: true
 
 permissions:
   contents: read
 
 env:
-  REF: ${{ github.head_ref || github.run_id }}
+  REF: ${{ github.head_ref || github.ref_name }}
 
 jobs:
   gcc:
@@ -35,6 +37,7 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
+      # should come after checkout
       - name: Set up cache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -43,25 +46,25 @@ jobs:
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
-          path: ${{ github.workspace }}/build/${{ matrix.build_type }}/_deps
+          path: ${{ github.workspace }}/build/_deps
           key: deps-${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }}-${{ hashFiles('CMakeLists.txt') }}
           restore-keys: deps-${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }}-
 
-      - name: Configure project
+      - name: Configure project # depending on linting, as Clang-Tidy is only pre-installed on Ubuntu
         run: >
-          cmake -B build/${{ matrix.build_type }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+          cmake -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
           -DCLANG_TIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'
           -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Build binaries
-        run: cmake --build build/${{ matrix.build_type }} -j4
+        run: cmake --build build -j4
 
-      - name: Run tests
-        working-directory: ./build/${{ matrix.build_type }}
+      - name: Run tests # on Ubuntu, as the associated VM is one of the fastest runners
+        working-directory: ./build
         run: ctest --output-on-failure -j4
 
       - name: Measure coverage
-        working-directory: ./build/${{ matrix.build_type }}
+        working-directory: ./build
         run: |
           cov_min=80
           cov=$(ctest -T Coverage | grep -o '[^ ]*%' | sed 's/%//' | cut -d. -f1)
@@ -123,6 +126,7 @@ jobs:
         run: cmake -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Build binaries
+        # Windows has a multi-config generator, all machines offer 4 cores
         run: cmake --build build --config Release -j4
 
   format:

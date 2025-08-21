@@ -8,7 +8,7 @@ find_program(Ccache ccache)
 if(Ccache)
   message(STATUS "Using Ccache")
 
-  if(MSVC)
+  if(MSVC) # workaround for Windows support
     file(COPY_FILE ${Ccache} ${CMAKE_BINARY_DIR}/cl.exe ONLY_IF_DIFFERENT)
 
     set(CMAKE_VS_GLOBALS
