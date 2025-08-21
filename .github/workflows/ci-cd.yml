@@ -12,6 +12,7 @@ on:
     branches: [main]
   schedule:
     - cron: '0 3 */6 * *' # "weekly" due to potential package upgrades
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }} # as REF is not available here
