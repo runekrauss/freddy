@@ -101,11 +101,11 @@ if(FREDDY_TEST)
     message(STATUS "Fetching/Preparing Catch2 - done")
   endif()
 
-  if(NOT WIN32)
+  if(NOT MSVC)
     set(CMAKE_CXX_FLAGS "-fprofile-arcs -ftest-coverage")
   endif()
 
-  include(CTest) # enable_testing() and for generating coverage information
+  include(CTest) # enable_testing()
   include(Catch) # catch_discover_tests
 
   file(GLOB FILENAMES test/**/*.cpp)
