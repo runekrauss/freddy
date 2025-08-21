@@ -4,11 +4,14 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/bdd.hpp>  // dd::bdd
+#include <freddy/dd/kfdd.hpp>  // dd::kfdd
+#include <freddy/expansion.hpp>
 
 #include <cassert>  // assert
 #include <cstdint>  // std::uint8_t
 #include <vector>   // std::vector
+
+#include <freddy/util.hpp>
 
 // *********************************************************************************************************************
 // Namespaces
@@ -16,23 +19,20 @@
 
 using namespace freddy;
 
-namespace
-{
-
 // =====================================================================================================================
 // Functions
 // =====================================================================================================================
 
-auto enc(std::uint8_t const n, dd::bdd_manager& mgr)
+auto enc(std::uint8_t const n, dd::kfdd_manager& mgr)
 {
     assert(n > 0);
 
-    std::vector<std::vector<dd::bdd>> x(n, std::vector<dd::bdd>(n));
+    std::vector<std::vector<dd::kfdd>> x(n, std::vector<dd::kfdd>(n));
     for (auto i = 0; i < n; ++i)
     {
         for (auto j = 0; j < n; ++j)
         {
-            x[i][j] = mgr.var();
+            x[i][j] = mgr.var(expansion::S);
         }
     }
 
@@ -86,43 +86,67 @@ auto enc(std::uint8_t const n, dd::bdd_manager& mgr)
     return pred;
 }
 
-}  // namespace
-
 // *********************************************************************************************************************
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("1-Queens is solvable", "[queen]")
+TEST_CASE("kfdd 1-Queens is solvable", "[kfdd_queen]")
 {
-    dd::bdd_manager mgr;
+    dd::kfdd_manager mgr;
 
     CHECK(enc(1, mgr).sharpsat() == 1);
 }
 
-TEST_CASE("2-Queens is unsolvable", "[queen]")
+TEST_CASE("kfdd 2-Queens is unsolvable", "[kfdd_queen]")
 {
-    dd::bdd_manager mgr;
+    dd::kfdd_manager mgr;
 
     CHECK(enc(2, mgr).sharpsat() == 0);
 }
 
-TEST_CASE("3-Queens is unsolvable", "[queen]")
+TEST_CASE("kfdd 3-Queens is unsolvable", "[kfdd_queen]")
 {
-    dd::bdd_manager mgr;
+    dd::kfdd_manager mgr;
 
     CHECK(enc(3, mgr).sharpsat() == 0);
 }
 
-TEST_CASE("4-Queens is solvable", "[queen]")
+TEST_CASE("kfdd 4-Queens is solvable", "[kfdd_queen]")
 {
-    dd::bdd_manager mgr;
+    dd::kfdd_manager mgr;
 
     CHECK(enc(4, mgr).sharpsat() == 2);
 }
 
-TEST_CASE("5-Queens is solvable", "[queen]")
+TEST_CASE("kfdd 5-Queens is solvable", "[kfdd_queen]")
 {
-    dd::bdd_manager mgr;
+    dd::kfdd_manager mgr;
 
     CHECK(enc(5, mgr).sharpsat() == 10);
+}
+
+TEST_CASE("kfdd 4-Queens dtl sifts correctly", "[kfdd_queen]")
+{
+    dd::kfdd_manager mgr;
+    auto const queens1 = enc(4, mgr);
+
+    dd::kfdd_manager mgr2;
+    auto const queens2 = enc(4, mgr2);
+
+    mgr2.dtl_sift();
+
+    eval_dds(queens1,queens2);
+}
+
+TEST_CASE("kfdd 5-Queens dtl sifts correctly", "[kfdd_queen]")
+{
+    dd::kfdd_manager mgr;
+    auto const queens1 = enc(5, mgr);
+
+    dd::kfdd_manager mgr2;
+    auto const queens2 = enc(5, mgr2);
+
+    mgr2.dtl_sift();
+
+    eval_dds(queens1,queens2);
 }
