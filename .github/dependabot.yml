@@ -4,3 +4,5 @@ updates:
     directory: /
     schedule:
       interval: weekly # Monday
+    labels:
+      - 'Kind: CI/CD'
