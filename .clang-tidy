@@ -36,7 +36,7 @@ Checks: |
   -portability-template-virtual-member-function, # since DD types are instantiated
 
   readability-*,
-  -readability-identifier-length,        # f, g, ...
+  -readability-identifier-length,        # f, g
   -readability-isolate-declaration,      # because grouping variables can be stylistically acceptable
   -readability-magic-numbers,            # as with cppcoreguidelines-avoid-magic-numbers
   -readability-math-missing-parentheses, # w * P1 + v * P2
@@ -44,7 +44,7 @@ Checks: |
   -readability-uppercase-literal-suffix, # see -hicpp-uppercase-literal-suffix
 
   misc-*,
-  -misc-no-recursion, # conj, eval, ite, ...
+  -misc-no-recursion, # eval, ite
 HeaderFilterRegex: '.*'
 FormatStyle: file
 CheckOptions:
