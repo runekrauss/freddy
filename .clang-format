@@ -27,15 +27,15 @@ ColumnLimit: 120
 ConstructorInitializerIndentWidth: 8
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '<catch2\/[a-zA-Z0-9_]+.+>$'
+  - Regex: '"[a-zA-Z0-9_\.]+.+"$' # own headers to enforce self-contained design
     Priority: 1
-  - Regex: '"[a-zA-Z0-9_\.]+.+"$'
+  - Regex: '<catch2\/[a-zA-Z0-9_]+.+>$'
     Priority: 2
   - Regex: '<freddy\/[a-zA-Z0-9_]+.+>$'
     Priority: 3
   - Regex: '<boost\/[a-zA-Z0-9_]+.+>$'
     Priority: 4
-  - Regex: '<[a-zA-Z0-9_]+>$'
+  - Regex: '<[a-zA-Z0-9_]+>$' # system headers
     Priority: 5
 IndentCaseLabels: true
 IndentRequiresClause: false
