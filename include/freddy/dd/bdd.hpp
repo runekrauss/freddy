@@ -514,7 +514,7 @@ class bdd_manager : public detail::manager<bool, bool>
     [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
     {
         return !(val1 == val2);
-    }
+     }
 
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
