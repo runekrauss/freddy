@@ -1,18 +1,19 @@
-name: CI/CD
+name: Build and Test
 
 on:
+  push:
+    branches: [main]
   pull_request:
     paths:
-      - '.github/workflows/ci-cd.yml'
+      - '.github/workflows/build-test.yml'
       - 'CMakeLists.txt'
       - '.clang-tidy'
       - '**/*.cpp'
       - '**/*.hpp'
-  push:
-    branches: [main]
+  workflow_dispatch: # enables manual execution of this pipeline
+  workflow_call:     # allow this workflow to be called by others such as CD
   schedule:
     - cron: '0 3 */6 * *' # "weekly" due to potential package upgrades
-  workflow_dispatch:      # enables manual execution of this pipeline
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }} # as REF is not available here
@@ -22,12 +23,33 @@ permissions:
   contents: read
 
 env:
-  REF: ${{ github.head_ref || github.ref_name }}
+  REF: ${{ github.head_ref || github.ref_name }} # used as part of the cache keys
 
 jobs:
+  clangformat:
+    name: ClangFormat on C++
+    runs-on: ubuntu-latest # since this tool is pre-installed there
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write # to be able to create a commit
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Format code
+        run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format -i
+
+      - name: Push changes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email github-actions[bot]@users.noreply.github.com
+          git diff --exit-code || (git commit -a -m 'style: format code' && git push)
+
   gcc:
     name: GCC on Linux (${{ matrix.build_type }})
     runs-on: ubuntu-latest
+    needs: format
     strategy:
       fail-fast: false
       matrix:
@@ -53,16 +75,16 @@ jobs:
 
       - name: Configure project # depending on linting, as Clang-Tidy is only pre-installed on Ubuntu
         run: >
-          cmake -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
           -DCLANG_TIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'
           -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
-      - name: Build binaries
-        run: cmake --build build -j4
+      - name: Lint sources / Build binaries
+        run: cmake --build build -j$(nproc)
 
       - name: Run tests # on Ubuntu, as the associated VM is one of the fastest runners
         working-directory: ./build
-        run: ctest --output-on-failure -j4
+        run: ctest --output-on-failure -j$(nproc)
 
       - name: Measure coverage
         working-directory: ./build
@@ -77,6 +99,7 @@ jobs:
   clang:
     name: Clang on macOS
     runs-on: macos-latest
+    needs: format
 
     steps:
       - name: Check out repository
@@ -103,6 +126,7 @@ jobs:
   msvc:
     name: MSVC on Windows
     runs-on: windows-latest
+    needs: format
     defaults:
       run:
         shell: bash # since the default shell on Windows runners was changed to PowerShell
@@ -127,26 +151,5 @@ jobs:
         run: cmake -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Build binaries
-        # Windows has a multi-config generator, all machines offer 4 cores
-        run: cmake --build build --config Release -j4
-
-  format:
-    name: Code Formatting
-    runs-on: ubuntu-latest # since ClangFormat is pre-installed there
-    if: github.ref == 'refs/heads/main'
-    needs: [gcc, clang, msvc]
-    permissions:
-      contents: write # to be able to create a commit
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-
-      - name: Format code
-        run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format -i
-
-      - name: Push changes
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email github-actions[bot]@users.noreply.github.com
-          git diff --exit-code || (git commit -a -m 'style: format code' && git push)
+        # Windows has a multi-config generator.
+        run: cmake --build build --config Release -j$NUMBER_OF_PROCESSORS
