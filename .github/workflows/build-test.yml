@@ -81,7 +81,9 @@ jobs:
           -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Lint sources / Build binaries
-        run: cmake --build build -j$(nproc)
+        run: |
+          echo -j$(nproc)
+          cmake --build build -j$(nproc)
 
       - name: Run tests # on Ubuntu, as the associated VM is one of the fastest runners
         working-directory: ./build
@@ -155,4 +157,6 @@ jobs:
 
       - name: Build binaries
         # Windows has a multi-config generator.
-        run: cmake --build build --config Release -j$NUMBER_OF_PROCESSORS
+        run: |
+          echo -j$NUMBER_OF_PROCESSORS
+          cmake --build build --config Release -j$NUMBER_OF_PROCESSORS
