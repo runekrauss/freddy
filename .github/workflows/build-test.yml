@@ -16,7 +16,7 @@ on:
     - cron: '0 3 */6 * *' # "weekly" due to potential package upgrades
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }} # as REF is not available here
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }} # REF is not available here.
   cancel-in-progress: true
 
 permissions:
@@ -37,14 +37,14 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v5
 
-      - name: Format code
+      - name: Format sources
         run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format -i
 
       - name: Push changes
         run: |
           git config user.name github-actions[bot]
           git config user.email github-actions[bot]@users.noreply.github.com
-          git diff --exit-code || (git commit -a -m 'style: format code' && git push)
+          git diff --exit-code || (git commit -a -m 'style: format sources' && git push)
 
   gcc:
     name: GCC on Linux (${{ matrix.build_type }})
@@ -81,9 +81,7 @@ jobs:
           -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Lint sources / Build binaries
-        run: |
-          echo -j$(nproc)
-          cmake --build build -j$(nproc)
+        run: cmake --build build -j$(nproc)
 
       - name: Run tests # on Ubuntu, as the associated VM is one of the fastest runners
         working-directory: ./build
@@ -156,7 +154,5 @@ jobs:
         run: cmake -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Build binaries
-        # Windows has a multi-config generator.
-        run: |
-          echo -j$NUMBER_OF_PROCESSORS
-          cmake --build build --config Release -j$NUMBER_OF_PROCESSORS
+        # Windows has a multi-config generator, "Release" enables caching
+        run: cmake --build build --config Release -j$NUMBER_OF_PROCESSORS
