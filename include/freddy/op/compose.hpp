@@ -7,9 +7,8 @@
 #include "freddy/detail/operation.hpp"  // detail::operation
 
 #include <cassert>     // assert
-#include <cstdint>     // std::int32_t
 #include <functional>  // std::hash
-#include <memory>      // std::shared_ptr
+#include <tuple>       // std::tie
 #include <utility>     // std::move
 
 // *********************************************************************************************************************
@@ -27,40 +26,47 @@ template <typename E, typename V>
 class compose : public detail::operation  // function substitution
 {
   public:
-    using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
-
-    compose(edge_ptr f, std::int32_t const x, edge_ptr g) :
-            // for finding a cache result based on composition input
+    // for finding a cache result based on composition input
+    compose(detail::edge_ptr<E, V> f, detail::var_index const x, detail::edge_ptr<E, V> g) :
             f{std::move(f)},
             x{x},
             g{std::move(g)}
     {
         assert(this->f);
-        assert(x >= 0);
         assert(this->g);
     }
 
-    edge_ptr r;  // composition result
+    auto result() noexcept -> detail::edge_ptr<E, V>&
+    {
+        return r;
+    }
+
+    [[nodiscard]] auto result() const noexcept -> detail::edge_ptr<E, V> const&
+    {
+        return r;
+    }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return (std::hash<edge_ptr>()(f) + std::hash<std::int32_t>()(x)) * detail::P1 +
-               std::hash<edge_ptr>()(g) * detail::P2;
+        return (std::hash<detail::edge_ptr<E, V>>()(f) + std::hash<detail::var_index>()(x)) * detail::P1 +
+               std::hash<detail::edge_ptr<E, V>>()(g) * detail::P2;
     }
 
-    [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
+    [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
     {
-        auto other = static_cast<compose const&>(op);
+        auto& other = static_cast<compose const&>(op);
 
-        return f == other.f && x == other.x && g == other.g;
+        return std::tie(f, x, g) == std::tie(other.f, other.x, other.g);
     }
 
-    edge_ptr f;  // composition operand
+    detail::edge_ptr<E, V> f;  // composition operand
 
-    std::int32_t x;  // variable to be substituted
+    detail::var_index x;  // variable to be substituted
 
-    edge_ptr g;  // function that substitutes
+    detail::edge_ptr<E, V> g;  // function that substitutes
+
+    detail::edge_ptr<E, V> r;  // composition result
 };
 
 }  // namespace freddy::op

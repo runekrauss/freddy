@@ -6,18 +6,19 @@
 
 #include "common.hpp"            // comp
 #include "edge.hpp"              // edge
-#include "freddy/config.hpp"     // config::ut_size
 #include "freddy/expansion.hpp"  // expansion
 #include "node.hpp"              // node
 
+#include <boost/smart_ptr/intrusive_ptr.hpp>
 #include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
+#include <boost/variant2/variant.hpp>
 
 #include <cassert>      // assert
-#include <format>       // std::format
+#include <cstddef>      // std::size_t
 #include <memory>       // std::shared_ptr
-#include <ostream>      // std::ostream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
+#include <type_traits>  // std::is_nothrow_move_constructible_v
 
 // *********************************************************************************************************************
 // Namespaces
@@ -30,50 +31,50 @@ namespace freddy::detail
 // Types
 // =====================================================================================================================
 
+template <typename T>
+using utable = boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>;  // unique table
+
 template <typename E, typename V>
-struct variable
+auto operator<<(std::ostream&, manager<E, V> const&) -> std::ostream&;
+
+template <typename E, typename V>
+class variable final
 {
-    variable(expansion const t, std::string_view l) :
+  public:
+    variable(expansion const t, std::string_view l, std::size_t const ut_size = {}) :
             t{t},
             l{l}
     {
         assert(!l.empty());  // for presentation reasons
 
-        et.reserve(config::ut_size);  // rehash(ceil(config::ut_size / 0.875))
-        nt.reserve(config::ut_size);
+        et.reserve(ut_size);  // rehash(ceil(ut_size / 0.875))
+        nt.reserve(ut_size);
     }
 
-    auto friend operator<<(std::ostream& s, variable const& var) -> std::ostream&
-    {
-        // table head
-        s << "Variable '" << var.l << "' [";
-        switch (var.t)
-        {
-            case expansion::PD: s << "pD"; break;
-            case expansion::S: s << 'S'; break;
-            default: assert(false);
-        }
-        s << "]\n";
-        s << std::format("{:-<34}\n", '-');
+    variable(variable const&) = delete;
 
-        // body content
-        s << std::format("{:12} | {:>19}\n", "ET #Buckets", var.et.bucket_count());
-        s << std::format("{:12} | {:>19}\n", "ET #Edges", var.et.size());
-        s << std::format("{:12} | {:>19}\n", "ET Max. load", var.et.max_load());
-        s << std::format("{:12} | {:>19}\n", "NT #Buckets", var.nt.bucket_count());
-        s << std::format("{:12} | {:>19}\n", "NT #Nodes", var.nt.size());
-        s << std::format("{:12} | {:>19}", "NT Max. load", var.nt.max_load());
+    variable(variable&&) noexcept(std::is_nothrow_move_constructible_v<utable<edge<E, V>>> &&
+                                  std::is_nothrow_move_constructible_v<utable<node<E, V>>>) = default;
 
-        return s;
-    }
+    auto operator=(variable const&) = delete;
 
-    expansion t;
+    auto operator=(variable&&) = delete;  // as a variable should uniquely belong to a list
 
-    std::string l;  // name
+    ~variable() noexcept(std::is_nothrow_destructible_v<utable<edge<E, V>>> &&
+                         std::is_nothrow_destructible_v<utable<node<E, V>>>) = default;
 
-    boost::unordered_flat_set<std::shared_ptr<edge<E, V>>, hash, comp> et;
+  private:
+    friend manager<E, V>;
 
-    boost::unordered_flat_set<std::shared_ptr<node<E, V>>, hash, comp> nt;
+    friend auto operator<< <>(std::ostream&, manager<E, V> const&) -> std::ostream&;
+
+    expansion t;  // decomposition type
+
+    std::string l;  // (immutable) name
+
+    utable<edge<E, V>> et;
+
+    utable<node<E, V>> nt;
 };
 
 }  // namespace freddy::detail

@@ -4,7 +4,7 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/mtbdd.hpp>  // dd::mtbdd_manager
+#include <freddy/dd/add.hpp>  // dd::mtbdd_manager
 
 #include <cstdint>  // std::int32_t
 #ifndef NDEBUG
@@ -23,7 +23,7 @@ using namespace freddy;
 
 TEST_CASE("MTBDD is constructed", "[basic]")
 {
-    dd::mtbdd_manager<std::int32_t> mgr;
+    dd::add_manager<std::int32_t> mgr;
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation is performed")
@@ -102,7 +102,7 @@ TEST_CASE("MTBDD is constructed", "[basic]")
 
 TEST_CASE("MTBDD can be characterized", "[basic]")
 {
-    dd::mtbdd_manager<std::int32_t> mgr;
+    dd::add_manager<std::int32_t> mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = x0 + mgr.two() * x1 + mgr.constant(4) * x2;
 
@@ -156,7 +156,7 @@ TEST_CASE("MTBDD can be characterized", "[basic]")
 
 TEST_CASE("MTBDD is substituted", "[basic]")
 {
-    dd::mtbdd_manager<float> mgr;
+    dd::add_manager<float> mgr;
     auto const x0 = mgr.var(), x1 = mgr.var();
     auto const f = mgr.constant(8.5f) - mgr.constant(20.0f) * x0 + mgr.two() * x1 + mgr.constant(4.0f) * x0 * x1;
 
@@ -193,7 +193,7 @@ TEST_CASE("MTBDD is substituted", "[basic]")
 
 TEST_CASE("MTBDD variable order is changeable", "[basic]")
 {
-    dd::mtbdd_manager<std::int32_t> mgr;
+    dd::add_manager<std::int32_t> mgr;
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x5 = mgr.var("x5"), x0 = mgr.var("x0"), x2 = mgr.var("x2"),
                x4 = mgr.var("x4");
     auto const f = (x0 & x1) | (x2 & x3) | (x4 & x5);

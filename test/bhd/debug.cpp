@@ -74,7 +74,7 @@ class sat
                 dimacs >> lit;
                 if (lit < 0)  // negative polarity
                 {
-                    assert(-lit <= static_cast<std::int32_t>(p.vars.size()));
+                    assert(std::cmp_less_equal(-lit, p.vars.size()));
 
                     auto const x = -lit - 1;
                     ++p.lits[x];
@@ -83,7 +83,7 @@ class sat
                 }
                 else if (lit > 0)  // positive polarity
                 {
-                    assert(lit <= static_cast<std::int32_t>(p.vars.size()));
+                    assert(std::cmp_less_equal(lit, p.vars.size()));
 
                     auto const x = lit - 1;
                     ++p.lits[x];
@@ -108,7 +108,7 @@ class sat
 
             sol.resize(p.vars.size());
 
-            for (auto i = 0; i < static_cast<std::int32_t>(p.vars.size()); ++i)
+            for (decltype(p.vars.size()) i = 0; i < p.vars.size(); ++i)
             {
                 if (p.vars[i].has_value())  // variables that are not set can take any truth value
                 {
@@ -140,15 +140,15 @@ class sat
         std::vector<std::vector<std::int32_t>> clauses;  // 2x is stored if x is negative, otherwise 2x+1
     };
 
-    auto static simplify(formula& q, std::int32_t const x)
+    static auto simplify(formula& q, std::int32_t const x)
     {
-        assert(x < static_cast<std::int32_t>(q.lits.size()));
+        assert(std::cmp_less(x, q.lits.size()));
 
         q.lits[x] = 0;  // as all these literals are removed
 
-        for (auto i = 0; i < static_cast<std::int32_t>(q.clauses.size()); ++i)
+        for (auto i = 0; std::cmp_less(i, q.clauses.size()); ++i)
         {
-            for (auto j = 0; j < static_cast<std::int32_t>(q.clauses[i].size()); ++j)
+            for (auto j = 0; std::cmp_less(j, q.clauses[i].size()); ++j)
             {
                 if (q.clauses[i][j] == 2 * x + static_cast<std::int32_t>(*q.vars[x]))
                 {  // same polarity => remove clause
@@ -178,7 +178,7 @@ class sat
         return stat::UNKN;
     }
 
-    auto static up(formula& q)
+    static auto up(formula& q)
     {
         if (q.clauses.empty())
         {
@@ -320,7 +320,7 @@ auto mux_sim(std::vector<std::vector<bool>> const& t)  // stuck-at fault simulat
 
     // fault localization
     std::set<std::string> f{t2f.at(t[0])};
-    for (auto i = 1; i < static_cast<std::int32_t>(t.size()); ++i)
+    for (decltype(t.size()) i = 1; i < t.size(); ++i)
     {
         std::set<std::string> tmp;
         std::set_intersection(f.begin(), f.end(), t2f.at(t[i]).begin(), t2f.at(t[i]).end(),
@@ -355,7 +355,7 @@ TEST_CASE("MUX f/0 is debugged", "[debug]")
 
     CHECK(t.size() == 2);
     CHECK(f.size() == 1);
-    CHECK(f.find("f/0") != f.end());
+    CHECK(f.contains("f/0"));
 }
 
 TEST_CASE("MUX f/1 is debugged", "[debug]")
@@ -371,5 +371,5 @@ TEST_CASE("MUX f/1 is debugged", "[debug]")
 
     CHECK(t.size() == 2);
     CHECK(f.size() == 1);
-    CHECK(f.find("f/1") != f.end());
+    CHECK(f.contains("f/1"));
 }

@@ -4,7 +4,9 @@
 // Includes
 // *********************************************************************************************************************
 
+#include <cassert>  // assert
 #include <cstdint>  // std::uint8_t
+#include <utility>  // std::unreachable
 
 // *********************************************************************************************************************
 // Namespaces
@@ -22,5 +24,19 @@ enum struct expansion : std::uint8_t
     PD,  // positive Davio
     S    // Shannon
 };
+
+// =====================================================================================================================
+// Functions
+// =====================================================================================================================
+
+constexpr auto to_string(expansion const t) noexcept
+{
+    switch (t)
+    {
+        case expansion::PD: return "pD";
+        case expansion::S: return "S";
+        default: assert(false); std::unreachable();
+    }
+}
 
 }  // namespace freddy

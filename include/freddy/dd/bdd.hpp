@@ -14,6 +14,7 @@
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::pow
+#include <cstddef>      // std::size_t
 #include <iostream>     // std::cout
 #include <iterator>     // std::back_inserter
 #include <ostream>      // std::ostream
@@ -89,21 +90,21 @@ class bdd  // binary decision diagram
     {
         assert(f);
 
-        return f->v == g.f->v;
+        return f->ch() == g.f->ch();
     }
 
     [[nodiscard]] auto is_complemented() const noexcept
     {
         assert(f);
 
-        return f->w;
+        return f->weight();
     }
 
     [[nodiscard]] auto is_const() const noexcept
     {
         assert(f);
 
-        return f->v->is_const();
+        return f->ch()->is_const();
     }
 
     [[nodiscard]] auto is_zero() const noexcept;
@@ -114,7 +115,7 @@ class bdd  // binary decision diagram
     {
         assert(!is_const());
 
-        return f->v->br().x;
+        return f->ch()->br().x;
     }
 
     [[nodiscard]] auto high() const;
@@ -172,8 +173,8 @@ class bdd_manager : public detail::manager<bool, bool>
   public:
     friend bdd;
 
-    bdd_manager() :
-            manager{tmls()}
+    explicit bdd_manager(std::size_t const ut_size = UT_SIZE, std::size_t const ct_size = CT_SIZE) :
+            manager{tmls(), ut_size, ct_size}
     {}
 
     auto var(std::string_view l = {})
@@ -181,38 +182,36 @@ class bdd_manager : public detail::manager<bool, bool>
         return bdd{make_var(expansion::S, l), this};
     }
 
-    auto var(std::int32_t const i) noexcept
+    auto var(std::uint_fast32_t const i) noexcept
     {
-        assert(i >= 0);
         assert(i < var_count());
 
-        return bdd{vars[i], this};
+        return bdd{get_var(i), this};
     }
 
     auto zero() noexcept
     {
-        return bdd{consts[0], this};
+        return bdd{get_const(0), this};
     }
 
     auto one() noexcept
     {
-        return bdd{consts[1], this};
+        return bdd{get_const(1), this};
     }
 
-    [[nodiscard]] auto size(std::vector<bdd> const& fs) const
+    [[nodiscard]] auto size(std::vector<bdd> const& fs)
     {
         return node_count(transform(fs));
     }
 
-    [[nodiscard]] auto depth(std::vector<bdd> const& fs) const
+    [[nodiscard]] auto depth(std::vector<bdd> const& fs)
     {
         assert(!fs.empty());
 
         return longest_path(transform(fs));
     }
 
-    auto print(std::vector<bdd> const& fs, std::vector<std::string> const& outputs = {},
-               std::ostream& s = std::cout) const
+    auto print(std::vector<bdd> const& fs, std::vector<std::string> const& outputs = {}, std::ostream& s = std::cout)
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -220,7 +219,7 @@ class bdd_manager : public detail::manager<bool, bool>
     }
 
   private:
-    auto static tmls() -> std::array<edge_ptr, 2>
+    static auto tmls() -> std::array<edge_ptr, 2>
     {
         // choose the 0-leaf due to complemented edges in order to ensure canonicity
         auto const leaf = std::make_shared<detail::node<bool, bool>>(false);
@@ -229,7 +228,7 @@ class bdd_manager : public detail::manager<bool, bool>
                                        std::make_shared<detail::edge<bool, bool>>(true, leaf)};
     }
 
-    auto static transform(std::vector<bdd> const& fs) -> std::vector<edge_ptr>
+    static auto transform(std::vector<bdd> const& fs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> gs;
         gs.reserve(fs.size());
@@ -242,28 +241,28 @@ class bdd_manager : public detail::manager<bool, bool>
     {
         assert(f);
 
-        if (f->v->is_const())
+        if (f->ch()->is_const())
         {
-            return f == consts[0] ? 0 : std::pow(2, var_count());
+            return f == get_const(0) ? 0 : std::pow(2, var_count());
         }
 
         op::sharpsat op{f};
         if (auto const* const ent = cached(op))
         {
-            return ent->r;
+            return ent->result();
         }
 
-        auto count = (sharpsat(f->v->br().hi) + sharpsat(f->v->br().lo)) / 2;
-        if (f->w)
+        auto count = (sharpsat(f->ch()->br().hi) + sharpsat(f->ch()->br().lo)) / 2;
+        if (f->weight())
         {  // complemented edge
             count = std::pow(2, var_count()) - count;
         }
 
-        op.r = count;
-        return cache(std::move(op))->r;
+        op.result() = count;
+        return cache(std::move(op))->result();
     }
 
-    auto simplify(edge_ptr const& f, edge_ptr& g, edge_ptr& h) const noexcept
+    auto simplify(edge_ptr const& f, edge_ptr& g, edge_ptr& h) noexcept
     {
         assert(f);
         assert(g);
@@ -271,22 +270,22 @@ class bdd_manager : public detail::manager<bool, bool>
 
         if (f == g)
         {  // ite(f, f, h) => ite(f, 1, h)
-            g = consts[1];
+            g = get_const(1);
             return 1;
         }
         if (f == h)
         {  // ite(f, g, f) => ite(f, g, 0)
-            h = consts[0];
+            h = get_const(0);
             return 2;
         }
-        if (f->v == h->v && !(f->w == h->w))
+        if (f->ch() == h->ch() && !(f->weight() == h->weight()))
         {  // ite(f, g, ~f) => ite(f, g, 1)
-            h = consts[1];
+            h = get_const(1);
             return 3;
         }
-        if (f->v == g->v && !(f->w == g->w))
+        if (f->ch() == g->ch() && !(f->weight() == g->weight()))
         {  // ite(f, ~f, h) => ite(f, 0, h)
-            g = consts[0];
+            g = get_const(0);
             return 4;
         }
         return 0;
@@ -295,47 +294,47 @@ class bdd_manager : public detail::manager<bool, bool>
     auto std_triple(std::int32_t const simpl, edge_ptr& f, edge_ptr& g, edge_ptr& h)
     {
         assert(f);
-        assert(!f->v->is_const());
+        assert(!f->ch()->is_const());
         assert(g);
         assert(h);
 
         switch (simpl)
         {
             case 1:
-                assert(!h->v->is_const());
+                assert(!h->ch()->is_const());
 
-                if (var2lvl[f->v->br().x] >= var2lvl[h->v->br().x])
+                if (lvl_ge(f->ch()->br().x, h->ch()->br().x))
                 {  // ite(f, 1, h) == ite(h, 1, f)
                     std::swap(f, h);
                 }
                 break;
             case 2:
-                assert(!g->v->is_const());
+                assert(!g->ch()->is_const());
 
-                if (var2lvl[f->v->br().x] >= var2lvl[g->v->br().x])
+                if (lvl_ge(f->ch()->br().x, g->ch()->br().x))
                 {  // ite(f, g, 0) == ite(g, f, 0)
                     std::swap(f, g);
                 }
                 break;
             case 3:
-                assert(!g->v->is_const());
+                assert(!g->ch()->is_const());
 
-                if (var2lvl[f->v->br().x] >= var2lvl[g->v->br().x])
+                if (lvl_ge(f->ch()->br().x, g->ch()->br().x))
                 {  // ite(f, g, 1) == ite(~g, ~f, 1)
                     f = complement(g);
                     g = complement(f);
                 }
                 break;
             case 4:
-                assert(!h->v->is_const());
+                assert(!h->ch()->is_const());
 
-                if (var2lvl[f->v->br().x] >= var2lvl[h->v->br().x])
+                if (lvl_ge(f->ch()->br().x, h->ch()->br().x))
                 {  // ite(f, 0, h) == ite(~h, 0, ~f)
                     f = complement(h);
                     h = complement(f);
                 }
                 break;
-            default: assert(false);
+            default: assert(false); std::unreachable();
         }
     }
 
@@ -348,11 +347,11 @@ class bdd_manager : public detail::manager<bool, bool>
         auto const ret = simplify(f, g, h);
 
         // terminal cases
-        if (f == consts[0])
+        if (f == get_const(0))
         {
             return h;
         }
-        if (f == consts[1])
+        if (f == get_const(1))
         {
             return g;
         }
@@ -360,11 +359,11 @@ class bdd_manager : public detail::manager<bool, bool>
         {
             return g;
         }
-        if (h == consts[0] && g == consts[1])
+        if (h == get_const(0) && g == get_const(1))
         {
             return f;
         }
-        if (g == consts[0] && h == consts[1])
+        if (g == get_const(0) && h == get_const(1))
         {
             return complement(f);
         }
@@ -377,14 +376,14 @@ class bdd_manager : public detail::manager<bool, bool>
         op::ite op{f, g, h};
         if (auto const* const ent = cached(op))
         {
-            return ent->r;
+            return ent->result();
         }
 
-        auto const x = f->v->br().x == top_var(f, g) ? top_var(f, h) : top_var(g, h);
+        auto const x = f->ch()->br().x == top_var(f, g) ? top_var(f, h) : top_var(g, h);
 
-        op.r = make_branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
-                           ite(cof(f, x, false), cof(g, x, false), cof(h, x, false)));
-        return cache(std::move(op))->r;
+        op.result() = make_branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
+                                  ite(cof(f, x, false), cof(g, x, false), cof(h, x, false)));
+        return cache(std::move(op))->result();
     }
 
     auto antiv(edge_ptr const& f, edge_ptr const& g)
@@ -392,44 +391,45 @@ class bdd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
 
-        if (f == consts[0])
+        if (f == get_const(0))
         {
             return g;
         }
-        if (g == consts[0])
+        if (g == get_const(0))
         {
             return f;
         }
-        if (f == consts[1])
+        if (f == get_const(1))
         {
             return complement(g);
         }
-        if (g == consts[1])
+        if (g == get_const(1))
         {
             return complement(f);
         }
         if (f == g)
         {
-            return consts[0];
+            return get_const(0);
         }
         if (f == complement(g))
         {
-            return consts[1];
+            return get_const(1);
         }
 
         op::antiv op{f, g};
         if (auto const* const ent = cached(op))
         {
-            return ent->r;
+            return ent->result();
         }
 
         auto const x = top_var(f, g);
 
-        op.r = make_branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false)));
-        return cache(std::move(op))->r;
+        op.result() =
+            make_branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false)));
+        return cache(std::move(op))->result();
     }
 
-    auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
+    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         assert(f);
         assert(g);
@@ -451,7 +451,7 @@ class bdd_manager : public detail::manager<bool, bool>
     {
         assert(f);
 
-        return !f->w ? uedge(true, f->v) : uedge(false, f->v);
+        return !f->weight() ? uedge(true, f->ch()) : uedge(false, f->ch());
     }
 
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -459,33 +459,33 @@ class bdd_manager : public detail::manager<bool, bool>
         assert(f);
         assert(g);
 
-        if (f == consts[0] || g == consts[0])
+        if (f == get_const(0) || g == get_const(0))
         {  // something conjugated with 0 is 0
-            return consts[0];
+            return get_const(0);
         }
-        if (f == consts[1])
+        if (f == get_const(1))
         {  // 1g == g
             return g;
         }
-        if (g == consts[1])
+        if (g == get_const(1))
         {  // f1 == f
             return f;
         }
-        if (f->v == g->v)
+        if (f->ch() == g->ch())
         {  // check for complement
-            return f->w == g->w ? f : consts[0];
+            return f->weight() == g->weight() ? f : get_const(0);
         }
 
         op::conj op{f, g};
         if (auto const* const ent = cached(op))
         {
-            return ent->r;
+            return ent->result();
         }
 
         auto const x = top_var(f, g);
 
-        op.r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
-        return cache(std::move(op))->r;
+        op.result() = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
+        return cache(std::move(op))->result();
     }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -496,7 +496,7 @@ class bdd_manager : public detail::manager<bool, bool>
         return complement(conj(complement(f), complement(g)));
     }
 
-    auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
+    auto make_branch(std::uint_fast32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
     {
         assert(x < var_count());
         assert(hi);
@@ -507,7 +507,7 @@ class bdd_manager : public detail::manager<bool, bool>
             return hi;  // without limitation of generality
         }
 
-        auto const w = lo->w;
+        auto const w = lo->weight();
         return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
     }
 
@@ -530,14 +530,14 @@ class bdd_manager : public detail::manager<bool, bool>
     }
 };
 
-auto inline bdd::operator~() const
+inline auto bdd::operator~() const
 {
     assert(mgr);
 
     return bdd{mgr->complement(f), mgr};
 }
 
-auto inline bdd::operator&=(bdd const& rhs) -> bdd&
+inline auto bdd::operator&=(bdd const& rhs) -> bdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -546,7 +546,7 @@ auto inline bdd::operator&=(bdd const& rhs) -> bdd&
     return *this;
 }
 
-auto inline bdd::operator|=(bdd const& rhs) -> bdd&
+inline auto bdd::operator|=(bdd const& rhs) -> bdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -555,7 +555,7 @@ auto inline bdd::operator|=(bdd const& rhs) -> bdd&
     return *this;
 }
 
-auto inline bdd::operator^=(bdd const& rhs) -> bdd&
+inline auto bdd::operator^=(bdd const& rhs) -> bdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -564,88 +564,88 @@ auto inline bdd::operator^=(bdd const& rhs) -> bdd&
     return *this;
 }
 
-auto inline bdd::is_zero() const noexcept
+inline auto bdd::is_zero() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->zero();
 }
 
-auto inline bdd::is_one() const noexcept
+inline auto bdd::is_one() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->one();
 }
 
-auto inline bdd::high() const
+inline auto bdd::high() const
 {
     assert(mgr);
-    assert(!f->v->is_const());
+    assert(!f->ch()->is_const());
 
-    return bdd{f->v->br().hi, mgr};
+    return bdd{f->ch()->br().hi, mgr};
 }
 
-auto inline bdd::low() const
+inline auto bdd::low() const
 {
     assert(mgr);
-    assert(!f->v->is_const());
+    assert(!f->ch()->is_const());
 
-    return bdd{f->v->br().lo, mgr};
+    return bdd{f->ch()->br().lo, mgr};
 }
 
 template <typename T, typename... Ts>
-auto inline bdd::fn(T const a, Ts... args) const
+inline auto bdd::fn(T const a, Ts... args) const
 {
     assert(mgr);
 
     return bdd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
 }
 
-auto inline bdd::size() const
+inline auto bdd::size() const
 {
     assert(mgr);
 
     return mgr->size({*this});
 }
 
-auto inline bdd::depth() const
+inline auto bdd::depth() const
 {
     assert(mgr);
 
     return mgr->depth({*this});
 }
 
-auto inline bdd::path_count() const noexcept
+inline auto bdd::path_count() const noexcept
 {
     assert(mgr);
 
     return mgr->path_count(f);
 }
 
-auto inline bdd::eval(std::vector<bool> const& as) const noexcept
+inline auto bdd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
-    assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
+    assert(std::cmp_equal(as.size(), mgr->var_count()));
 
     return mgr->eval(f, as);
 }
 
-auto inline bdd::has_const(bool const c) const
+inline auto bdd::has_const(bool const c) const
 {
     assert(mgr);
 
     return mgr->has_const(f, c);
 }
 
-auto inline bdd::is_essential(std::int32_t const x) const
+inline auto bdd::is_essential(std::int32_t const x) const
 {
     assert(mgr);
 
     return mgr->is_essential(f, x);
 }
 
-auto inline bdd::ite(bdd const& g, bdd const& h) const
+inline auto bdd::ite(bdd const& g, bdd const& h) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -654,7 +654,7 @@ auto inline bdd::ite(bdd const& g, bdd const& h) const
     return bdd{mgr->ite(f, g.f, h.f), mgr};
 }
 
-auto inline bdd::compose(std::int32_t const x, bdd const& g) const
+inline auto bdd::compose(std::int32_t const x, bdd const& g) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -662,35 +662,35 @@ auto inline bdd::compose(std::int32_t const x, bdd const& g) const
     return bdd{mgr->compose(f, x, g.f), mgr};
 }
 
-auto inline bdd::restr(std::int32_t const x, bool const a) const
+inline auto bdd::restr(std::int32_t const x, bool const a) const
 {
     assert(mgr);
 
     return bdd{mgr->restr(f, x, a), mgr};
 }
 
-auto inline bdd::exist(std::int32_t const x) const
+inline auto bdd::exist(std::int32_t const x) const
 {
     assert(mgr);
 
     return bdd{mgr->exist(f, x), mgr};
 }
 
-auto inline bdd::forall(std::int32_t const x) const
+inline auto bdd::forall(std::int32_t const x) const
 {
     assert(mgr);
 
     return bdd{mgr->forall(f, x), mgr};
 }
 
-auto inline bdd::sharpsat() const
+inline auto bdd::sharpsat() const
 {
     assert(mgr);
 
     return mgr->sharpsat(f);
 }
 
-auto inline bdd::print(std::ostream& s) const
+inline auto bdd::print(std::ostream& s) const
 {
     assert(mgr);
 

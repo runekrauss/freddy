@@ -7,7 +7,7 @@
 #include <freddy/dd/bdd.hpp>  // dd::bdd
 
 #include <cassert>  // assert
-#include <cstdint>  // std::uint8_t
+#include <cstdint>  // std::int32_t
 #include <vector>   // std::vector
 
 // *********************************************************************************************************************
@@ -23,7 +23,7 @@ namespace
 // Functions
 // =====================================================================================================================
 
-auto enc(std::uint8_t const n, dd::bdd_manager& mgr)
+auto enc(std::int32_t const n, dd::bdd_manager& mgr)  // NOLINT(readability-function-cognitive-complexity)
 {
     assert(n > 0);
 

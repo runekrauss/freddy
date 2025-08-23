@@ -1,9 +1,10 @@
+# Ignore rules
 *
-
 !*/
-build
+build/
 
-!.github/workflows/*.yml
+# Whitelist
+!.github/**/*.yml
 !include/freddy/**/*.hpp
 !test/**/*.cpp
 !/.clang-format

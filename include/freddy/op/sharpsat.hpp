@@ -8,7 +8,6 @@
 
 #include <cassert>     // assert
 #include <functional>  // std::hash
-#include <memory>      // std::shared_ptr
 #include <utility>     // std::move
 
 // *********************************************************************************************************************
@@ -26,31 +25,37 @@ template <typename E, typename V>
 class sharpsat : public detail::operation  // sharp satisfiability problem
 {
   public:
-    using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
-
-    explicit sharpsat(edge_ptr f) :
-            // for finding a cache result based on #SAT input
+    // for finding a cache result based on #SAT input
+    explicit sharpsat(detail::edge_ptr<E, V> f) :
             f{std::move(f)}
     {
         assert(this->f);
     }
 
-    double r{};  // #SAT result
+    auto result() noexcept -> double&
+    {
+        return r;
+    }
+
+    [[nodiscard]] auto result() const noexcept -> double const&
+    {
+        return r;
+    }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<edge_ptr>()(f);
+        return std::hash<detail::edge_ptr<E, V>>()(f);
     }
 
-    [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
+    [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
     {
-        auto other = static_cast<sharpsat const&>(op);
-
-        return f == other.f;
+        return f == static_cast<sharpsat const&>(op).f;
     }
 
-    edge_ptr f;  // #SAT instance
+    detail::edge_ptr<E, V> f;  // #SAT instance
+
+    double r{};  // #SAT result
 };
 
 }  // namespace freddy::op

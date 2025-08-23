@@ -8,7 +8,6 @@
 
 #include <cassert>     // assert
 #include <functional>  // std::hash
-#include <memory>      // std::shared_ptr
 #include <utility>     // std::move
 
 // *********************************************************************************************************************
@@ -26,34 +25,42 @@ template <typename E, typename V>
 class has_const : public detail::operation  // constant search
 {
   public:
-    using edge_ptr = std::shared_ptr<detail::edge<E, V>>;
-
-    has_const(edge_ptr f, V c) :
-            // for finding a cache result based on constant search input
+    // for finding a cache result based on constant search input
+    has_const(detail::edge_ptr<E, V> f, V c) :
             f{std::move(f)},
             c{std::move(c)}
     {
         assert(this->f);
     }
 
-    bool r{};  // constant search result
+    auto result() noexcept -> bool&
+    {
+        return r;
+    }
+
+    [[nodiscard]] auto result() const noexcept -> bool const&
+    {
+        return r;
+    }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<edge_ptr>()(f) * detail::P1 + std::hash<V>()(c) * detail::P2;
+        return std::hash<detail::edge_ptr<E, V>>()(f) * detail::P1 + std::hash<V>()(c) * detail::P2;
     }
 
-    [[nodiscard]] auto has_same_input(operation const& op) const noexcept -> bool override
+    [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
     {
-        auto other = static_cast<has_const const&>(op);
+        auto& other = static_cast<has_const const&>(op);
 
         return f == other.f && c == other.c;
     }
 
-    edge_ptr f;  // search operand
+    detail::edge_ptr<E, V> f;  // search operand
 
     V c;  // constant
+
+    bool r{};  // constant search result
 };
 
 }  // namespace freddy::op
