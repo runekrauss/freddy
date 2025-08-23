@@ -50,7 +50,7 @@ jobs:
     name: GCC on Linux (${{ matrix.build_type }})
     runs-on: ubuntu-latest
     needs: clangformat
-    if: !cancelled() && needs.clangformat.result == 'success'
+    if: always() && needs.clangformat.result == 'success'
     strategy:
       fail-fast: false
       matrix:
