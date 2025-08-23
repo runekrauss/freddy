@@ -50,7 +50,7 @@ jobs:
     name: GCC on Linux (${{ matrix.build_type }})
     runs-on: ubuntu-latest
     needs: clangformat
-    if: always() && needs.clangformat.result == 'success'
+    if: not cancelled() && (needs.clangformat.result == 'skipped' || needs.clangformat.result == 'success')
     strategy:
       fail-fast: false
       matrix:
@@ -101,7 +101,7 @@ jobs:
     name: Clang on macOS
     runs-on: macos-latest
     needs: clangformat
-    if: needs.clangformat.result == 'skipped' || needs.clangformat.result == 'success'
+    if: not cancelled() && (needs.clangformat.result == 'skipped' || needs.clangformat.result == 'success')
 
     steps:
       - name: Check out repository
@@ -129,7 +129,7 @@ jobs:
     name: MSVC on Windows
     runs-on: windows-latest
     needs: clangformat
-    if: needs.clangformat.result == 'skipped' || needs.clangformat.result == 'success'
+    if: not cancelled() && (needs.clangformat.result == 'skipped' || needs.clangformat.result == 'success')
     defaults:
       run:
         shell: bash # since the default shell on Windows runners was changed to PowerShell
