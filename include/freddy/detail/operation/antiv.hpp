@@ -4,51 +4,61 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/operation.hpp"  // detail::operation
+#include "freddy/detail/common.hpp"     // P1
+#include "freddy/detail/edge.hpp"       // edge
+#include "freddy/detail/node.hpp"       // edge_ptr
+#include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
 #include <functional>  // std::hash
-#include <utility>     // std::move
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::op
+namespace freddy::detail
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename E, typename V>
-class antiv : public detail::operation  // antivalence
+template <hashable EWeight, hashable NValue>
+class antiv final : public operation  // antivalence
 {
   public:
-    // for finding a cache result based on XOR input
-    antiv(detail::edge_ptr<E, V> f, detail::edge_ptr<E, V> g) :
-            f{std::move(f)},
-            g{std::move(g)}
+    using edge = edge<EWeight, NValue>;
+
+    using edge_ptr = edge_ptr<EWeight, NValue>;
+
+    // for looking up a cached result using XOR input
+    antiv(edge_ptr const& f, edge_ptr const& g) :
+            f{f < g ? f.get() : g.get()},  // exploit XOR's commutativity to improve cache efficiency
+            g{f < g ? g.get() : f.get()}
     {
         assert(this->f);
         assert(this->g);
     }
 
-    auto result() noexcept -> detail::edge_ptr<E, V>&
+    [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        return r;
+        assert(res);
+
+        return res;
     }
 
-    [[nodiscard]] auto result() const noexcept -> detail::edge_ptr<E, V> const&
+    auto set_result(edge_ptr const& res) noexcept
     {
-        return r;
+        assert(res);
+        assert(!this->res);  // ensure a valid XOR result is only set once
+
+        this->res = res.get();
     }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<detail::edge_ptr<E, V>>()(f) * detail::P1 +
-               std::hash<detail::edge_ptr<E, V>>()(g) * detail::P2;
+        return std::hash<edge*>{}(f)*P1 + std::hash<edge*>{}(g)*P2;
     }
 
     [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
@@ -58,11 +68,11 @@ class antiv : public detail::operation  // antivalence
         return f == other.f && g == other.g;
     }
 
-    detail::edge_ptr<E, V> f;  // 1st XOR operand
+    edge* f;  // 1st XOR operand
 
-    detail::edge_ptr<E, V> g;  // 2nd XOR operand
+    edge* g;  // 2nd XOR operand
 
-    detail::edge_ptr<E, V> r;  // XOR result
+    edge* res{};  // XOR result
 };
 
-}  // namespace freddy::op
+}  // namespace freddy::detail

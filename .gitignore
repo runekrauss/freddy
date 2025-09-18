@@ -5,7 +5,7 @@ build/
 
 # Whitelist
 !.github/**/*.yml
-!include/freddy/**/*.hpp
+!include/**/*.hpp
 !test/**/*.cpp
 !/.clang-format
 !/.clang-tidy

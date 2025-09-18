@@ -8,6 +8,8 @@
 #include "freddy/op/conj.hpp"         // op::conj
 #include "freddy/op/repl.hpp"         // op::repl
 
+#include <boost/algorithm/string.hpp>  // boost::replace_all
+
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
@@ -253,8 +255,8 @@ class bhd_manager : public detail::manager<bool, bool>
         to_dot(transform(fs), outputs, buf);
 
         auto dot = buf.str();
-        detail::replace_all(dot, "[shape=box,style=filled,color=chocolate,fontcolor=white,label=\"1\"]",
-                            "[shape=triangle,style=filled,color=darkviolet,fontcolor=white,label=\"EXP\"]");
+        boost::replace_all(dot, "[shape=box,style=filled,color=chocolate,fontcolor=white,label=\"1\"]",
+                           "[shape=triangle,style=filled,color=darkviolet,fontcolor=white,label=\"EXP\"]");
         s << dot;
     }
 

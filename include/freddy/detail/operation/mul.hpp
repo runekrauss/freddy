@@ -4,65 +4,75 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/operation.hpp"  // detail::operation
+#include "freddy/detail/common.hpp"     // P2
+#include "freddy/detail/edge.hpp"       // edge
+#include "freddy/detail/node.hpp"       // edge_ptr
+#include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
 #include <functional>  // std::hash
-#include <utility>     // std::move
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::op
+namespace freddy::detail
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename E, typename V>
-class conj : public detail::operation  // conjunction
+template <hashable EWeight, hashable NValue>
+class mul final : public operation  // multiplication
 {
   public:
-    // for finding a cache result based on conjuncts
-    conj(detail::edge_ptr<E, V> f, detail::edge_ptr<E, V> g) :
-            f{std::move(f)},
-            g{std::move(g)}
+    using edge = edge<EWeight, NValue>;
+
+    using edge_ptr = edge_ptr<EWeight, NValue>;
+
+    // for looking up a cached result using factors
+    mul(edge_ptr const& f, edge_ptr const& g) :
+            f{f < g ? f.get() : g.get()},  // exploit MUL's commutativity to improve cache efficiency
+            g{f < g ? g.get() : f.get()}
     {
         assert(this->f);
         assert(this->g);
     }
 
-    auto result() noexcept -> detail::edge_ptr<E, V>&
+    [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        return r;
+        assert(res);
+
+        return res;
     }
 
-    [[nodiscard]] auto result() const noexcept -> detail::edge_ptr<E, V> const&
+    auto set_result(edge_ptr const& res) noexcept
     {
-        return r;
+        assert(res);
+        assert(!this->res);  // ensure a valid product result is only set once
+
+        this->res = res.get();
     }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<detail::edge_ptr<E, V>>()(f) * detail::P1 +
-               std::hash<detail::edge_ptr<E, V>>()(g) * detail::P2;
+        return std::hash<edge*>{}(f)*P1 + std::hash<edge*>{}(g)*P2;
     }
 
     [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
     {
-        auto& other = static_cast<conj const&>(op);
+        auto& other = static_cast<mul const&>(op);
 
         return f == other.f && g == other.g;
     }
 
-    detail::edge_ptr<E, V> f;  // 1st conjunct
+    edge* f;  // 1st factor
 
-    detail::edge_ptr<E, V> g;  // 2nd conjunct
+    edge* g;  // 2nd factor
 
-    detail::edge_ptr<E, V> r{};  // conjunction result
+    edge* r{};  // product result
 };
 
-}  // namespace freddy::op
+}  // namespace freddy::detail

@@ -8,6 +8,8 @@
 #include "freddy/op/mul.hpp"          // op::mul
 #include "freddy/op/plus.hpp"         // op::plus
 
+#include <boost/algorithm/string.hpp>  // boost::replace_all
+
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
@@ -33,7 +35,7 @@ namespace freddy::dd
 // =====================================================================================================================
 
 template <typename V>
-requires std::floating_point<V> || std::integral<V>
+    requires std::floating_point<V> || std::integral<V>
 class add_manager;
 
 template <typename V>
@@ -189,7 +191,7 @@ class add  // multi-terminal binary decision diagram
 };
 
 template <typename V>  // codomain is an arbitrary finite set
-requires std::floating_point<V> || std::integral<V>
+    requires std::floating_point<V> || std::integral<V>
 class add_manager : public detail::manager<bool, V>
 {
   public:
@@ -256,7 +258,7 @@ class add_manager : public detail::manager<bool, V>
         this->to_dot(transform(fs), outputs, buf);
 
         auto dot = buf.str();
-        detail::replace_all(dot, "label=\" 0 \"]", "]");
+        boost::replace_all(dot, "label=\" 0 \"]", "]");
         s << dot;
     }
 
@@ -320,7 +322,7 @@ class add_manager : public detail::manager<bool, V>
 
         if (f->ch()->is_const() && g->ch()->is_const())
         {
-            return this->make_const(false, f->ch()->c() + g->ch()->c());
+            return this->make_const(false, f->ch()->value() + g->ch()->value());
         }
 
         op::plus op{f, g};
@@ -408,7 +410,7 @@ class add_manager : public detail::manager<bool, V>
 
         if (f->ch()->is_const() && g->ch()->is_const())
         {
-            return this->make_const(false, f->ch()->c() * g->ch()->c());
+            return this->make_const(false, f->ch()->value() * g->ch()->value());
         }
 
         op::mul op{f, g};

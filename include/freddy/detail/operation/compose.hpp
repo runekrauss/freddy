@@ -4,53 +4,65 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/operation.hpp"  // detail::operation
+#include "freddy/config.hpp"            // var_index
+#include "freddy/detail/common.hpp"     // P2
+#include "freddy/detail/edge.hpp"       // edge
+#include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
 #include <functional>  // std::hash
 #include <tuple>       // std::tie
-#include <utility>     // std::move
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::op
+namespace freddy::detail
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename E, typename V>
-class compose : public detail::operation  // function substitution
+template <hashable EWeight, hashable NValue>
+class compose final : public operation  // function substitution
 {
   public:
-    // for finding a cache result based on composition input
-    compose(detail::edge_ptr<E, V> f, detail::var_index const x, detail::edge_ptr<E, V> g) :
-            f{std::move(f)},
+    using edge = edge<EWeight, NValue>;
+
+    using edge_ptr = edge_ptr<EWeight, NValue>;
+
+    // for looking up a cached result using composition input
+    compose(edge_ptr const& f, var_index const x, edge_ptr const& g) :
+            f{f.get()},
             x{x},
-            g{std::move(g)}
+            g{g.get()}
     {
         assert(this->f);
         assert(this->g);
     }
 
-    auto result() noexcept -> detail::edge_ptr<E, V>&
+    [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        return r;
+        assert(res);
+
+        return res;
     }
 
-    [[nodiscard]] auto result() const noexcept -> detail::edge_ptr<E, V> const&
+    auto set_result(edge_ptr const& res) noexcept
     {
-        return r;
+        assert(res);
+        assert(!this->res);  // ensure a valid composition result is only set once
+
+        this->res = res.get();
     }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return (std::hash<detail::edge_ptr<E, V>>()(f) + std::hash<detail::var_index>()(x)) * detail::P1 +
-               std::hash<detail::edge_ptr<E, V>>()(g) * detail::P2;
+        // clang-format off
+            return (std::hash<edge*>{}(f) + std::hash<var_index>{}(x)) * P1 + std::hash<edge*>{}(g) * P2;
+        // clang-format on
     }
 
     [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
@@ -60,13 +72,13 @@ class compose : public detail::operation  // function substitution
         return std::tie(f, x, g) == std::tie(other.f, other.x, other.g);
     }
 
-    detail::edge_ptr<E, V> f;  // composition operand
+    edge* f;  // composition operand
 
-    detail::var_index x;  // variable to be substituted
+    var_index x;  // variable to be substituted
 
-    detail::edge_ptr<E, V> g;  // function that substitutes
+    edge* g;  // function that substitutes
 
-    detail::edge_ptr<E, V> r;  // composition result
+    edge* res{};  // composition result
 };
 
-}  // namespace freddy::op
+}  // namespace freddy::detail

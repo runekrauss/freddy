@@ -4,52 +4,64 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/operation.hpp"  // detail::operation
+#include "freddy/config.hpp"            // var_index
+#include "freddy/detail/common.hpp"     // P2
+#include "freddy/detail/edge.hpp"       // edge
+#include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
 #include <functional>  // std::hash
 #include <tuple>       // std::tie
-#include <utility>     // std::move
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::op
+namespace freddy::detail
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename E, typename V>
-class restr : public detail::operation  // variable substitution
+template <hashable EWeight, hashable NValue>
+class restr final : public operation  // variable substitution
 {
   public:
-    // for finding a cache result based on substitution input
-    restr(detail::edge_ptr<E, V> f, detail::var_index const x, bool const a) :
-            f{std::move(f)},
+    using edge = edge<EWeight, NValue>;
+
+    using edge_ptr = edge_ptr<EWeight, NValue>;
+
+    // for looking up a cached result using substitution input
+    restr(edge_ptr const& f, var_index const x, bool const a) :
+            f{f.get()},
             x{x},
             a{a}
     {
         assert(this->f);
     }
 
-    auto result() noexcept -> detail::edge_ptr<E, V>&
+    [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        return r;
+        assert(res);
+
+        return res;
     }
 
-    [[nodiscard]] auto result() const noexcept -> detail::edge_ptr<E, V> const&
+    auto set_result(edge_ptr const& res) noexcept
     {
-        return r;
+        assert(res);
+        assert(!this->res);  // ensure a valid substitution result is only set once
+
+        this->res = res.get();
     }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return (std::hash<detail::edge_ptr<E, V>>()(f) + std::hash<detail::var_index>()(x)) * detail::P1 +
-               std::hash<bool>()(a) * detail::P2;
+        // clang-format off
+            return (std::hash<edge*>{}(f) + std::hash<var_index>{}(x)) * P1 + std::hash<bool>{}(a) * P2;
+        // clang-format on
     }
 
     [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
@@ -59,13 +71,13 @@ class restr : public detail::operation  // variable substitution
         return std::tie(f, x, a) == std::tie(other.f, other.x, other.a);
     }
 
-    detail::edge_ptr<E, V> f;  // substitution operand
+    edge* f;  // substitution operand
 
-    detail::var_index x;  // variable to assign
+    var_index x;  // variable to assign
 
     bool a;  // truth value for the variable
 
-    detail::edge_ptr<E, V> r;  // substitution result
+    edge* res{};  // substitution result
 };
 
-}  // namespace freddy::op
+}  // namespace freddy::detail

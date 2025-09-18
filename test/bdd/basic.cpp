@@ -22,7 +22,7 @@ using namespace freddy;
 
 TEST_CASE("BDD is constructed", "[basic]")
 {
-    dd::bdd_manager mgr;
+    bdd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation uses complemented edges")
@@ -31,7 +31,7 @@ TEST_CASE("BDD is constructed", "[basic]")
 #ifndef NDEBUG
         std::cout << mgr << '\n';
         std::cout << f << '\n';
-        f.print();
+        f.dump_dot();
 #endif
         CHECK(f.is_complemented());
         CHECK(f.high().is_const());
@@ -77,7 +77,7 @@ TEST_CASE("BDD is constructed", "[basic]")
 
 TEST_CASE("BDD can be characterized", "[basic]")
 {
-    dd::bdd_manager mgr;
+    bdd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 & x1) | ~x2;
 
@@ -130,7 +130,7 @@ TEST_CASE("BDD can be characterized", "[basic]")
 
 TEST_CASE("BDD is substituted", "[basic]")
 {
-    dd::bdd_manager mgr;
+    bdd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = ~(x0 | x1) & x2;
 
@@ -168,7 +168,7 @@ TEST_CASE("BDD is substituted", "[basic]")
 
 TEST_CASE("BDD variable order is changeable", "[basic]")
 {
-    dd::bdd_manager mgr;
+    bdd_manager mgr;
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
     auto const f = (x0 & x1) | (x2 & x3);
 
@@ -178,7 +178,7 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
 
         CHECK(f.high().var() == 2);
         CHECK(f.high().low().var() == 1);
-        CHECK(f.fn(true).fn(true).is_one());
+        CHECK(f.fn(true, true).is_one());
         CHECK(f.eval({true, false, true, false}));
         CHECK(f.eval({false, true, false, true}));
         CHECK_FALSE(f.eval({true, false, false, true}));
@@ -204,7 +204,7 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
 
 TEST_CASE("BDD solves #SAT", "[basic]")
 {
-    dd::bdd_manager mgr;
+    bdd_manager mgr;
 
     CHECK(((mgr.var() & mgr.var()) | ~mgr.var()).sharpsat() == 5);
 }

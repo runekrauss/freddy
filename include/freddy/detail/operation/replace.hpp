@@ -4,63 +4,74 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/operation.hpp"  // detail::operation
+#include "freddy/detail/common.hpp"     // P2
+#include "freddy/detail/edge.hpp"       // edge
+#include "freddy/detail/node.hpp"       // edge_ptr
+#include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
 #include <functional>  // std::hash
-#include <utility>     // std::move
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::op
+namespace freddy::detail
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename E, typename V>
-class repl : public detail::operation  // 1-path replacement
+template <hashable EWeight, hashable NValue>
+class replace final : public operation  // 1-path replacement
 {
   public:
-    // for finding a cache result based on replacement input
-    repl(detail::edge_ptr<E, V> f, bool const a) :
-            f{std::move(f)},
+    using edge = edge<EWeight, NValue>;
+
+    using edge_ptr = edge_ptr<EWeight, NValue>;
+
+    // for looking up a cached result using replacement input
+    replace(edge_ptr const& f, bool const a) :
+            f{f.get()},
             a{a}
     {
         assert(this->f);
     }
 
-    auto result() noexcept -> detail::edge_ptr<E, V>&
+    [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        return r;
+        assert(res);
+
+        return res;
     }
 
-    [[nodiscard]] auto result() const noexcept -> detail::edge_ptr<E, V> const&
+    auto set_result(edge_ptr const& res) noexcept
     {
-        return r;
+        assert(res);
+        assert(!this->res);  // ensure a valid replacement result is only set once
+
+        this->res = res.get();
     }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<detail::edge_ptr<E, V>>()(f) * detail::P1 + std::hash<bool>()(a) * detail::P2;
+        return std::hash<edge*>{}(f)*P1 + std::hash<bool>{}(a)*P2;
     }
 
     [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
     {
-        auto& other = static_cast<repl const&>(op);
+        auto& other = static_cast<replace const&>(op);
 
         return f == other.f && a == other.a;
     }
 
-    detail::edge_ptr<E, V> f;  // instance for the replacement
+    edge* f;  // instance for the replacement
 
     bool a;  // current evaluation
 
-    detail::edge_ptr<E, V> r;  // replacement result
+    edge* res{};  // replacement result
 };
 
-}  // namespace freddy::op
+}  // namespace freddy::detail

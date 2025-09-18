@@ -4,49 +4,58 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/operation.hpp"  // detail::operation
+#include "freddy/detail/common.hpp"     // P2
+#include "freddy/detail/edge.hpp"       // edge
+#include "freddy/detail/node.hpp"       // edge_ptr
+#include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
 #include <functional>  // std::hash
-#include <utility>     // std::move
+#include <optional>    // std::optional
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::op
+namespace freddy::detail
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename E, typename V>
-class has_const : public detail::operation  // constant search
+template <hashable EWeight, hashable NValue>
+class has_const final : public operation  // constant search
 {
   public:
-    // for finding a cache result based on constant search input
-    has_const(detail::edge_ptr<E, V> f, V c) :
-            f{std::move(f)},
-            c{std::move(c)}
+    using edge = edge<EWeight, NValue>;
+
+    // for looking up a cached result using constant search input
+    has_const(edge_ptr<EWeight, NValue> const& f, NValue const& c) :
+            f{f.get()},
+            c{c}
     {
         assert(this->f);
     }
 
-    auto result() noexcept -> bool&
+    [[nodiscard]] auto get_result() const noexcept
     {
-        return r;
+        assert(res);
+
+        return *res;
     }
 
-    [[nodiscard]] auto result() const noexcept -> bool const&
+    auto set_result(bool const res) noexcept
     {
-        return r;
+        assert(!this->res);  // ensure a valid constant search result is only set once
+
+        this->res = res;
     }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<detail::edge_ptr<E, V>>()(f) * detail::P1 + std::hash<V>()(c) * detail::P2;
+        return std::hash<edge*>{}(f)*P1 + std::hash<NValue>{}(c)*P2;
     }
 
     [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
@@ -56,11 +65,11 @@ class has_const : public detail::operation  // constant search
         return f == other.f && c == other.c;
     }
 
-    detail::edge_ptr<E, V> f;  // search operand
+    edge* f;  // search operand
 
-    V c;  // constant
+    NValue c;  // constant
 
-    bool r{};  // constant search result
+    std::optional<bool> res;  // constant search result designed this way for safety reasons
 };
 
-}  // namespace freddy::op
+}  // namespace freddy::detail

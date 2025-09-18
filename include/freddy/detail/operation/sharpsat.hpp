@@ -4,48 +4,57 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/operation.hpp"  // detail::operation
+#include "freddy/detail/common.hpp"     // hashable
+#include "freddy/detail/edge.hpp"       // edge
+#include "freddy/detail/node.hpp"       // edge_ptr
+#include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
+#include <cmath>       // std::isnan
 #include <functional>  // std::hash
-#include <utility>     // std::move
+#include <limits>      // std::numeric_limits
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::op
+namespace freddy::detail
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename E, typename V>
-class sharpsat : public detail::operation  // sharp satisfiability problem
+template <hashable EWeight, hashable NValue>
+class sharpsat final : public operation  // sharp satisfiability problem
 {
   public:
-    // for finding a cache result based on #SAT input
-    explicit sharpsat(detail::edge_ptr<E, V> f) :
-            f{std::move(f)}
+    // for looking up a cached result using #SAT input
+    explicit sharpsat(edge_ptr<EWeight, NValue> const& f) :
+            f{f.get()}
     {
         assert(this->f);
     }
 
-    auto result() noexcept -> double&
+    [[nodiscard]] auto get_result() const noexcept
     {
-        return r;
+        assert(!std::isnan(res));
+
+        return res;
     }
 
-    [[nodiscard]] auto result() const noexcept -> double const&
+    auto set_result(double const res) noexcept
     {
-        return r;
+        assert(res >= 0);
+        assert(std::isnan(this->res));  // ensure a valid #SAT result is only set once
+
+        this->res = res;
     }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<detail::edge_ptr<E, V>>()(f);
+        return std::hash<edge<EWeight, NValue>*>{}(f);
     }
 
     [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
@@ -53,9 +62,9 @@ class sharpsat : public detail::operation  // sharp satisfiability problem
         return f == static_cast<sharpsat const&>(op).f;
     }
 
-    detail::edge_ptr<E, V> f;  // #SAT instance
+    edge<EWeight, NValue>* f;  // #SAT instance
 
-    double r{};  // #SAT result
+    double res{std::numeric_limits<double>::quiet_NaN()};  // #SAT result, where NaN is the sentinel
 };
 
-}  // namespace freddy::op
+}  // namespace freddy::detail

@@ -7,7 +7,7 @@ Checks: |
   boost-*,
 
   bugprone-*,
-  -bugprone-easily-swappable-parameters, # plus(edge*, edge*)
+  -bugprone-easily-swappable-parameters, # plus(edge_ptr, edge_ptr)
   -bugprone-exception-escape,            # due to the incorrect assumption about swap()
   -bugprone-tagged-union-member-count,   # because of false positives (node)
   -bugprone-unchecked-optional-access,   # since even checks by has_value are ignored
@@ -25,7 +25,7 @@ Checks: |
   -google-build-using-namespace, # Sometimes it is useful to make names directly visible.
 
   hicpp-*,
-  -hicpp-named-parameter,          # print(std::ostream&);
+  -hicpp-named-parameter,          # dump_dot(std::ostream&);
   -hicpp-uppercase-literal-suffix, # 1u instead of 1U, etc.
 
   modernize-*,
@@ -39,7 +39,7 @@ Checks: |
   -readability-identifier-length,        # f, g
   -readability-isolate-declaration,      # because grouping variables can be stylistically acceptable
   -readability-magic-numbers,            # as with cppcoreguidelines-avoid-magic-numbers
-  -readability-math-missing-parentheses, # w * P1 + v * P2
+  -readability-math-missing-parentheses, # w*P1 + v*P2
   -readability-named-parameter,          # similar to hicpp-named-parameter
   -readability-uppercase-literal-suffix, # see -hicpp-uppercase-literal-suffix
 
@@ -52,8 +52,10 @@ CheckOptions:
   readability-identifier-naming.ConceptCase: lower_case
   readability-identifier-naming.EnumCase: lower_case
   readability-identifier-naming.EnumConstantCase: UPPER_CASE
+  readability-identifier-naming.EnumConstantIgnoredRegexp: '^(nD|pD)$'
   readability-identifier-naming.FunctionCase: lower_case
   readability-identifier-naming.GlobalConstantCase: UPPER_CASE
+  readability-identifier-naming.GlobalConstantIgnoredRegexp: '^is_.+$'
   readability-identifier-naming.LocalConstantCase: lower_case
   readability-identifier-naming.MemberCase: lower_case
   readability-identifier-naming.MethodCase: lower_case

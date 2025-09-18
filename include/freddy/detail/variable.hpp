@@ -4,21 +4,19 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "common.hpp"            // comp
-#include "edge.hpp"              // edge
-#include "freddy/expansion.hpp"  // expansion
-#include "node.hpp"              // node
+#include "freddy/detail/common.hpp"  // hash
+#include "freddy/detail/edge.hpp"    // edge
+#include "freddy/detail/node.hpp"    // node
+#include "freddy/expansion.hpp"      // expansion
 
-#include <boost/smart_ptr/intrusive_ptr.hpp>
+#include <boost/smart_ptr/intrusive_ptr.hpp>       // boost::intrusive_ptr
 #include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
-#include <boost/variant2/variant.hpp>
 
 #include <cassert>      // assert
 #include <cstddef>      // std::size_t
-#include <memory>       // std::shared_ptr
 #include <string>       // std::string
 #include <string_view>  // std::string_view
-#include <type_traits>  // std::is_nothrow_move_constructible_v
+#include <type_traits>  // std::is_fundamental_v
 
 // *********************************************************************************************************************
 // Namespaces
@@ -28,53 +26,62 @@ namespace freddy::detail
 {
 
 // =====================================================================================================================
+// Forwards
+// =====================================================================================================================
+
+template <hashable, hashable>
+class manager;
+
+// =====================================================================================================================
+// Aliases
+// =====================================================================================================================
+
+template <class T>
+    requires (!std::is_fundamental_v<T>)
+using unique_table = boost::unordered_flat_set<boost::intrusive_ptr<T>, hash, equal>;  // UT
+
+// =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename T>
-using utable = boost::unordered_flat_set<std::shared_ptr<T>, hash, comp>;  // unique table
-
-template <typename E, typename V>
-auto operator<<(std::ostream&, manager<E, V> const&) -> std::ostream&;
-
-template <typename E, typename V>
+template <hashable EWeight, hashable NValue>
 class variable final
 {
   public:
-    variable(expansion const t, std::string_view l, std::size_t const ut_size = {}) :
+    variable(expansion const t, std::string_view lbl, std::size_t const utable_size_hint) :
             t{t},
-            l{l}
+            lbl{lbl}
     {
-        assert(!l.empty());  // for presentation reasons
+        assert(!lbl.empty());  // for presentation reasons
 
-        et.reserve(ut_size);  // rehash(ceil(ut_size / 0.875))
-        nt.reserve(ut_size);
+        etable.reserve(utable_size_hint);  // rehash(ceil(utable_size_hint / 0.875))
+        ntable.reserve(utable_size_hint);
     }
 
     variable(variable const&) = delete;
 
-    variable(variable&&) noexcept(std::is_nothrow_move_constructible_v<utable<edge<E, V>>> &&
-                                  std::is_nothrow_move_constructible_v<utable<node<E, V>>>) = default;
+    variable(variable&&) = default;
 
     auto operator=(variable const&) = delete;
 
     auto operator=(variable&&) = delete;  // as a variable should uniquely belong to a list
 
-    ~variable() noexcept(std::is_nothrow_destructible_v<utable<edge<E, V>>> &&
-                         std::is_nothrow_destructible_v<utable<node<E, V>>>) = default;
+    ~variable() = default;
 
   private:
-    friend manager<E, V>;
-
-    friend auto operator<< <>(std::ostream&, manager<E, V> const&) -> std::ostream&;
+    friend manager<EWeight, NValue>;
 
     expansion t;  // decomposition type
 
-    std::string l;  // (immutable) name
+    std::string lbl;  // (immutable) name
 
-    utable<edge<E, V>> et;
+    unique_table<edge<EWeight, NValue>> etable;
 
-    utable<node<E, V>> nt;
+    unique_table<node<EWeight, NValue>> ntable;
 };
+
+static_assert(std::is_nothrow_move_constructible_v<variable<bool, bool>>, "variable requires \"nothrow\" movement");
+
+static_assert(std::is_nothrow_destructible_v<variable<bool, bool>>, "variable must be \"nothrow\" destructible");
 
 }  // namespace freddy::detail

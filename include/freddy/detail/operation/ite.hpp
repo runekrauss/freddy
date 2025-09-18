@@ -4,55 +4,64 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/operation.hpp"  // detail::operation
+#include "freddy/detail/common.hpp"     // P3
+#include "freddy/detail/edge.hpp"       // edge
+#include "freddy/detail/node.hpp"       // edge_ptr
+#include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
 #include <functional>  // std::hash
 #include <tuple>       // std::tie
-#include <utility>     // std::move
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::op
+namespace freddy::detail
 {
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename E, typename V>
-class ite : public detail::operation  // if-then-else
+template <hashable EWeight, hashable NValue>
+class ite final : public operation  // if-then-else
 {
   public:
-    // for finding a cache result based on ITE input
-    ite(detail::edge_ptr<E, V> f, detail::edge_ptr<E, V> g, detail::edge_ptr<E, V> h) :
-            f{std::move(f)},
-            g{std::move(g)},
-            h{std::move(h)}
+    using edge = edge<EWeight, NValue>;
+
+    using edge_ptr = edge_ptr<EWeight, NValue>;
+
+    // for looking up a cached result using ITE input
+    ite(edge_ptr const& f, edge_ptr const& g, edge_ptr const& h) :
+            f{f.get()},
+            g{g.get()},
+            h{h.get()}
     {
         assert(this->f);
         assert(this->g);
         assert(this->h);
     }
 
-    auto result() noexcept -> detail::edge_ptr<E, V>&
+    [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        return r;
+        assert(res);
+
+        return res;
     }
 
-    [[nodiscard]] auto result() const noexcept -> detail::edge_ptr<E, V> const&
+    auto set_result(edge_ptr const& res) noexcept
     {
-        return r;
+        assert(res);
+        assert(!this->res);  // ensure a valid ITE result is only set once
+
+        this->res = res.get();
     }
 
   private:
     [[nodiscard]] auto hash() const noexcept -> std::size_t override
     {
-        return std::hash<detail::edge_ptr<E, V>>()(f) * detail::P1 +
-               std::hash<detail::edge_ptr<E, V>>()(g) * detail::P2 +
-               std::hash<detail::edge_ptr<E, V>>()(h) * detail::P3;
+        return std::hash<edge*>{}(f)*P1 + std::hash<edge*>{}(g)*P2 + std::hash<edge*>{}(h)*P3;
     }
 
     [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
@@ -62,13 +71,13 @@ class ite : public detail::operation  // if-then-else
         return std::tie(f, g, h) == std::tie(other.f, other.g, other.h);
     }
 
-    detail::edge_ptr<E, V> f;  // if
+    edge* f;  // if
 
-    detail::edge_ptr<E, V> g;  // then
+    edge* g;  // then
 
-    detail::edge_ptr<E, V> h;  // else
+    edge* h;  // else
 
-    detail::edge_ptr<E, V> r;  // conditional result
+    edge* res{};  // conditional result
 };
 
-}  // namespace freddy::op
+}  // namespace freddy::detail
