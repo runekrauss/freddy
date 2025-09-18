@@ -21,7 +21,7 @@
 #include <ostream>      // std::ostream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
-#include <utility>      // std::move
+#include <utility>      // std::forward
 #include <vector>       // std::vector
 
 // *********************************************************************************************************************
@@ -186,7 +186,7 @@ class bdd final  // binary decision diagram
     bdd_manager* mgr{};  // must be destroyed after this BDD wrapper
 };
 
-class bdd_manager : public detail::manager<bool, bool>
+class bdd_manager final : public detail::manager<bool, bool>
 {
   public:
     explicit bdd_manager(struct config cfg = {}) :
@@ -225,7 +225,7 @@ class bdd_manager : public detail::manager<bool, bool>
         return manager::depth(transform(fs));
     }
 
-    auto dump_dot(std::vector<bdd> const& fs, std::vector<std::string_view> const& outputs = {},
+    auto dump_dot(std::vector<bdd> const& fs, std::vector<std::string> const& outputs = {},
                   std::ostream& os = std::cout) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
@@ -247,6 +247,48 @@ class bdd_manager : public detail::manager<bool, bool>
         std::vector<edge_ptr> fs(gs.size());
         std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
         return fs;
+    }
+
+    auto antiv(edge_ptr const& f, edge_ptr const& g)
+    {
+        assert(f);
+        assert(g);
+
+        if (f == constant(0))
+        {
+            return g;
+        }
+        if (g == constant(0))
+        {
+            return f;
+        }
+        if (f == constant(1))
+        {
+            return complement(g);
+        }
+        if (g == constant(1))
+        {
+            return complement(f);
+        }
+        if (f == g)
+        {
+            return constant(0);
+        }
+        if (f == complement(g))
+        {
+            return constant(1);
+        }
+
+        detail::antiv op{f, g};
+        if (auto const* const entry = cached(op))
+        {
+            return entry->get_result();
+        }
+
+        auto const x = top_var(f, g);
+
+        op.set_result(branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false))));
+        return cache(std::move(op))->get_result();
     }
 
     auto sharpsat(edge_ptr const& f)
@@ -345,100 +387,25 @@ class bdd_manager : public detail::manager<bool, bool>
         }
     }
 
-    auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr override
-    {
-        assert(f);
-        assert(g);
-        assert(h);
-
-        auto const ret = simplify(f, g, h);
-
-        // terminal cases
-        if (f == constant(0))
-        {
-            return h;
-        }
-        if (f == constant(1) || g == h)
-        {
-            return g;
-        }
-        if (h == constant(0) && g == constant(1))
-        {
-            return f;
-        }
-        if (g == constant(0) && h == constant(1))
-        {
-            return complement(f);
-        }
-
-        if (ret != 0)
-        {
-            std_triple(ret, f, g, h);
-        }
-
-        detail::ite op{f, g, h};
-        if (auto const* const entry = cached(op))
-        {
-            return entry->get_result();
-        }
-
-        auto const x = f->ch()->br().x == top_var(f, g) ? top_var(f, h) : top_var(g, h);
-
-        op.set_result(branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
-                             ite(cof(f, x, false), cof(g, x, false), cof(h, x, false))));
-        return cache(std::move(op))->get_result();
-    }
-
-    auto antiv(edge_ptr const& f, edge_ptr const& g)
-    {
-        assert(f);
-        assert(g);
-
-        if (f == constant(0))
-        {
-            return g;
-        }
-        if (g == constant(0))
-        {
-            return f;
-        }
-        if (f == constant(1))
-        {
-            return complement(g);
-        }
-        if (g == constant(1))
-        {
-            return complement(f);
-        }
-        if (f == g)
-        {
-            return constant(0);
-        }
-        if (f == complement(g))
-        {
-            return constant(1);
-        }
-
-        detail::antiv op{f, g};
-        if (auto const* const entry = cached(op))
-        {
-            return entry->get_result();
-        }
-
-        auto const x = top_var(f, g);
-
-        op.set_result(branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false))));
-        return cache(std::move(op))->get_result();
-    }
-
-    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
-    {
-        return antiv(f, g);
-    }
-
     [[nodiscard]] auto agg(bool const& w, bool const& val) const noexcept -> bool override
     {
         return w != val;  // XOR
+    }
+
+    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
+    {
+        assert(x < var_count());
+        assert(hi);
+        assert(lo);
+
+        if (hi == lo)  // redundancy rule
+        {
+            return hi;  // without limitation of generality
+        }
+
+        // normalization
+        auto const w = lo->weight();
+        return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
     }
 
     [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
@@ -492,19 +459,48 @@ class bdd_manager : public detail::manager<bool, bool>
         return complement(conj(complement(f), complement(g)));
     }
 
-    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
+    auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr override
     {
-        assert(x < var_count());
-        assert(hi);
-        assert(lo);
+        assert(f);
+        assert(g);
+        assert(h);
 
-        if (hi == lo)  // redundancy rule
+        auto const ret = simplify(f, g, h);
+
+        // terminal cases
+        if (f == constant(0))
         {
-            return hi;  // without limitation of generality
+            return h;
+        }
+        if (f == constant(1) || g == h)
+        {
+            return g;
+        }
+        if (h == constant(0) && g == constant(1))
+        {
+            return f;
+        }
+        if (g == constant(0) && h == constant(1))
+        {
+            return complement(f);
         }
 
-        auto const w = lo->weight();
-        return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
+        if (ret != 0)
+        {
+            std_triple(ret, f, g, h);
+        }
+
+        detail::ite op{f, g, h};
+        if (auto const* const entry = cached(op))
+        {
+            return entry->get_result();
+        }
+
+        auto const x = f->ch()->br().x == top_var(f, g) ? top_var(f, h) : top_var(g, h);
+
+        op.set_result(branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
+                             ite(cof(f, x, false), cof(g, x, false), cof(h, x, false))));
+        return cache(std::move(op))->get_result();
     }
 
     [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
@@ -515,6 +511,11 @@ class bdd_manager : public detail::manager<bool, bool>
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         return conj(f, g);
+    }
+
+    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
+    {
+        return antiv(f, g);
     }
 
     [[nodiscard]] auto regw() const noexcept -> bool override

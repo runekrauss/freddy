@@ -630,7 +630,7 @@ class manager
         return conj(restr(f, x, true), restr(f, x, false));
     }
 
-    auto dump_dot(std::vector<edge_ptr> const& fs, std::vector<std::string_view> const& outputs, std::ostream& os) const
+    auto dump_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& os) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
