@@ -28,7 +28,7 @@ static_assert(std::is_integral_v<var_index> && std::is_unsigned_v<var_index>, "v
 // Types
 // =====================================================================================================================
 
-struct config
+struct config final
 {
     std::size_t utable_size_hint{1'679};  // minimum capacity of each UT per DD level
 

@@ -298,7 +298,7 @@ class manager
         requires std::is_base_of_v<operation, std::decay_t<Operation>>
     [[nodiscard]] auto cached(Operation const& op) const noexcept
     {
-        auto const& entry = ct.find(&op);
+        auto const entry = ct.find(&op);
         return entry == ct.end() ? nullptr : static_cast<Operation const*>((*entry).get());
     }
 

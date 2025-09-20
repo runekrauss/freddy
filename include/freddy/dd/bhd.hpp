@@ -5,8 +5,8 @@
 // *********************************************************************************************************************
 
 #include "freddy/detail/manager.hpp"  // detail::manager
-#include "freddy/op/conj.hpp"         // op::conj
-#include "freddy/op/repl.hpp"         // op::repl
+#include "freddy/detail/operation/conj.hpp"         // op::conj
+#include "freddy/detail/operation/replace.hpp"         // op::repl
 
 #include <boost/algorithm/string.hpp>  // boost::replace_all
 
