@@ -4,9 +4,9 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/manager.hpp"  // detail::manager
-#include "freddy/detail/operation/mul.hpp"          // op::mul
-#include "freddy/detail/operation/plus.hpp"         // op::plus
+#include "freddy/detail/manager.hpp"         // detail::manager
+#include "freddy/detail/operation/mul.hpp"   // op::mul
+#include "freddy/detail/operation/plus.hpp"  // op::plus
 
 #include <boost/algorithm/string.hpp>  // boost::replace_all
 

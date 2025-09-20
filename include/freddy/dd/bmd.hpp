@@ -4,9 +4,9 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/manager.hpp"  // detail::manager
-#include "freddy/detail/operation/mul.hpp"          // op::mul
-#include "freddy/detail/operation/plus.hpp"         // op::plus
+#include "freddy/detail/manager.hpp"         // detail::manager
+#include "freddy/detail/operation/mul.hpp"   // op::mul
+#include "freddy/detail/operation/plus.hpp"  // op::plus
 
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
