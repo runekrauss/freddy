@@ -462,6 +462,14 @@ class manager
         return a ? fn(apply(f->w, f->v->inner.hi), as...) : fn(apply(f->w, f->v->inner.lo), as...);
     }
 
+    [[nodiscard]] auto eval(edge_ptr const& f, std::vector<bool> const& as) const
+    {
+        assert(f);
+        assert(as.size() == var_count());
+
+        return agg(f->w, eval(f->v, as));  // assignment follows the made variable ordering
+    }
+
     [[nodiscard]] auto size(std::vector<edge_ptr> const& fs) const
     {
         boost::unordered_flat_set<node*, hash, equal> marks;
@@ -498,14 +506,6 @@ class manager
         assert(f);
 
         return f->is_const() ? 1 : path_count(f->v->br().hi) + path_count(f->v->br().lo);  // DFS
-    }
-
-    [[nodiscard]] auto eval(edge_ptr const& f, std::vector<bool> const& as) const
-    {
-        assert(f);
-        assert(as.size() == var_count());
-
-        return agg(f->w, eval(f->v, as));  // assignment follows the made variable ordering
     }
 
     [[nodiscard]] auto has_const(edge_ptr const& f, NValue const& c)

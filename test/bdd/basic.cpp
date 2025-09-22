@@ -7,8 +7,8 @@
 #include <freddy/config.hpp>  // config
 #include <freddy/dd/bdd.hpp>  // bdd_manager
 
-#include <iostream>  // std::cout
-#include <sstream>   // std::ostringstream
+#include <sstream>  // std::ostringstream
+#include <vector>   // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -41,10 +41,10 @@ TEST_CASE("BDD is constructed", "[basic]")
         auto const f = x0 & x1;
 
         CHECK(f == x0.ite(x1, mgr.zero()));
-        CHECK_FALSE(f.eval({false, false}));
-        CHECK_FALSE(f.eval({false, true}));
-        CHECK_FALSE(f.eval({true, false}));
-        CHECK(f.eval({true, true}));
+        CHECK_FALSE(f.eval(std::vector{false, false}));
+        CHECK_FALSE(f.eval(std::vector{false, true}));
+        CHECK_FALSE(f.eval(std::vector{true, false}));
+        CHECK(f.eval(std::vector{true, true}));
     }
 
     SECTION("Combination by disjunction")
@@ -73,7 +73,7 @@ TEST_CASE("BDD is constructed", "[basic]")
 
 TEST_CASE("BDD can be characterized", "[basic]")
 {
-    bdd_manager mgr;
+    bdd_manager mgr{{25, 3'359, 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 & x1) | ~x2;
 
@@ -98,12 +98,12 @@ TEST_CASE("BDD can be characterized", "[basic]")
         CHECK(mgr.edge_count() == 12);
     }
 
-    SECTION("Nodes are counted")
+    SECTION("Size is computed")
     {
         CHECK(f.size() == 4);
     }
 
-    SECTION("Longest path is computed")
+    SECTION("Depth is computed")
     {
         CHECK(f.depth() == 3);
     }

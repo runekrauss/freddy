@@ -143,6 +143,8 @@ class bdd final  // binary decision diagram
     template <typename TruthValue, typename... TruthValues>
     auto fn(TruthValue, TruthValues...) const;
 
+    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
+
     [[nodiscard]] auto ite(bdd const&, bdd const&) const;
 
     [[nodiscard]] auto size() const;
@@ -150,8 +152,6 @@ class bdd final  // binary decision diagram
     [[nodiscard]] auto depth() const;
 
     [[nodiscard]] auto path_count() const noexcept;
-
-    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
 
     [[nodiscard]] auto has_const(bool) const;
 
@@ -583,6 +583,13 @@ inline auto bdd::fn(TruthValue const a, TruthValues... as) const
     return bdd{mgr->fn(f, a, std::forward<TruthValues>(as)...), mgr};
 }
 
+inline auto bdd::eval(std::vector<bool> const& as) const noexcept
+{
+    assert(mgr);
+
+    return mgr->eval(f, as);
+}
+
 inline auto bdd::ite(bdd const& g, bdd const& h) const
 {
     assert(mgr);
@@ -611,13 +618,6 @@ inline auto bdd::path_count() const noexcept
     assert(mgr);
 
     return mgr->path_count(f);
-}
-
-inline auto bdd::eval(std::vector<bool> const& as) const noexcept
-{
-    assert(mgr);
-
-    return mgr->eval(f, as);
 }
 
 inline auto bdd::has_const(bool const c) const
