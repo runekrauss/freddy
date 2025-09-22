@@ -75,27 +75,27 @@ TEST_CASE("BDD can be characterized", "[basic]")
 {
     bdd_manager mgr{{25, 3'359, 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
-    auto const f = (x0 & x1) | ~x2;
+    auto const f = x0 & x1 | ~x2;
 
     SECTION("Variables are supported")
     {
         CHECK(mgr.var_count() == 3);
     }
 
-    SECTION("Constant is supported")
+    SECTION("Constants are supported")
     {
         CHECK(mgr.const_count() == 1);
         CHECK(f.has_const(false));
     }
 
-    SECTION("#Nodes is determined")
-    {
-        CHECK(mgr.node_count() == 7);
-    }
-
     SECTION("#Edges is determined")
     {
         CHECK(mgr.edge_count() == 12);
+    }
+
+    SECTION("#Nodes is determined")
+    {
+        CHECK(mgr.node_count() == 7);
     }
 
     SECTION("Size is computed")
@@ -126,7 +126,7 @@ TEST_CASE("BDD can be characterized", "[basic]")
 
 TEST_CASE("BDD is substituted", "[basic]")
 {
-    bdd_manager mgr;
+    bdd_manager mgr{{25, 3'359, 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = ~(x0 | x1) & x2;
 
@@ -148,7 +148,7 @@ TEST_CASE("BDD is substituted", "[basic]")
         CHECK(f.restr(2, false).is_zero());
     }
 
-    SECTION("Variable is removed by existential quantification")
+    SECTION("Variable is eliminated by existential quantification")
     {
         auto const g = f.exist(2);
 
@@ -156,7 +156,7 @@ TEST_CASE("BDD is substituted", "[basic]")
         CHECK(g == ~(mgr.var(0) | mgr.var(1)));
     }
 
-    SECTION("Variable is removed by universal quantification")
+    SECTION("Variable is eliminated by universal quantification")
     {
         CHECK(f.forall(0).is_zero());
     }
@@ -164,9 +164,10 @@ TEST_CASE("BDD is substituted", "[basic]")
 
 TEST_CASE("BDD variable order is changeable", "[basic]")
 {
-    bdd_manager mgr;
+    bdd_manager mgr{{25, 3'359, 4}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
-    auto const f = (x0 & x1) | (x2 & x3);
+    auto const f = x0 & x1 | x2 & x3;
+    mgr.config().max_node_growth = 2.0f;
 
     SECTION("Levels can be swapped")
     {
@@ -181,16 +182,12 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
         CHECK_FALSE(f.eval({false, true, true, false}));
     }
 
-    SECTION("Variable reordering finds a minimum")
+    SECTION("Reordering finds a minimum")
     {
-        auto const ncnt_old = mgr.node_count();
-        auto const ecnt_old = mgr.edge_count();
-        auto const size_old = f.size();
+        auto const prev_size = f.size();
         mgr.reorder();
 
-        CHECK(ncnt_old > mgr.node_count());
-        CHECK(ecnt_old > mgr.edge_count());
-        CHECK(size_old > f.size());
+        CHECK(prev_size > f.size());
         CHECK(f.eval({true, false, true, false}));
         CHECK(f.eval({false, true, false, true}));
         CHECK_FALSE(f.eval({true, false, false, true}));
@@ -200,25 +197,24 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
 
 TEST_CASE("BDD can be cleaned up", "[basic]")
 {
-    bdd_manager mgr{{25, 3'359, 2}};
-    auto const x0 = mgr.var(), x1 = mgr.var();
+    bdd_manager mgr{{25, 3'359, 3}};
+    auto const f = mgr.var() | mgr.var() | mgr.var();
+    auto const prev_ecount = mgr.edge_count();
+    auto const prev_ncount = mgr.node_count();
+    mgr.gc();
+    std::ostringstream oss;
+    oss << mgr << "\n\n";
+    oss << f << "\n\n";
+    f.dump_dot(oss);
+    // std::cout << oss.str();
 
-    SECTION("GC deletes intermediate nodes") {}
-
-    SECTION("GC automatically deletes intermediate nodes") {}
-
-    /*#ifndef NDEBUG
-        std::ostringstream oss;
-        oss << mgr << "\n\n";
-        std::cout << oss.str();
-        oss << f << "\n\n";
-        f.dump_dot(oss);
-    #endif*/
+    CHECK(prev_ecount > mgr.edge_count());
+    CHECK(prev_ncount > mgr.node_count());
 }
 
 TEST_CASE("BDD solves #SAT", "[basic]")
 {
-    bdd_manager mgr;
+    bdd_manager mgr{{25, 3'359, 3}};
 
-    CHECK(((mgr.var() & mgr.var()) | ~mgr.var()).sharpsat() == 5);
+    CHECK((mgr.var() & mgr.var() | ~mgr.var()).sharpsat() == 5);
 }
