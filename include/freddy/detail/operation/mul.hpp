@@ -72,7 +72,7 @@ class mul final : public operation  // multiplication
 
     edge* g;  // 2nd factor
 
-    edge* r{};  // product result
+    edge* res{};  // product result
 };
 
 }  // namespace freddy::detail

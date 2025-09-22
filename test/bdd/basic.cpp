@@ -4,11 +4,11 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/bdd.hpp>  // dd::bdd_manager
+#include <freddy/config.hpp>  // config
+#include <freddy/dd/bdd.hpp>  // bdd_manager
 
-#ifndef NDEBUG
 #include <iostream>  // std::cout
-#endif
+#include <sstream>   // std::ostringstream
 
 // *********************************************************************************************************************
 // Namespaces
@@ -22,33 +22,18 @@ using namespace freddy;
 
 TEST_CASE("BDD is constructed", "[basic]")
 {
-    bdd_manager mgr;
+    bdd_manager mgr{config{25, 3'359, 2}};
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation uses complemented edges")
     {
         auto const f = ~x0;
-#ifndef NDEBUG
-        std::cout << mgr << '\n';
-        std::cout << f << '\n';
-        f.dump_dot();
-#endif
+
         CHECK(f.is_complemented());
         CHECK(f.high().is_const());
         CHECK(f.low().is_const());
         CHECK(f.fn(true).is_zero());
         CHECK(f.fn(false).is_one());
-    }
-
-    SECTION("Combination by disjunction")
-    {
-        auto const f = x0 | x1;
-
-        CHECK(f == x0.ite(mgr.one(), x1));
-        CHECK_FALSE(f.eval({false, false}));
-        CHECK(f.eval({false, true}));
-        CHECK(f.eval({true, false}));
-        CHECK(f.eval({true, true}));
     }
 
     SECTION("Combination by conjunction")
@@ -59,6 +44,17 @@ TEST_CASE("BDD is constructed", "[basic]")
         CHECK_FALSE(f.eval({false, false}));
         CHECK_FALSE(f.eval({false, true}));
         CHECK_FALSE(f.eval({true, false}));
+        CHECK(f.eval({true, true}));
+    }
+
+    SECTION("Combination by disjunction")
+    {
+        auto const f = x0 | x1;
+
+        CHECK(f == x0.ite(mgr.one(), x1));
+        CHECK_FALSE(f.eval({false, false}));
+        CHECK(f.eval({false, true}));
+        CHECK(f.eval({true, false}));
         CHECK(f.eval({true, true}));
     }
 
@@ -200,6 +196,24 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
         CHECK_FALSE(f.eval({true, false, false, true}));
         CHECK_FALSE(f.eval({false, true, true, false}));
     }
+}
+
+TEST_CASE("BDD can be cleaned up", "[basic]")
+{
+    bdd_manager mgr{{25, 3'359, 2}};
+    auto const x0 = mgr.var(), x1 = mgr.var();
+
+    SECTION("GC deletes intermediate nodes") {}
+
+    SECTION("GC automatically deletes intermediate nodes") {}
+
+    /*#ifndef NDEBUG
+        std::ostringstream oss;
+        oss << mgr << "\n\n";
+        std::cout << oss.str();
+        oss << f << "\n\n";
+        f.dump_dot(oss);
+    #endif*/
 }
 
 TEST_CASE("BDD solves #SAT", "[basic]")

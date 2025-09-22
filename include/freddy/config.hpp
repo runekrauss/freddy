@@ -5,7 +5,7 @@
 // *********************************************************************************************************************
 
 #include <cstddef>      // std::size_t
-#include <cstdint>      // std::uint_fast32_t
+#include <cstdint>      // std::uint32_t
 #include <optional>     // std::optional
 #include <type_traits>  // std::is_unsigned_v
 
@@ -20,7 +20,7 @@ namespace freddy
 // Aliases
 // =====================================================================================================================
 
-using var_index = std::uint_fast32_t;  // variable index used to label internal nodes
+using var_index = std::uint32_t;  // variable index used to label internal nodes
 
 static_assert(std::is_integral_v<var_index> && std::is_unsigned_v<var_index>, "var_index must be unsigned");
 
@@ -38,7 +38,7 @@ struct config final
 
     float max_node_growth{1.2f};  // permitted node growth factor during variable reordering
 
-    std::optional<std::size_t> heap_mem_limit;  // target heap usage in bytes before GC (auto-estimated if unset)
+    std::optional<std::size_t> heap_mem_limit{};  // target heap usage in bytes before GC (auto-estimated if unset)
 };
 
 }  // namespace freddy

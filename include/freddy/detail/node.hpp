@@ -10,7 +10,7 @@
 #include <boost/smart_ptr/intrusive_ptr.hpp>  // intrusive_ptr_add_ref
 
 #include <cassert>      // assert
-#include <cstdint>      // std::uint16_t
+#include <cstdint>      // std::uint8_t
 #include <functional>   // std::hash
 #include <limits>       // std::numeric_limits
 #include <stdexcept>    // std::overflow_error
@@ -42,7 +42,11 @@ class edge;
 template <hashable EWeight, hashable NValue>
 using edge_ptr = boost::intrusive_ptr<edge<EWeight, NValue>>;  // for referencing an edge in a (shared) DD
 
-using ref_count = std::uint16_t;  // to decide in each case whether a DD is "dead"
+using ref_count = std::uint32_t;  // to decide in each case whether a DD is "dead"
+
+// since the same edges are always referenced when making a variable
+static_assert(std::numeric_limits<ref_count>::max() >= std::numeric_limits<var_index>::max(),
+              "ref_count must cover range of var_index");
 
 // =====================================================================================================================
 // Types
@@ -163,7 +167,7 @@ class node final
     friend auto intrusive_ptr_add_ref(node* const v)
     {
         if (v->ref == std::numeric_limits<ref_count>::max())
-        {  // although v seems to be very important
+        {  // even though this case is highly unlikely
             throw std::overflow_error{"A node has been maximally referenced. Change the variable order."};
         }
 
