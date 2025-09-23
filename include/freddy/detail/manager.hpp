@@ -368,7 +368,8 @@ class manager
 
     virtual auto disj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects disjuncts (OR)
 
-    virtual auto merge(NValue const&, NValue const&) const -> NValue = 0;  // evaluates aggregates (subtrees)
+    // evaluates aggregates (subtrees)
+    [[nodiscard]] virtual auto merge(NValue const&, NValue const&) const -> NValue = 0;
 
     virtual auto mul(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs multiplicatively
 
@@ -508,7 +509,7 @@ class manager
         return f->is_const() ? 1 : path_count(f->v->br().hi) + path_count(f->v->br().lo);  // DFS
     }
 
-    [[nodiscard]] auto has_const(edge_ptr const& f, NValue const& c)
+    auto has_const(edge_ptr const& f, NValue const& c)
     {
         assert(f);
 
