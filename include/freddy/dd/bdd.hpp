@@ -190,8 +190,8 @@ class bdd final  // binary decision diagram
 class bdd_manager final : public detail::manager<bool, bool>
 {
   public:
-    explicit bdd_manager(struct config cfg = {}) :
-            manager{tmls(), std::move(cfg)}
+    explicit bdd_manager(struct config const cfg = {}) :
+            manager{tmls(), cfg}  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks)
     {}
 
     auto var(std::string_view lbl = {})
@@ -237,16 +237,18 @@ class bdd_manager final : public detail::manager<bool, bool>
   private:
     friend bdd;
 
+    // NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks)
     static auto tmls() -> std::array<edge_ptr, 2>
     {
         node_ptr const leaf{new node{false}};  // use the 0-leaf to support complemented edges and ensure canonicity
         return {edge_ptr{new edge{false, leaf}}, edge_ptr{new edge{true, leaf}}};
     }
+    // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
 
     static auto transform(std::vector<bdd> const& gs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
+        std::ranges::transform(gs, fs.begin(), [](auto const& g) noexcept -> auto { return g.f; });
         return fs;
     }
 

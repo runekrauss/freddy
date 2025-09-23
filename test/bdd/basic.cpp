@@ -22,7 +22,7 @@ using namespace freddy;
 
 TEST_CASE("BDD is constructed", "[basic]")
 {
-    bdd_manager mgr{config{25, 3'359, 2}};
+    bdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation uses complemented edges")
@@ -73,7 +73,7 @@ TEST_CASE("BDD is constructed", "[basic]")
 
 TEST_CASE("BDD can be characterized", "[basic]")
 {
-    bdd_manager mgr{{25, 3'359, 3}};
+    bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = x0 & x1 | ~x2;
 
@@ -126,7 +126,7 @@ TEST_CASE("BDD can be characterized", "[basic]")
 
 TEST_CASE("BDD is substituted", "[basic]")
 {
-    bdd_manager mgr{{25, 3'359, 3}};
+    bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = ~(x0 | x1) & x2;
 
@@ -164,7 +164,7 @@ TEST_CASE("BDD is substituted", "[basic]")
 
 TEST_CASE("BDD variable order is changeable", "[basic]")
 {
-    bdd_manager mgr{{25, 3'359, 4}};
+    bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
     auto const f = x0 & x1 | x2 & x3;
     mgr.config().max_node_growth = 2.0f;
@@ -197,7 +197,7 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
 
 TEST_CASE("BDD can be cleaned up", "[basic]")
 {
-    bdd_manager mgr{{25, 3'359, 3}};
+    bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const f = mgr.var() | mgr.var() | mgr.var();
     auto const prev_ecount = mgr.edge_count();
     auto const prev_ncount = mgr.node_count();
@@ -214,7 +214,7 @@ TEST_CASE("BDD can be cleaned up", "[basic]")
 
 TEST_CASE("BDD solves #SAT", "[basic]")
 {
-    bdd_manager mgr{{25, 3'359, 3}};
+    bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
 
     CHECK((mgr.var() & mgr.var() | ~mgr.var()).sharpsat() == 5);
 }

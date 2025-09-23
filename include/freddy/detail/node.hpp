@@ -45,7 +45,9 @@ using edge_ptr = boost::intrusive_ptr<edge<EWeight, NValue>>;  // for referencin
 using ref_count = std::uint32_t;  // to decide in each case whether a DD is "dead"
 
 // since the same edges are always referenced when making a variable
-static_assert(std::numeric_limits<ref_count>::max() >= std::numeric_limits<var_index>::max(),
+static_assert(std::disjunction_v<
+                  std::is_same<ref_count, var_index>,
+                  std::bool_constant<std::numeric_limits<ref_count>::max() >= std::numeric_limits<var_index>::max()>>,
               "ref_count must cover range of var_index");
 
 // =====================================================================================================================
@@ -183,7 +185,7 @@ class node final
 
         if (v->ref == 0)
         {
-            delete v;
+            delete v;  // NOLINT(cppcoreguidelines-owning-memory)
         }
     }
 

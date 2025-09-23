@@ -6,7 +6,7 @@
 
 #include <cstddef>      // std::size_t
 #include <cstdint>      // std::uint32_t
-#include <optional>     // std::optional
+#include <optional>     // std::nullopt
 #include <type_traits>  // std::is_unsigned_v
 
 // *********************************************************************************************************************
@@ -38,7 +38,9 @@ struct config final
 
     float max_node_growth{1.2f};  // permitted node growth factor during variable reordering
 
-    std::optional<std::size_t> heap_mem_limit{};  // target heap usage in bytes before GC (auto-estimated if unset)
+    std::optional<std::size_t> heap_mem_limit{std::nullopt};  // heap usage in bytes before GC (auto-estimated if unset)
 };
+
+static_assert(std::is_trivially_copyable_v<config>, "config must be trivially copyable");
 
 }  // namespace freddy

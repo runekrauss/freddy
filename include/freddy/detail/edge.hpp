@@ -115,7 +115,7 @@ class edge final
 
         if (e->ref == 0)
         {
-            delete e;
+            delete e;  // NOLINT(cppcoreguidelines-owning-memory)
         }
     }
 

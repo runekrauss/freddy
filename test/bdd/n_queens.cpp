@@ -8,10 +8,11 @@
 #include <freddy/config.hpp>  // var_index
 #include <freddy/dd/bdd.hpp>  // bdd_manager
 
-#include <cassert>  // assert
-#include <cstdint>  // std::int32_t
-#include <utility>  // std::as_const
-#include <vector>   // std::vector
+#include <algorithm>  // std::ranges::generate
+#include <cassert>    // assert
+#include <cstdint>    // std::int32_t
+#include <utility>    // std::as_const
+#include <vector>     // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -32,12 +33,9 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
 
     // initialize nxn chessboard of BDD variables
     std::vector<std::vector<bdd>> x(n, std::vector<bdd>(n));
-    for (auto i = 0; i < n; ++i)
+    for (auto& row : x)
     {
-        for (auto j = 0; j < n; ++j)
-        {
-            x[i][j] = mgr.var();
-        }
+        std::ranges::generate(row, [&mgr]() { return mgr.var(); });
     }
 
     // Constraint (horizontal): Two queens must not be in the same row.

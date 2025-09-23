@@ -53,6 +53,10 @@ template <hashable EWeight, hashable NValue>  // edge weight, node value
 class manager
 {
   public:
+    manager(manager const&) = delete;
+
+    auto operator=(manager const&) = delete;
+
     friend auto operator<<(std::ostream& os, manager const& mgr) -> std::ostream&
     {
         auto print_thead = [&os](std::string_view title) {
@@ -231,8 +235,8 @@ class manager
     using node_ptr = node_ptr<EWeight, NValue>;
 
     // terminals: [contradiction, tautology]
-    manager(std::array<edge_ptr, 2>&& tmls, struct config&& cfg) :
-            cfg{std::move(cfg)}
+    manager(std::array<edge_ptr, 2> tmls, struct config const cfg) :
+            cfg{cfg}
     {
         if (!this->cfg.heap_mem_limit)
         {
@@ -257,12 +261,8 @@ class manager
         }
     }
 
-    manager(manager const&) = delete;
-
     manager(manager&&) noexcept(std::is_nothrow_move_constructible_v<edge> &&
                                 std::is_nothrow_move_constructible_v<node>) = default;
-
-    auto operator=(manager const&) = delete;
 
     auto operator=(manager&&) noexcept(std::is_nothrow_move_constructible_v<edge> &&
                                        std::is_nothrow_move_constructible_v<node>) -> manager& = default;
@@ -907,7 +907,8 @@ class manager
     {
         auto prev_ncount = 0uz;
         auto curr_ncount = 0uz;
-        while (lvl + 1 < var_count() && static_cast<std::size_t>(prev_ncount * cfg.max_node_growth) >= curr_ncount)
+        while (lvl + 1 < var_count() && static_cast<decltype(cfg.max_node_growth)>(prev_ncount) * cfg.max_node_growth >=
+                                            static_cast<decltype(cfg.max_node_growth)>(curr_ncount))
         {
             prev_ncount = node_count();
             exchange(lvl++);
@@ -926,7 +927,8 @@ class manager
     {
         auto prev_ncount = 0uz;
         auto curr_ncount = 0uz;
-        while (lvl > 0 && static_cast<std::size_t>(prev_ncount * cfg.max_node_growth) >= curr_ncount)
+        while (lvl > 0 && static_cast<decltype(cfg.max_node_growth)>(prev_ncount) * cfg.max_node_growth >=
+                              static_cast<decltype(cfg.max_node_growth)>(curr_ncount))
         {
             --lvl;
 

@@ -121,7 +121,7 @@ inline auto heap_mem_limit() noexcept  // in bytes
         return static_cast<std::size_t>(status.ullTotalPhys);  // since there is no equivalent to getrlimit
     }
 #endif
-    return 4uz << 30;  // unsupported platform or fallback
+    return 4uz << 30uz;  // unsupported platform or fallback
 }
 
 inline auto parallel_for(std::integral auto const a, std::integral auto const b, auto func)  // [a, b)
