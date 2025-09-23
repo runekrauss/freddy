@@ -53,7 +53,7 @@ template <hashable EWeight, hashable NValue>  // edge weight, node value
 class manager
 {
   public:
-    manager(manager const&) = delete;
+    manager(manager const&) = delete;  // because UTs, among other data structures, constitute the manager
 
     auto operator=(manager const&) = delete;
 
@@ -383,7 +383,7 @@ class manager
         return uedge(comb(w, f->w), f->v);
     }
 
-    // NOLINTNEXTLINE(performance-unnecessary-value-param), because simplifications may change pointers
+    // NOLINTNEXTLINE(performance-unnecessary-value-param) because simplifications may change pointers
     virtual auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr
     {
         assert(f);

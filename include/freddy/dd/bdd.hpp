@@ -191,7 +191,8 @@ class bdd_manager final : public detail::manager<bool, bool>
 {
   public:
     explicit bdd_manager(struct config const cfg = {}) :
-            manager{tmls(), cfg}  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks)
+            // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) because BDD terminals are intrusive pointers
+            manager{tmls(), cfg}
     {}
 
     auto var(std::string_view lbl = {})
@@ -248,7 +249,7 @@ class bdd_manager final : public detail::manager<bool, bool>
     static auto transform(std::vector<bdd> const& gs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) noexcept -> auto { return g.f; });
+        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
         return fs;
     }
 
