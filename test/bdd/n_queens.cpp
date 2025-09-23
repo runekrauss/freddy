@@ -103,7 +103,7 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("N-Queens solutions are counted", "[n_queens]")
+TEST_CASE("N-Queens solutions are counted", "[example]")
 {
     auto const [n, expected] =
         GENERATE(std::pair{1, 1}, std::pair{2, 0}, std::pair{3, 0}, std::pair{4, 2}, std::pair{5, 10});
