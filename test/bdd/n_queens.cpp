@@ -2,13 +2,15 @@
 // Includes
 // *********************************************************************************************************************
 
-#include <catch2/catch_test_macros.hpp>  // TEST_CASE
+#include <catch2/catch_test_macros.hpp>            // TEST_CASE
+#include <catch2/generators/catch_generators.hpp>  // GENERATE
 
-#include <freddy/config.hpp>  // config
+#include <freddy/config.hpp>  // var_index
 #include <freddy/dd/bdd.hpp>  // bdd_manager
 
 #include <cassert>  // assert
 #include <cstdint>  // std::int32_t
+#include <utility>  // std::as_const
 #include <vector>   // std::vector
 
 // *********************************************************************************************************************
@@ -28,7 +30,7 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
 {
     assert(n > 0);
 
-    // initialization
+    // initialize nxn chessboard of BDD variables
     std::vector<std::vector<bdd>> x(n, std::vector<bdd>(n));
     for (auto i = 0; i < n; ++i)
     {
@@ -38,8 +40,8 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
         }
     }
 
-    // two queens must not be in the same row
-    auto horiz_constr = [n, &mgr, &x](std::int32_t const i, std::int32_t const j) {
+    // Constraint (horizontal): Two queens must not be in the same row.
+    auto horiz_constr = [n, &mgr, &x = std::as_const(x)](std::int32_t const i, std::int32_t const j) {
         auto res = mgr.one();
         for (auto k = 0; k < n; ++k)
         {
@@ -51,8 +53,8 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
         return res;
     };
 
-    // two queens must not be in the same column
-    auto vert_constr = [n, &mgr, &x](std::int32_t const i, std::int32_t const j) {
+    // Constraint (vertical): Two queens must not be in the same column.
+    auto vert_constr = [n, &mgr, &x = std::as_const(x)](std::int32_t const i, std::int32_t const j) {
         auto res = mgr.one();
         for (auto k = 0; k < n; ++k)
         {
@@ -64,35 +66,36 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
         return res;
     };
 
-    // two queens must not be on the same up-right diagonal
-    auto up_diag_constr = [n, &mgr, &x](std::int32_t const i, std::int32_t const j) {
+    // Constraint (up-right diagonal): Two queens must not be on the same up-right diagonal.
+    auto up_diag_constr = [n, &mgr, &x = std::as_const(x)](std::int32_t const i, std::int32_t const j) {
         auto res = mgr.one();
         for (auto k = 0; k < n; ++k)
         {
-            auto const l = j + k - i;
-            if (l >= 0 && l < n && k != i)
+            auto const d = j + k - i;
+            if (d >= 0 && d < n && k != i)
             {
-                res &= ~(x[i][j] & x[k][l]);
+                res &= ~(x[i][j] & x[k][d]);
             }
         }
         return res;
     };
 
-    // two queens must not be on the same down-right diagonal
-    auto down_diag_constr = [n, &mgr, &x](std::int32_t const i, std::int32_t const j) {
+    // Constraint (down-right diagonal): Two queens must not be on the same down-right diagonal.
+    auto down_diag_constr = [n, &mgr, &x = std::as_const(x)](std::int32_t const i, std::int32_t const j) {
         auto res = mgr.one();
         for (auto k = 0; k < n; ++k)
         {
-            auto const l = j + i - k;
-            if (l >= 0 && l < n && k != i)
+            auto const d = j + i - k;
+            if (d >= 0 && d < n && k != i)
             {
-                res &= ~(x[i][j] & x[k][l]);
+                res &= ~(x[i][j] & x[k][d]);
             }
         }
         return res;
     };
 
-    auto pred = mgr.one();  // predicate
+    // build predicate encoding the n-queens requirements
+    auto pred = mgr.one();
     for (auto i = 0; i < n; ++i)
     {
         auto row_existence = mgr.zero();
@@ -103,8 +106,7 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
             pred &= up_diag_constr(i, j);
             pred &= down_diag_constr(i, j);
 
-            // there must be a queen in each row
-            row_existence |= x[i][j];
+            row_existence |= x[i][j];  // there must be a queen in each row
         }
         pred &= row_existence;
     }
@@ -117,37 +119,12 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("1-Queens is solvable", "[queen]")
+TEST_CASE("n-Queens solutions are counted", "[queen]")
 {
-    bdd_manager mgr{config{.init_var_cap = 1}};
+    auto const [n, expected] =
+        GENERATE(std::pair{1, 1}, std::pair{2, 0}, std::pair{3, 0}, std::pair{4, 2}, std::pair{5, 10});
 
-    CHECK(queens(1, mgr).sharpsat() == 1);
-}
+    bdd_manager mgr{{.init_var_cap = static_cast<var_index>(n * n)}};
 
-TEST_CASE("2-Queens is unsolvable", "[queen]")
-{
-    bdd_manager mgr{{.init_var_cap = 4}};
-
-    CHECK(queens(2, mgr).sharpsat() == 0);
-}
-
-TEST_CASE("3-Queens is unsolvable", "[queen]")
-{
-    bdd_manager mgr{{.init_var_cap = 9}};
-
-    CHECK(queens(3, mgr).sharpsat() == 0);
-}
-
-TEST_CASE("4-Queens is solvable", "[queen]")
-{
-    bdd_manager mgr{{.init_var_cap = 16}};
-
-    CHECK(queens(4, mgr).sharpsat() == 2);
-}
-
-TEST_CASE("5-Queens is solvable", "[queen]")
-{
-    bdd_manager mgr{{.init_var_cap = 25}};
-
-    CHECK(queens(5, mgr).sharpsat() == 10);
+    CHECK(queens(n, mgr).sharpsat() == expected);
 }
