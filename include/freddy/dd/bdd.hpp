@@ -191,7 +191,7 @@ class bdd_manager final : public detail::manager<bool, bool>
 {
   public:
     explicit bdd_manager(struct config const cfg = {}) :
-            // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) because BDD terminals are intrusive pointers
+            // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) because BDD terminals are intrusive
             manager{tmls(), cfg}
     {}
 

@@ -53,7 +53,7 @@ template <hashable EWeight, hashable NValue>  // edge weight, node value
 class manager
 {
   public:
-    manager(manager const&) = delete;  // because UTs, among other data structures, constitute the manager
+    manager(manager const&) = delete;  // because UTs, among others, constitute the manager
 
     auto operator=(manager const&) = delete;
 
