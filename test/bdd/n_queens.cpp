@@ -66,29 +66,15 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
         return res;
     };
 
-    // Constraint (up-right diagonal): Two queens must not be on the same up-right diagonal.
-    auto up_diag_constr = [n, &mgr, &x = std::as_const(x)](std::int32_t const i, std::int32_t const j) {
+    // Constraint (diagonal): Two queens must not be on the same diagonal (either up-right or down-right).
+    auto diag_constr = [n, &mgr, &x = std::as_const(x)](std::int32_t const i, std::int32_t const j, bool const upward) {
         auto res = mgr.one();
         for (auto k = 0; k < n; ++k)
         {
-            auto const d = j + k - i;
-            if (d >= 0 && d < n && k != i)
+            auto const col = upward ? j + k - i : j + i - k;
+            if (col >= 0 && col < n && k != i)
             {
-                res &= ~(x[i][j] & x[k][d]);
-            }
-        }
-        return res;
-    };
-
-    // Constraint (down-right diagonal): Two queens must not be on the same down-right diagonal.
-    auto down_diag_constr = [n, &mgr, &x = std::as_const(x)](std::int32_t const i, std::int32_t const j) {
-        auto res = mgr.one();
-        for (auto k = 0; k < n; ++k)
-        {
-            auto const d = j + i - k;
-            if (d >= 0 && d < n && k != i)
-            {
-                res &= ~(x[i][j] & x[k][d]);
+                res &= ~(x[i][j] & x[k][col]);
             }
         }
         return res;
@@ -103,10 +89,10 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
         {
             pred &= horiz_constr(i, j);
             pred &= vert_constr(i, j);
-            pred &= up_diag_constr(i, j);
-            pred &= down_diag_constr(i, j);
+            pred &= diag_constr(i, j, true);
+            pred &= diag_constr(i, j, false);
 
-            row_existence |= x[i][j];  // there must be a queen in each row
+            row_existence |= x[i][j];  // There must be a queen in each row.
         }
         pred &= row_existence;
     }
@@ -119,7 +105,7 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("n-Queens solutions are counted", "[queen]")
+TEST_CASE("N-Queens solutions are counted", "[n_queens]")
 {
     auto const [n, expected] =
         GENERATE(std::pair{1, 1}, std::pair{2, 0}, std::pair{3, 0}, std::pair{4, 2}, std::pair{5, 10});
