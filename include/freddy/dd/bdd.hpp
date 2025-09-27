@@ -16,7 +16,6 @@
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
-#include <cstddef>      // std::size_t
 #include <cstdint>      // std::int32_t
 #include <iostream>     // std::cout
 #include <ostream>      // std::ostream
@@ -301,7 +300,7 @@ class bdd_manager final : public detail::manager<bool, bool>
 
         if (f->is_const())
         {
-            return f == constant(0) ? 0 : static_cast<double>(std::size_t{1} << var_count());  // 2^var_count()
+            return f == constant(0) ? 0 : static_cast<double>(1uz << var_count());  // 2^var_count()
         }
 
         detail::sharpsat op{f};
@@ -313,7 +312,7 @@ class bdd_manager final : public detail::manager<bool, bool>
         auto count = (sharpsat(f->ch()->br().hi) + sharpsat(f->ch()->br().lo)) / 2;
         if (f->weight())
         {  // complemented edge
-            count = static_cast<double>(std::size_t{1} << var_count()) - count;
+            count = static_cast<double>(1uz << var_count()) - count;
         }
 
         op.set_result(count);

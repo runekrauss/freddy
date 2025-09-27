@@ -23,7 +23,7 @@ using namespace freddy;
 
 TEST_CASE("BMD is constructed", "[basic]")
 {
-    dd::bmd_manager mgr;
+    bmd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation is performed")
@@ -43,7 +43,7 @@ TEST_CASE("BMD is constructed", "[basic]")
 #ifndef NDEBUG
         std::cout << mgr << '\n';
         std::cout << f << '\n';
-        f.print();
+        f.dump_dot();
 #endif
         CHECK(f.eval({false, false}) == 0);
         CHECK(f.eval({false, true}) == 1);
@@ -103,7 +103,7 @@ TEST_CASE("BMD is constructed", "[basic]")
 
 TEST_CASE("BMD can be characterized", "[basic]")
 {
-    dd::bmd_manager mgr;
+    bmd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = mgr.constant(8) - mgr.constant(20) * x2 + mgr.two() * x1 + mgr.constant(12) * x0 +
                    mgr.constant(4) * x1 * x2 + mgr.constant(24) * x0 * x2 + mgr.constant(15) * x0 * x1;
@@ -157,7 +157,7 @@ TEST_CASE("BMD can be characterized", "[basic]")
 
 TEST_CASE("BMD is substituted", "[basic]")
 {
-    dd::bmd_manager mgr;
+    bmd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var();
     auto const f = mgr.constant(8) - mgr.constant(20) * x0 + mgr.two() * x1 + mgr.constant(4) * x0 * x1;
 
@@ -194,7 +194,7 @@ TEST_CASE("BMD is substituted", "[basic]")
 
 TEST_CASE("BMD variable order is changeable", "[basic]")
 {
-    dd::bmd_manager mgr;
+    bmd_manager mgr;
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x5 = mgr.var("x5"), x0 = mgr.var("x0"), x2 = mgr.var("x2"),
                x4 = mgr.var("x4");
     auto const f = (x0 & x1) | (x2 & x3) | (x4 & x5);
@@ -226,13 +226,13 @@ TEST_CASE("BMD variable order is changeable", "[basic]")
 
 TEST_CASE("BMD interprets bits numerically", "[basic]")
 {
-    dd::bmd_manager mgr;
+    bmd_manager mgr;
     auto const a = mgr.var("a"), b = mgr.var("b");
     std::vector const ha{a ^ b, a & b};
 
     SECTION("Bits can be weighted")
     {
-        auto const f = mgr.weighted_sum(ha);
+        auto const f = mgr.unsigned_bin(ha);
 
         CHECK(f == a + b);
         CHECK(f.eval({false, false}) == 0);

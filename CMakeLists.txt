@@ -41,7 +41,7 @@ if(NOT Boost_FOUND)
   message(STATUS "Fetching/Preparing Boost modules")
 
   set(BOOST_ENABLE_CMAKE ON)
-  set(BOOST_INCLUDE_LIBRARIES algorithm smart_ptr unordered) # dummies to not configure all Boost libraries
+  set(BOOST_INCLUDE_LIBRARIES algorithm safe_numerics smart_ptr unordered) # dummies to avoid full Boost configuration
 
   FetchContent_Declare(Boost
     URL https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-cmake.tar.xz # performance reasons
@@ -54,10 +54,10 @@ if(NOT Boost_FOUND)
 
   # add Boost module headers
   set(BOOST_MODULES
-    algorithm smart_ptr unordered
+    algorithm safe_numerics smart_ptr unordered
     # their dependencies
-    assert bind concept_check config container_hash core describe function iterator mp11 mpl predef preprocessor range
-    static_assert throw_exception type_traits utility
+    assert bind concept_check config container_hash core describe function integer iterator logic mp11 mpl predef
+    preprocessor range static_assert throw_exception type_traits utility
   )
   foreach(MODULE IN LISTS BOOST_MODULES)
     target_include_directories(freddy SYSTEM INTERFACE "${Boost_SOURCE_DIR}/libs/${MODULE}/include")

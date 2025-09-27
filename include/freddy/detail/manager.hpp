@@ -423,7 +423,7 @@ class manager
         return vars[x];
     }
 
-    auto constant(EWeight&& w, NValue&& c, bool const keep_alive)
+    auto constant(EWeight w, NValue c, bool const keep_alive)
     {
         if (keep_alive)
         {
