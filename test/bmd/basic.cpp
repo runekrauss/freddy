@@ -4,12 +4,13 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/bmd.hpp>  // dd::bmd_manager
+#include <freddy/config.hpp>  // config
+#include <freddy/dd/bmd.hpp>  // bmd_manager
 
-#ifndef NDEBUG
-#include <iostream>  // std::cout
-#endif
-#include <vector>  // std::vector
+#include <limits>        // std::numeric_limits
+#include <sstream>       // std::ostringstream
+#include <system_error>  // std::system_error
+#include <vector>        // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -23,7 +24,7 @@ using namespace freddy;
 
 TEST_CASE("BMD is constructed", "[basic]")
 {
-    bmd_manager mgr;
+    bmd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation is performed")
@@ -37,20 +38,6 @@ TEST_CASE("BMD is constructed", "[basic]")
         CHECK(f.fn(false).is_zero());
     }
 
-    SECTION("Combination by addition")
-    {
-        auto const f = x0 + x1;
-#ifndef NDEBUG
-        std::cout << mgr << '\n';
-        std::cout << f << '\n';
-        f.dump_dot();
-#endif
-        CHECK(f.eval({false, false}) == 0);
-        CHECK(f.eval({false, true}) == 1);
-        CHECK(f.eval({true, false}) == 1);
-        CHECK(f.eval({true, true}) == 2);
-    }
-
     SECTION("Combination by multiplication")
     {
         auto const f = x0 * x1;
@@ -61,22 +48,19 @@ TEST_CASE("BMD is constructed", "[basic]")
         CHECK(f.eval({true, true}) == 1);
     }
 
-    SECTION("Logical negation is represented")
+    SECTION("Combination by addition")
     {
-        auto const f = ~x0;
+        auto const f = x0 + x1;
 
-        CHECK(f == mgr.one() - x0);
+        CHECK(f.eval({false, false}) == 0);
+        CHECK(f.eval({false, true}) == 1);
+        CHECK(f.eval({true, false}) == 1);
+        CHECK(f.eval({true, true}) == 2);
     }
 
-    SECTION("Disjunction is represented")
+    SECTION("Logical complement is represented")
     {
-        auto const f = x0 | x1;
-
-        CHECK(f == x0.ite(mgr.one(), x1));
-        CHECK_FALSE(f.eval({false, false}));
-        CHECK(f.eval({false, true}));
-        CHECK(f.eval({true, false}));
-        CHECK(f.eval({true, true}));
+        CHECK(~x0 == mgr.one() - x0);
     }
 
     SECTION("Conjunction is represented")
@@ -87,7 +71,18 @@ TEST_CASE("BMD is constructed", "[basic]")
         CHECK_FALSE(f.eval({false, false}));
         CHECK_FALSE(f.eval({false, true}));
         CHECK_FALSE(f.eval({true, false}));
-        CHECK(f.eval({true, true}));
+        CHECK(f.eval({true, true}) == 1);
+    }
+
+    SECTION("Disjunction is represented")
+    {
+        auto const f = x0 | x1;
+
+        CHECK(f == x0.ite(mgr.one(), x1));
+        CHECK_FALSE(f.eval({false, false}));
+        CHECK(f.eval({false, true}) == 1);
+        CHECK(f.eval({true, false}) == 1);
+        CHECK(f.eval({true, true}) == 1);
     }
 
     SECTION("XOR is applied")
@@ -103,38 +98,38 @@ TEST_CASE("BMD is constructed", "[basic]")
 
 TEST_CASE("BMD can be characterized", "[basic]")
 {
-    bmd_manager mgr;
+    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
-    auto const f = mgr.constant(8) - mgr.constant(20) * x2 + mgr.two() * x1 + mgr.constant(12) * x0 +
-                   mgr.constant(4) * x1 * x2 + mgr.constant(24) * x0 * x2 + mgr.constant(15) * x0 * x1;
+    auto const f = mgr.constant(8) - mgr.constant(20) * x2 + mgr.two() * x1 + mgr.constant(4) * x1 * x2 +
+                   mgr.constant(12) * x0 + mgr.constant(24) * x0 * x2 + mgr.constant(15) * x0 * x1;
 
     SECTION("Variables are supported")
     {
         CHECK(mgr.var_count() == 3);
     }
 
-    SECTION("Constant is supported")
+    SECTION("Constants are supported")
     {
         CHECK(mgr.const_count() == 1);
         CHECK(f.has_const(1));
     }
 
-    SECTION("#Nodes is determined")
-    {
-        CHECK(mgr.node_count() == 16);
-    }
-
     SECTION("#Edges is determined")
     {
-        CHECK(mgr.edge_count() == 57);
+        CHECK(mgr.edge_count() == 55);
     }
 
-    SECTION("Nodes are counted")
+    SECTION("#Nodes is determined")
+    {
+        CHECK(mgr.node_count() == 15);
+    }
+
+    SECTION("Size is computed")
     {
         CHECK(f.size() == 6);
     }
 
-    SECTION("Longest path is computed")
+    SECTION("Depth is computed")
     {
         CHECK(f.depth() == 3);
     }
@@ -157,9 +152,9 @@ TEST_CASE("BMD can be characterized", "[basic]")
 
 TEST_CASE("BMD is substituted", "[basic]")
 {
-    bmd_manager mgr;
+    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
     auto const x0 = mgr.var(), x1 = mgr.var();
-    auto const f = mgr.constant(8) - mgr.constant(20) * x0 + mgr.two() * x1 + mgr.constant(4) * x0 * x1;
+    auto const f = mgr.constant(8) - mgr.constant(20) * x1 + mgr.two() * x0 + mgr.constant(4) * x0 * x1;
 
     SECTION("Variable is replaced by function")
     {
@@ -178,59 +173,89 @@ TEST_CASE("BMD is substituted", "[basic]")
         CHECK(f.restr(1, false).high().is_const());
     }
 
-    SECTION("Variable is removed by existential quantification")
+    SECTION("Variable is eliminated by existential quantification")
     {
         auto const g = f.exist(0);
 
         CHECK_FALSE(g.is_essential(0));
-        CHECK(g == mgr.constant(148) + mgr.constant(6) * x1);
+        CHECK(g == mgr.constant(72) * mgr.var(1) - mgr.constant(6));
     }
 
-    SECTION("Variable is removed by universal quantification")
+    SECTION("Variable is eliminated by universal quantification")
     {
-        CHECK(f.forall(1) == mgr.constant(16) - mgr.constant(88) * x0);
+        CHECK(f.forall(0) == mgr.constant(16) - mgr.constant(88) * mgr.var(1));
     }
 }
 
 TEST_CASE("BMD variable order is changeable", "[basic]")
 {
-    bmd_manager mgr;
+    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 6}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x5 = mgr.var("x5"), x0 = mgr.var("x0"), x2 = mgr.var("x2"),
                x4 = mgr.var("x4");
-    auto const f = (x0 & x1) | (x2 & x3) | (x4 & x5);
+    auto const f = x0 & x1 | x2 & x3 | x4 & x5;
+    mgr.config().max_node_growth = 2.0f;
 
     SECTION("Levels can be swapped")
     {
         mgr.swap(1, 2);
 
-        CHECK(f.eval({true, false, false, true, false, false}));
-        CHECK(f.eval({false, true, false, false, true, false}));
-        CHECK(f.eval({false, false, true, false, false, true}));
+        CHECK(f.eval({true, false, false, true, false, false}) == 1);
+        CHECK(f.eval({false, true, false, false, true, false}) == 1);
+        CHECK(f.eval({false, false, true, false, false, true}) == 1);
     }
 
-    SECTION("Variable reordering finds a minimum")
+    SECTION("Reordering finds a minimum")
     {
-        auto const ncnt_old = mgr.node_count();
-        auto const ecnt_old = mgr.edge_count();
-        auto const size_old = f.size();
+        auto const prev_size = f.size();
         mgr.reorder();
 
-        CHECK(ncnt_old > mgr.node_count());
-        CHECK(ecnt_old > mgr.edge_count());
-        CHECK(size_old > f.size());
-        CHECK(f.eval({true, false, false, true, false, false}));
-        CHECK(f.eval({false, true, false, false, true, false}));
-        CHECK(f.eval({false, false, true, false, false, true}));
+        CHECK(prev_size > f.size());
+        CHECK(f.eval({true, false, false, true, false, false}) == 1);
+        CHECK(f.eval({false, true, false, false, true, false}) == 1);
+        CHECK(f.eval({false, false, true, false, false, true}) == 1);
+    }
+}
+
+TEST_CASE("BMD can be cleaned up", "[basic]")
+{
+    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const f = mgr.var() + mgr.var() + mgr.var();
+    auto const prev_ecount = mgr.edge_count();
+    auto const prev_ncount = mgr.node_count();
+    mgr.gc();
+    std::ostringstream oss;
+    oss << mgr << "\n\n";
+    oss << f << "\n\n";
+    f.dump_dot(oss);
+    // std::cout << oss.str();
+
+    CHECK(prev_ecount > mgr.edge_count());
+    CHECK(prev_ncount > mgr.node_count());
+}
+
+TEST_CASE("BMD detects misuse of word-level operations", "[basic]")
+{
+    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 0}};
+    auto const c = mgr.constant(std::numeric_limits<bmd_int>::max(), true);
+
+    SECTION("Multiplication can overflow")
+    {
+        CHECK_THROWS_AS(c * mgr.two(), std::system_error);
+    }
+
+    SECTION("Addition can overflow")
+    {
+        CHECK_THROWS_AS(c + mgr.one(), std::system_error);
     }
 }
 
 TEST_CASE("BMD interprets bits numerically", "[basic]")
 {
-    bmd_manager mgr;
+    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
     auto const a = mgr.var("a"), b = mgr.var("b");
     std::vector const ha{a ^ b, a & b};
 
-    SECTION("Bits can be weighted")
+    SECTION("Unsigned number is encoded as weighted bit sum")
     {
         auto const f = mgr.unsigned_bin(ha);
 
@@ -241,7 +266,7 @@ TEST_CASE("BMD interprets bits numerically", "[basic]")
         CHECK(f.eval({true, true}) == 2);
     }
 
-    SECTION("Two's complement is a sum of weighted bits")
+    SECTION("Two's complement represents integers")
     {
         CHECK(mgr.twos_complement(ha) == a + b - mgr.constant(4) * a * b);
     }
