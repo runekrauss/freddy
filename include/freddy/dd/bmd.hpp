@@ -411,7 +411,7 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         assert(w != 0);
 
         return w != 1 ? uedge(w, unode(x, uedge(hi->weight() / w, hi->ch()), uedge(lo->weight() / w, lo->ch())))
-                      : uedge(w, unode(x, hi, lo));
+                      : uedge(w, unode(x, std::move(hi), std::move(lo)));
     }
 
     [[nodiscard]] auto comb(bmd_int const& w1, bmd_int const& w2) const -> bmd_int override
