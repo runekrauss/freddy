@@ -22,7 +22,7 @@ using namespace freddy;
 
 TEST_CASE("1-bit multiplier is verified", "[example]")
 {
-    bmd_manager mgr{config{.init_var_cap = 2}};
+    bmd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
     auto const a = mgr.var("a");
     auto const b = mgr.var("b");
 
@@ -35,7 +35,7 @@ TEST_CASE("1-bit multiplier is verified", "[example]")
 
 TEST_CASE("2-bit multiplier is verified", "[example]")
 {
-    bmd_manager mgr{{.init_var_cap = 4}};
+    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
     auto const a1 = mgr.var("a1");
     auto const a0 = mgr.var("a0");  // a1a0
     auto const b1 = mgr.var("b1");

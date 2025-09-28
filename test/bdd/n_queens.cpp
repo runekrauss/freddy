@@ -108,7 +108,10 @@ TEST_CASE("N-Queens solutions are counted", "[example]")
     auto const [n, expected] =
         GENERATE(std::pair{1, 1}, std::pair{2, 0}, std::pair{3, 0}, std::pair{4, 2}, std::pair{5, 10});
 
-    bdd_manager mgr{{.init_var_cap = static_cast<var_index>(n * n)}};
+    bdd_manager mgr{{.utable_size_hint = 25,
+                     .cache_size_hint = 3'359,
+                     .init_var_cap = static_cast<var_index>(n * n),
+                     .heap_mem_limit = 40'511}};  // to trigger automatic GC
 
     CHECK(queens(n, mgr).sharpsat() == expected);
 }
