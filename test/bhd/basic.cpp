@@ -24,7 +24,7 @@ using namespace freddy;
 
 TEST_CASE("BHD is constructed", "[basic]")
 {
-    dd::bhd_manager mgr;
+    bhd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation uses complemented edges")
@@ -78,7 +78,7 @@ TEST_CASE("BHD is constructed", "[basic]")
 #ifndef NDEBUG
         std::cout << mgr << '\n';
         std::cout << f << '\n';
-        f.print();
+        f.dump_dot();
 #endif
         CHECK(f.high().is_exp());
         CHECK(f.low().is_zero());
@@ -93,7 +93,7 @@ TEST_CASE("BHD is constructed", "[basic]")
 
 TEST_CASE("BHD can be characterized", "[basic]")
 {
-    dd::bhd_manager mgr;
+    bhd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 | x1) & (x2 | mgr.exp());
 
@@ -147,7 +147,7 @@ TEST_CASE("BHD can be characterized", "[basic]")
 
 TEST_CASE("BHD is substituted", "[basic]")
 {
-    dd::bhd_manager mgr;
+    bhd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 & x1) | ~(x2 ^ mgr.exp());
 
@@ -186,7 +186,7 @@ TEST_CASE("BHD is substituted", "[basic]")
 
 TEST_CASE("BHD variable order is changeable", "[basic]")
 {
-    dd::bhd_manager mgr;
+    bhd_manager mgr;
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
     auto const f = (x0 & x1) | (x2 & x3) | mgr.exp();
 
@@ -222,13 +222,13 @@ TEST_CASE("BHD variable order is changeable", "[basic]")
 
 TEST_CASE("BHD SAT is analyzed", "[basic]")
 {
-    dd::bhd_manager mgr;
+    bhd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 | x2) & (x1 | mgr.exp());
 
     SECTION("Solutions are generated symbolically")
     {
-        auto const sols = f.sat();
+        auto const sols = f.sat_solutions();
 
         REQUIRE(sols.size() == 2);
         CHECK(sols[0] == std::vector{false, true, true});
@@ -237,7 +237,7 @@ TEST_CASE("BHD SAT is analyzed", "[basic]")
 
     SECTION("Unit clauses are generated")
     {
-        auto const uclauses = f.uc();
+        auto const uclauses = f.unit_clauses();
 
         REQUIRE(uclauses.size() == 2);
         CHECK(uclauses[0] == std::vector{std::pair{0, false}, std::pair{1, false}});
@@ -249,7 +249,7 @@ TEST_CASE("BHD heuristics restrict solution space", "[basic]")
 {
     SECTION("Level heuristic introduces EXP")
     {
-        dd::bhd_manager mgr{dd::bhd_heuristic::LVL, 2};
+        bhd_manager mgr{bhd_heuristic::LEVEL, 2};
         auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var();
         auto const f = x0 & x1 & x2 & x3;
 
@@ -260,7 +260,7 @@ TEST_CASE("BHD heuristics restrict solution space", "[basic]")
 
     SECTION("Memory heuristic introduces EXP")
     {
-        dd::bhd_manager mgr{dd::bhd_heuristic::MEM, 1};
+        bhd_manager mgr{bhd_heuristic::MEMORY, 1};
         auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var(), x4 = mgr.var(), x5 = mgr.var();
         auto const f = x0 & x1 & x2 & x3 & x4 & x5;
 
