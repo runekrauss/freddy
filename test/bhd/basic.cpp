@@ -240,8 +240,8 @@ TEST_CASE("BHD SAT is analyzed", "[basic]")
         auto const uclauses = f.unit_clauses();
 
         REQUIRE(uclauses.size() == 2);
-        CHECK(uclauses[0] == std::vector{std::pair{0, false}, std::pair{1, false}});
-        CHECK(uclauses[1] == std::vector{std::pair{0, true}, std::pair{1, false}});
+        CHECK(uclauses[0] == std::vector{std::pair{0u, false}, std::pair{1u, false}});
+        CHECK(uclauses[1] == std::vector{std::pair{0u, true}, std::pair{1u, false}});
     }
 }
 
