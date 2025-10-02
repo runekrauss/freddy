@@ -615,7 +615,7 @@ class bhd_manager final : public detail::manager<bool, bool>
         return false;
     }
 
-    // heuristic technique used during conjunction to reduce BDD sizes
+    // heuristic technique that can be used to reduce BDD sizes during conjunction
     std::function<edge_ptr(edge_ptr const&, edge_ptr const&, var_index)> heur{
         [this](auto const& f, auto const& g, auto const x) { return no_heur(f, g, x); }};
 
