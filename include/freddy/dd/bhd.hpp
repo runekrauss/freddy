@@ -144,7 +144,7 @@ class bhd final  // binary hybrid diagram between BDD and SAT
 
     [[nodiscard]] auto is_one() const noexcept;
 
-    auto is_exp() const noexcept;  // Is there an expansion for SAT solving?
+    [[nodiscard]] auto is_exp() const noexcept;  // Is there an expansion for SAT solving?
 
     template <typename TruthValue, typename... TruthValues>
     auto fn(TruthValue, TruthValues...) const;
@@ -171,9 +171,9 @@ class bhd final  // binary hybrid diagram between BDD and SAT
 
     [[nodiscard]] auto forall(var_index) const;
 
-    auto sat_solutions() const;  // one existing solution per path
+    [[nodiscard]] auto sat_solutions() const;  // one existing solution per path
 
-    auto unit_clauses() const;  // for each expansion path to solve subfunctions via a SAT solver
+    [[nodiscard]] auto unit_clauses() const;  // for each expansion path to solve subfunctions via a SAT solver
 
     auto dump_dot(std::ostream& = std::cout) const;
 
@@ -296,7 +296,7 @@ class bhd_manager final : public detail::manager<bool, bool>
         return fs;
     }
 
-    auto is_exp(edge_ptr const& f) const noexcept
+    [[nodiscard]] auto is_exp(edge_ptr const& f) const noexcept
     {
         return f == constant(2) || f == constant(3);
     }
@@ -344,14 +344,14 @@ class bhd_manager final : public detail::manager<bool, bool>
             return;
         }
 
-        path[f->ch()->br().x] = true;  // truth value is independent of complemented edges
-        sat_solutions(f->ch()->br().hi, comb(m, f->ch()->br().hi->weight()), path, sols);
-
         path[f->ch()->br().x] = false;
         sat_solutions(f->ch()->br().lo, comb(m, f->ch()->br().lo->weight()), path, sols);
+
+        path[f->ch()->br().x] = true;
+        sat_solutions(f->ch()->br().hi, comb(m, f->ch()->br().hi->weight()), path, sols);
     }
 
-    auto sat_solutions(edge_ptr const& f) const
+    [[nodiscard]] auto sat_solutions(edge_ptr const& f) const
     {
         assert(f);
 
@@ -394,11 +394,11 @@ class bhd_manager final : public detail::manager<bool, bool>
             return;
         }
 
-        exp_path[f->ch()->br().x] = true;
-        unit_clauses(f->ch()->br().hi, exp_path, ucs);
-
         exp_path[f->ch()->br().x] = false;
         unit_clauses(f->ch()->br().lo, exp_path, ucs);
+
+        exp_path[f->ch()->br().x] = true;  // truth value is independent of complemented edges
+        unit_clauses(f->ch()->br().hi, exp_path, ucs);
 
         exp_path[f->ch()->br().x].reset();
     }
@@ -467,13 +467,13 @@ class bhd_manager final : public detail::manager<bool, bool>
 
     auto compress(edge_ptr const& f, edge_ptr const& g, var_index const x, bool const a)
     {  // preserve expansion paths for validation purposes
-        auto const fx = cof(f, x, a);
+        auto fx = cof(f, x, a);
         if (is_exp(fx) && !g->is_const() && g->ch()->br().x != x)
         {  // g is below f => "hide" in the expansion node
             return fx;
         }
 
-        auto const gx = cof(g, x, a);
+        auto gx = cof(g, x, a);
         if (is_exp(gx) && !f->is_const() && f->ch()->br().x != x)
         {
             return gx;
