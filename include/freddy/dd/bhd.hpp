@@ -161,6 +161,8 @@ class bhd final  // binary hybrid diagram between BDD and SAT
 
     [[nodiscard]] auto has_const(bool) const;
 
+    [[nodiscard]] auto has_exp() const;
+
     [[nodiscard]] auto is_essential(var_index) const noexcept;
 
     [[nodiscard]] auto compose(var_index, bhd const&) const;
@@ -731,6 +733,11 @@ inline auto bhd::has_const(bool const c) const
     assert(mgr);
 
     return mgr->has_const(f, c);
+}
+
+inline auto bhd::has_exp() const
+{
+    return has_const(true);
 }
 
 inline auto bhd::is_essential(var_index const x) const noexcept

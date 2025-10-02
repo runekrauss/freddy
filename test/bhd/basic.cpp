@@ -262,7 +262,7 @@ TEST_CASE("BHD heuristics restrict solution spaces", "[basic]")
         auto const f = mgr.var() & mgr.var() & mgr.var() & mgr.var();
 
         CHECK(f.depth() == 2);
-        CHECK(f.has_const(true));
+        CHECK(f.has_exp());
         CHECK_FALSE(f.eval({false, false, false, false}).value());
     }
 
@@ -274,7 +274,7 @@ TEST_CASE("BHD heuristics restrict solution spaces", "[basic]")
         auto const f = mgr.var() & mgr.var() & mgr.var() & mgr.var() & mgr.var() & mgr.var() & mgr.var() & mgr.var();
 
         CHECK(f.depth() == 6);
-        CHECK(f.has_const(true));
+        CHECK(f.has_exp());
         CHECK_FALSE(f.eval(std::vector(mgr.var_count(), true)).has_value());
     }
 }
