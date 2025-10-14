@@ -4,22 +4,25 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/bhd.hpp>  // dd::bhd_heuristic::LVL
+#include <freddy/config.hpp>  // var_index
+#include <freddy/dd/bhd.hpp>  // bhd_heuristic::LEVEL
 
-#include <algorithm>      // std::ranges::max_element
-#include <cassert>        // assert
-#include <cstddef>        // std::size_t
-#include <cstdint>        // std::int32_t
-#include <ios>            // std::ios_base::app
-#include <istream>        // std::istream
-#include <iterator>       // std::distance
-#include <optional>       // std::optional
-#include <set>            // std::set
-#include <sstream>        // std::stringstream
-#include <string>         // std::to_string
-#include <unordered_map>  // std::unordered_map
-#include <utility>        // std::pair
-#include <vector>         // std::vector
+#include <boost/unordered/unordered_flat_map.hpp>  // boost::unordered_flat_map
+
+#include <algorithm>  // std::ranges::max_element
+#include <cassert>    // assert
+#include <cstddef>    // std::size_t
+#include <cstdint>    // std::int32_t
+#include <istream>    // std::istream
+#include <iterator>   // std::back_inserter
+#include <limits>     // std::numeric_limits
+#include <optional>   // std::optional
+#include <ranges>     // std::ranges::set_intersection
+#include <set>        // std::set
+#include <sstream>    // std::stringstream
+#include <string>     // std::string
+#include <utility>    // std::pair
+#include <vector>     // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -265,7 +268,7 @@ class sat
 
 auto mux_mgr()
 {
-    dd::bhd_manager mgr{dd::bhd_heuristic::LVL, 2};
+    bhd_manager mgr{bhd_heuristic::LEVEL, 2, {.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     mgr.var("s");
     mgr.var("a");
     mgr.var("b");
@@ -273,29 +276,33 @@ auto mux_mgr()
 }
 
 auto mux_sat(std::vector<std::vector<std::pair<std::int32_t, bool>>> const& cnf,
-             std::vector<std::vector<std::pair<std::int32_t, bool>>> const& uclauses)
+             std::vector<std::vector<std::pair<var_index, bool>>> const& ucs)
 {
     std::vector<std::vector<bool>> sols;
+    sols.reserve(ucs.size());
 
-    for (auto const& exp : uclauses)
+    for (auto const& exp_path : ucs)
     {
-        // prepare DIMACS CNF instance
-        std::stringstream dimacs{"c MUX formula\np cnf 3 " + std::to_string(cnf.size() + exp.size()) + '\n',
-                                 std::ios_base::app | std::ios_base::in | std::ios_base::out};  // header
+        // prepare DIMACS CNF
+        std::stringstream dimacs;
+        dimacs << "c MUX formula\n";
+        dimacs << "p cnf 3 " << cnf.size() + exp_path.size() << '\n';  // header
         for (auto const& clause : cnf)
         {
-            for (auto const& [x, a] : clause)  // base clause
+            for (auto const& [x, pol] : clause)
             {
-                dimacs << (a ? x + 1 : -x - 1) << ' ';
+                dimacs << (pol ? x + 1 : -x - 1) << ' ';
             }
             dimacs << 0 << '\n';
         }
-        for (auto const& [x, a] : exp)  // unit clauses
+        for (auto const& [x, pol] : exp_path)  // unit clauses
         {
-            dimacs << (a ? x + 1 : -x - 1) << ' ' << 0 << '\n';
+            assert(x < static_cast<var_index>(std::numeric_limits<std::int32_t>::max()));
+
+            dimacs << (pol ? x + 1 : -x - 1) << ' ' << 0 << '\n';
         }
 
-        // solve DIMACS CNF instance
+        // solve DIMACS CNF
         sat p{dimacs};
         auto sol = p.solve();
         if (!sol.empty())
@@ -307,32 +314,31 @@ auto mux_sat(std::vector<std::vector<std::pair<std::int32_t, bool>>> const& cnf,
     return sols;
 }
 
-auto mux_sim(std::vector<std::vector<bool>> const& t)  // stuck-at fault simulation
+auto mux_sim(std::vector<std::vector<bool>> const& patterns)  // stuck-at fault simulation
 {
-    assert(!t.empty());
+    assert(!patterns.empty());
 
     // sab pattern -> detectable faults
-    std::unordered_map<std::vector<bool>, std::set<std::string>> static const t2f{
+    static boost::unordered_flat_map<std::vector<bool>, std::set<std::string>> const det_faults{
         {{false, false, false}, {"b/1", "f/1"}},       {{false, false, true}, {"s/1", "b/0", "f/0"}},
         {{false, true, false}, {"s/1", "b/1", "f/1"}}, {{false, true, true}, {"b/0", "f/0"}},
         {{true, false, false}, {"a/1", "f/1"}},        {{true, false, true}, {"s/0", "a/1", "f/1"}},
         {{true, true, false}, {"s/0", "a/0", "f/0"}},  {{true, true, true}, {"a/0", "f/0"}}};
 
     // fault localization
-    std::set<std::string> f{t2f.at(t[0])};
-    for (decltype(t.size()) i = 1; i < t.size(); ++i)
+    std::set<std::string> faults{det_faults.at(patterns[0])};
+    for (auto i = 1uz; i < patterns.size(); ++i)
     {
         std::set<std::string> tmp;
-        std::set_intersection(f.begin(), f.end(), t2f.at(t[i]).begin(), t2f.at(t[i]).end(),
-                              std::inserter(tmp, tmp.begin()));
-        f.swap(tmp);  // since intersection does not work in-place
+        std::ranges::set_intersection(faults, det_faults.at(patterns[i]), std::inserter(tmp, tmp.begin()));
+        faults.swap(tmp);  // as intersection does not work in-place
 
-        if (f.size() == 1)
+        if (faults.size() == 1)
         {
             break;
         }
     }
-    return f;
+    return faults;
 }
 
 }  // namespace
@@ -341,35 +347,35 @@ auto mux_sim(std::vector<std::vector<bool>> const& t)  // stuck-at fault simulat
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("MUX f/0 is debugged", "[debug]")
+TEST_CASE("MUX f/0 is debugged", "[example]")
 {
     auto mgr = mux_mgr();
-    auto const m = mgr.zero() ^ ((mgr.var(0) & mgr.var(1)) | (~mgr.var(0) & mgr.var(2)));  // miter
+    auto const diff = mgr.zero() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));  // miter
 
     // test patterns
-    auto t = m.sat();                                                              // BHD
-    auto t2 = mux_sat({{{0, false}, {1, true}}, {{0, true}, {2, true}}}, m.uc());  // SAT solver
-    t.insert(t.end(), std::make_move_iterator(t2.begin()), std::make_move_iterator(t2.end()));
+    auto patterns = diff.sat_solutions();                                                                  // BHD
+    auto more_patterns = mux_sat({{{0, false}, {1, true}}, {{0, true}, {2, true}}}, diff.unit_clauses());  // SAT solver
+    std::ranges::move(more_patterns, std::back_inserter(patterns));
 
-    auto const f = mux_sim(t);  // fault location
+    auto const faults = mux_sim(patterns);  // fault location
 
-    CHECK(t.size() == 2);
-    CHECK(f.size() == 1);
-    CHECK(f.contains("f/0"));
+    CHECK(patterns.size() == 2);
+    CHECK(faults.size() == 1);
+    CHECK(faults.contains("f/0"));
 }
 
-TEST_CASE("MUX f/1 is debugged", "[debug]")
+TEST_CASE("MUX f/1 is debugged", "[example]")
 {
     auto mgr = mux_mgr();
-    auto const m = mgr.one() ^ ((mgr.var(0) & mgr.var(1)) | (~mgr.var(0) & mgr.var(2)));
+    auto const diff = mgr.one() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));
 
-    auto t = m.sat();
-    auto t2 = mux_sat({{{0, false}, {1, false}}, {{0, true}, {2, false}}}, m.uc());
-    t.insert(t.end(), std::make_move_iterator(t2.begin()), std::make_move_iterator(t2.end()));
+    auto patterns = diff.sat_solutions();
+    auto more_patterns = mux_sat({{{0, false}, {1, false}}, {{0, true}, {2, false}}}, diff.unit_clauses());
+    std::ranges::move(more_patterns, std::back_inserter(patterns));
 
-    auto const f = mux_sim(t);
+    auto const faults = mux_sim(patterns);
 
-    CHECK(t.size() == 2);
-    CHECK(f.size() == 1);
-    CHECK(f.contains("f/1"));
+    CHECK(patterns.size() == 2);
+    CHECK(faults.size() == 1);
+    CHECK(faults.contains("f/1"));
 }
