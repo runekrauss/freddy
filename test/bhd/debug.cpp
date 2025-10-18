@@ -20,8 +20,8 @@
 #include <ranges>     // std::ranges::set_intersection
 #include <set>        // std::set
 #include <sstream>    // std::stringstream
-#include <string>     // std::string
-#include <utility>    // std::pair
+#include <string>     // std::getline
+#include <utility>    // std::cmp_less_equal
 #include <vector>     // std::vector
 
 // *********************************************************************************************************************
@@ -37,23 +37,28 @@ namespace
 // Types
 // =====================================================================================================================
 
-class sat
+class sat final
 {
   public:
     explicit sat(std::istream& dimacs)
     {
-        while (true)
-        {  // process comments and DIMACS CNF header
+        char c{};
+        while (dimacs >> c)
+        {  // read DIMACS comment(s) and header
             std::string str;
-            char c{};
-            dimacs >> c;
+
             if (c == 'c')  // comment
             {
                 std::getline(dimacs, str);  // skip
             }
-            else  // p
+            else
             {
-                dimacs >> str;  // cnf
+                assert(c == 'p');
+
+                dimacs >> str;
+
+                assert(str == "cnf");
+
                 break;
             }
         }
@@ -71,11 +76,11 @@ class sat
         p.clauses.resize(clause_count);
         for (auto& clause : p.clauses)
         {
-            while (true)
+            std::int32_t lit;
+            dimacs >> lit;
+            while (lit != 0)
             {
-                std::int32_t lit{};
-                dimacs >> lit;
-                if (lit < 0)  // negative polarity
+                if (lit < 0)
                 {
                     assert(std::cmp_less_equal(-lit, p.vars.size()));
 
@@ -84,7 +89,7 @@ class sat
                     --p.pols[x];
                     clause.push_back(2 * x);
                 }
-                else if (lit > 0)  // positive polarity
+                else  // positive polarity
                 {
                     assert(std::cmp_less_equal(lit, p.vars.size()));
 
@@ -93,10 +98,8 @@ class sat
                     ++p.pols[x];
                     clause.push_back(2 * x + 1);
                 }
-                else  // EOL
-                {
-                    break;  // next clause
-                }
+
+                dimacs >> lit;  // next literal
             }
         }
     }
@@ -105,15 +108,15 @@ class sat
     {
         std::vector<bool> sol;
 
-        if (dpll(p) == stat::KN)
+        if (dpll(p) == status::SAT)
         {
             assert(p.clauses.empty());
 
             sol.resize(p.vars.size());
 
-            for (decltype(p.vars.size()) i = 0; i < p.vars.size(); ++i)
+            for (auto i = 0uz; i < p.vars.size(); ++i)
             {
-                if (p.vars[i].has_value())  // variables that are not set can take any truth value
+                if (p.vars[i])  // variables that are not set can take any truth value
                 {
                     sol[i] = *p.vars[i];
                 }
@@ -124,42 +127,41 @@ class sat
     }
 
   private:
-    enum struct stat : std::uint8_t
+    enum struct status : std::uint8_t
     {
         SAT,  // satisfiable
         UNSAT,
-        KN,
-        UNKN  // unknown
+        UNKNOWN
     };
 
-    struct formula
+    struct cnf
     {
         std::vector<std::optional<bool>> vars;  // variables are assumed to be zero-indexed
 
-        std::vector<std::int32_t> lits;  // #literals: -1 and 1 refer to 0, -2 and 2 mean 1, etc.
+        std::vector<std::uint32_t> lits;  // #Literals: -1 and 1 refer to 0, -2 and 2 mean 1, etc.
 
         std::vector<std::int32_t> pols;  // difference in the number of occurrences w.r.t. polarity
 
-        std::vector<std::vector<std::int32_t>> clauses;  // 2x is stored if x is negative, otherwise 2x+1
+        std::vector<std::vector<std::uint32_t>> clauses;  // 2x is stored if x is negative, otherwise 2x+1
     };
 
-    static auto simplify(formula& q, std::int32_t const x)
+    static auto simplify(cnf& q, std::uint32_t const x) noexcept
     {
-        assert(std::cmp_less(x, q.lits.size()));
+        assert(x < q.lits.size());
 
         q.lits[x] = 0;  // as all these literals are removed
 
-        for (auto i = 0; std::cmp_less(i, q.clauses.size()); ++i)
+        for (auto i = 0uz; i < q.clauses.size(); ++i)
         {
-            for (auto j = 0; std::cmp_less(j, q.clauses[i].size()); ++j)
+            for (auto j = 0uz; j < q.clauses[i].size(); ++j)
             {
-                if (q.clauses[i][j] == 2 * x + static_cast<std::int32_t>(*q.vars[x]))
+                if (q.clauses[i][j] == 2 * x + static_cast<std::uint32_t>(*q.vars[x]))
                 {  // same polarity => remove clause
                     q.clauses.erase(q.clauses.begin() + i--);
 
                     if (q.clauses.empty())
                     {
-                        return stat::SAT;
+                        return status::SAT;
                     }
 
                     break;
@@ -170,7 +172,7 @@ class sat
 
                     if (q.clauses[i].empty())
                     {
-                        return stat::UNSAT;  // formula is currently unsatisfiable
+                        return status::UNSAT;  // CNF is currently unsatisfiable
                     }
 
                     break;
@@ -178,88 +180,88 @@ class sat
             }
         }
 
-        return stat::UNKN;
+        return status::UNKNOWN;
     }
 
-    static auto up(formula& q)
+    static auto up(cnf& q) noexcept
     {
         if (q.clauses.empty())
         {
-            return stat::SAT;
+            return status::SAT;
         }
 
-        auto uclause_exists = false;
+        auto uc_exists = false;  // unit clause
         do
         {  // apply unit resolution successively
-            uclause_exists = false;
+            uc_exists = false;
             for (auto const& clause : q.clauses)
             {
                 if (clause.size() == 1)
                 {
-                    uclause_exists = true;
+                    uc_exists = true;
 
                     auto const x = clause[0] / 2;
                     q.vars[x] = clause[0] % 2;  // true if positive, false otherwise
 
-                    auto const r = simplify(q, x);
-                    if (r != stat::UNKN)
+                    auto const res = simplify(q, x);
+                    if (res != status::UNKNOWN)
                     {
-                        return r;  // SAT or UNSAT
+                        return res;  // SAT or UNSAT
                     }
 
-                    break;  // since formula simplification may affect previous clauses
+                    break;  // as formula simplification may affect previous clauses
                 }
             }
-        } while (uclause_exists);
+        } while (uc_exists);
 
-        return stat::UNKN;
+        return status::UNKNOWN;
     }
 
-    auto dpll(formula q) -> stat
+    auto dpll(cnf q) -> status
     {
         // unit propagation
-        auto r = up(q);
-        if (r == stat::SAT)
+        auto res = up(q);
+        if (res == status::SAT)
         {
             p = q;
-            return stat::KN;
+            return res;
         }
-        if (r == stat::UNSAT)
+        if (res == status::UNSAT)
         {
-            return r;
+            return res;
         }
 
-        auto const x = std::distance(q.lits.begin(), std::ranges::max_element(q.lits));
+        auto const x = static_cast<std::uint32_t>(std::distance(q.lits.begin(), std::ranges::max_element(q.lits)));
 
         assert(q.lits[x] > 0);
 
         // conditioning
-        for (auto a = 0; a < 2; ++a)
+        for (auto const a : {false, true})
         {
-            auto u = q;
-            u.vars[x] = u.pols[x] < 0 ? a : (a + 1) % 2;
+            auto r = q;
+            r.vars[x] = r.pols[x] < 0 ? a : !a;
 
-            r = simplify(u, static_cast<std::int32_t>(x));  // by implication
-            if (r == stat::SAT)
+            res = simplify(r, x);  // by implication
+            if (res == status::SAT)
             {
-                p = u;
-                return stat::KN;
+                p = r;
+                return res;
             }
-            if (r == stat::UNSAT)
+            if (res == status::UNSAT)
             {
                 continue;  // backtracking
             }
 
-            if (dpll(u) == stat::KN)  // branching
+            if (dpll(r) == status::SAT)  // branching
             {
-                return stat::KN;
+                return status::SAT;
             }
         }
 
-        return stat::UNSAT;
+        return status::UNSAT;
     }
 
-    formula p;  // CNF instance
+    cnf p;  // problem instance
 };
 
 // =====================================================================================================================
@@ -275,7 +277,7 @@ auto mux_mgr()
     return mgr;
 }
 
-auto mux_sat(std::vector<std::vector<std::pair<std::int32_t, bool>>> const& cnf,
+auto mux_sat(std::vector<std::vector<std::int32_t>> const& clauses,  // base
              std::vector<std::vector<std::pair<var_index, bool>>> const& ucs)
 {
     std::vector<std::vector<bool>> sols;
@@ -283,15 +285,15 @@ auto mux_sat(std::vector<std::vector<std::pair<std::int32_t, bool>>> const& cnf,
 
     for (auto const& exp_path : ucs)
     {
-        // prepare DIMACS CNF
+        // create DIMACS CNF
         std::stringstream dimacs;
         dimacs << "c MUX formula\n";
-        dimacs << "p cnf 3 " << cnf.size() + exp_path.size() << '\n';  // header
-        for (auto const& clause : cnf)
+        dimacs << "p cnf 3 " << clauses.size() + exp_path.size() << '\n';  // header
+        for (auto const& clause : clauses)
         {
-            for (auto const& [x, pol] : clause)
+            for (auto const var : clause)
             {
-                dimacs << (pol ? x + 1 : -x - 1) << ' ';
+                dimacs << var << ' ';
             }
             dimacs << 0 << '\n';
         }
@@ -299,12 +301,13 @@ auto mux_sat(std::vector<std::vector<std::pair<std::int32_t, bool>>> const& cnf,
         {
             assert(x < static_cast<var_index>(std::numeric_limits<std::int32_t>::max()));
 
-            dimacs << (pol ? x + 1 : -x - 1) << ' ' << 0 << '\n';
+            auto const var = static_cast<std::int32_t>(x);
+            dimacs << (pol ? var + 1 : -var - 1) << ' ' << 0 << '\n';
         }
 
         // solve DIMACS CNF
-        sat p{dimacs};
-        auto sol = p.solve();
+        sat cnf{dimacs};
+        auto sol = cnf.solve();
         if (!sol.empty())
         {
             sols.push_back(std::move(sol));
@@ -353,8 +356,8 @@ TEST_CASE("MUX f/0 is debugged", "[example]")
     auto const diff = mgr.zero() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));  // miter
 
     // test patterns
-    auto patterns = diff.sat_solutions();                                                                  // BHD
-    auto more_patterns = mux_sat({{{0, false}, {1, true}}, {{0, true}, {2, true}}}, diff.unit_clauses());  // SAT solver
+    auto patterns = diff.sat_solutions();                                  // BHD
+    auto more_patterns = mux_sat({{-1, 2}, {1, 3}}, diff.unit_clauses());  // SAT solver
     std::ranges::move(more_patterns, std::back_inserter(patterns));
 
     auto const faults = mux_sim(patterns);  // fault location
@@ -370,7 +373,7 @@ TEST_CASE("MUX f/1 is debugged", "[example]")
     auto const diff = mgr.one() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));
 
     auto patterns = diff.sat_solutions();
-    auto more_patterns = mux_sat({{{0, false}, {1, false}}, {{0, true}, {2, false}}}, diff.unit_clauses());
+    auto more_patterns = mux_sat({{-1, -2}, {1, -3}}, diff.unit_clauses());
     std::ranges::move(more_patterns, std::back_inserter(patterns));
 
     auto const faults = mux_sim(patterns);
