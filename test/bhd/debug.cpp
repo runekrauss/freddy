@@ -7,22 +7,22 @@
 #include <freddy/config.hpp>  // var_index
 #include <freddy/dd/bhd.hpp>  // bhd_heuristic::LEVEL
 
-#include <boost/unordered/unordered_flat_map.hpp>  // boost::unordered_flat_map
-
-#include <algorithm>  // std::ranges::max_element
+#include <algorithm>  // std::ranges::set_intersection
 #include <cassert>    // assert
 #include <cstddef>    // std::size_t
 #include <cstdint>    // std::int32_t
 #include <istream>    // std::istream
 #include <iterator>   // std::back_inserter
-#include <limits>     // std::numeric_limits
-#include <optional>   // std::optional
-#include <ranges>     // std::ranges::set_intersection
-#include <set>        // std::set
-#include <sstream>    // std::stringstream
-#include <string>     // std::getline
-#include <utility>    // std::cmp_less_equal
-#include <vector>     // std::vector
+#ifndef NDEBUG
+#include <limits>  // std::numeric_limits
+#endif
+#include <optional>       // std::optional
+#include <set>            // std::set
+#include <sstream>        // std::stringstream
+#include <string>         // std::getline
+#include <unordered_map>  // std::unordered_map
+#include <utility>        // std::cmp_less_equal
+#include <vector>         // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -76,7 +76,7 @@ class sat final
         p.clauses.resize(clause_count);
         for (auto& clause : p.clauses)
         {
-            std::int32_t lit;
+            std::int32_t lit{};
             dimacs >> lit;
             while (lit != 0)
             {
@@ -151,9 +151,9 @@ class sat final
 
         q.lits[x] = 0;  // as all these literals are removed
 
-        for (auto i = 0uz; i < q.clauses.size(); ++i)
+        for (auto i = 0; std::cmp_less(i, q.clauses.size()); ++i)
         {
-            for (auto j = 0uz; j < q.clauses[i].size(); ++j)
+            for (auto j = 0; std::cmp_less(j, q.clauses[i].size()); ++j)
             {
                 if (q.clauses[i][j] == 2 * x + static_cast<std::uint32_t>(*q.vars[x]))
                 {  // same polarity => remove clause
@@ -322,7 +322,7 @@ auto mux_sim(std::vector<std::vector<bool>> const& patterns)  // stuck-at fault 
     assert(!patterns.empty());
 
     // sab pattern -> detectable faults
-    static boost::unordered_flat_map<std::vector<bool>, std::set<std::string>> const det_faults{
+    static std::unordered_map<std::vector<bool>, std::set<std::string>> const det_faults{
         {{false, false, false}, {"b/1", "f/1"}},       {{false, false, true}, {"s/1", "b/0", "f/0"}},
         {{false, true, false}, {"s/1", "b/1", "f/1"}}, {{false, true, true}, {"b/0", "f/0"}},
         {{true, false, false}, {"a/1", "f/1"}},        {{true, false, true}, {"s/0", "a/1", "f/1"}},
