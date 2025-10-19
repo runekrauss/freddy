@@ -123,7 +123,7 @@ class sat final
             }
         }
 
-        return sol;  // empty if p is UNSAT
+        return sol;
     }
 
   private:
@@ -147,8 +147,6 @@ class sat final
 
     static auto simplify(cnf& q, std::uint32_t const x) noexcept
     {
-        assert(x < q.lits.size());
-
         q.lits[x] = 0;  // as all these literals are removed
 
         for (auto i = 0; std::cmp_less(i, q.clauses.size()); ++i)
@@ -172,7 +170,7 @@ class sat final
 
                     if (q.clauses[i].empty())
                     {
-                        return status::UNSAT;  // CNF is currently unsatisfiable
+                        return status::UNSAT;
                     }
 
                     break;
@@ -231,11 +229,8 @@ class sat final
             return res;
         }
 
-        auto const x = static_cast<std::uint32_t>(std::distance(q.lits.begin(), std::ranges::max_element(q.lits)));
-
-        assert(q.lits[x] > 0);
-
         // conditioning
+        auto const x = static_cast<std::uint32_t>(std::distance(q.lits.begin(), std::ranges::max_element(q.lits)));
         for (auto const a : {false, true})
         {
             auto r = q;
@@ -291,9 +286,9 @@ auto mux_sat(std::vector<std::vector<std::int32_t>> const& clauses,  // base
         dimacs << "p cnf 3 " << clauses.size() + exp_path.size() << '\n';  // header
         for (auto const& clause : clauses)
         {
-            for (auto const var : clause)
+            for (auto const lit : clause)
             {
-                dimacs << var << ' ';
+                dimacs << lit << ' ';
             }
             dimacs << 0 << '\n';
         }
