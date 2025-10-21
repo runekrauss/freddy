@@ -172,7 +172,7 @@ class bmd final  // (multiplicative) binary moment diagram
         return f->is_const();
     }
 
-    [[nodiscard]] auto var() const
+    [[nodiscard]] auto var() const noexcept
     {
         assert(!is_const());
 
@@ -213,8 +213,6 @@ class bmd final  // (multiplicative) binary moment diagram
     [[nodiscard]] auto depth() const;
 
     [[nodiscard]] auto path_count() const noexcept;
-
-    [[nodiscard]] auto has_const(bmd_int) const;
 
     [[nodiscard]] auto is_essential(var_index) const noexcept;
 
@@ -687,13 +685,6 @@ inline auto bmd::path_count() const noexcept
     assert(mgr);
 
     return mgr->path_count(f);
-}
-
-inline auto bmd::has_const(bmd_int const c) const
-{
-    assert(mgr);
-
-    return mgr->has_const(f, c);
 }
 
 inline auto bmd::is_essential(var_index const x) const noexcept

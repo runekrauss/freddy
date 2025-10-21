@@ -111,7 +111,6 @@ TEST_CASE("BMD can be characterized", "[basic]")
     SECTION("Constants are supported")
     {
         CHECK(mgr.const_count() == 1);
-        CHECK(f.has_const(1));
     }
 
     SECTION("#Edges is determined")

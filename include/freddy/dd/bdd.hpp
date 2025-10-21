@@ -153,8 +153,6 @@ class bdd final  // binary decision diagram
 
     [[nodiscard]] auto path_count() const noexcept;
 
-    [[nodiscard]] auto has_const(bool) const;
-
     [[nodiscard]] auto is_essential(var_index) const noexcept;
 
     [[nodiscard]] auto compose(var_index, bdd const&) const;
@@ -621,13 +619,6 @@ inline auto bdd::path_count() const noexcept
     assert(mgr);
 
     return mgr->path_count(f);
-}
-
-inline auto bdd::has_const(bool const c) const
-{
-    assert(mgr);
-
-    return mgr->has_const(f, c);
 }
 
 inline auto bdd::is_essential(var_index const x) const noexcept

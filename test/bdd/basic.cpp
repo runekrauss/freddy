@@ -85,7 +85,6 @@ TEST_CASE("BDD can be characterized", "[basic]")
     SECTION("Constants are supported")
     {
         CHECK(mgr.const_count() == 1);
-        CHECK(f.has_const(false));
     }
 
     SECTION("#Edges is determined")
