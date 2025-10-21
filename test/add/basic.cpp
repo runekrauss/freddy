@@ -7,9 +7,11 @@
 #include <freddy/config.hpp>  // config
 #include <freddy/dd/add.hpp>  // add_manager
 
+#include <cmath>         // std::nextafter
 #include <cstdint>       // std::int32_t
 #include <limits>        // std::numeric_limits
 #include <sstream>       // std::ostringstream
+#include <stdexcept>     // std::overflow_error
 #include <system_error>  // std::system_error
 #include <vector>        // std::vector
 
@@ -96,11 +98,11 @@ TEST_CASE("ADD is constructed", "[basic]")
     }
 }
 
-/*TEST_CASE("MTBDD can be characterized", "[basic]")
+TEST_CASE("ADD can be characterized", "[basic]")
 {
-    dd::add_manager<std::int32_t> mgr;
+    add_manager<std::int32_t> mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
-    auto const f = x0 + mgr.two() * x1 + mgr.constant(4) * x2;
+    auto const f = mgr.constant(4) * x2 + mgr.two() * x1 + x0;
 
     SECTION("Variables are supported")
     {
@@ -114,22 +116,22 @@ TEST_CASE("ADD is constructed", "[basic]")
         CHECK(f.has_const(7));
     }
 
-    SECTION("#Nodes is determined")
-    {
-        CHECK(mgr.node_count() == 22);
-    }
-
     SECTION("#Edges is determined")
     {
-        CHECK(mgr.edge_count() == 22);
+        CHECK(mgr.edge_count() == 20);
     }
 
-    SECTION("Nodes are counted")
+    SECTION("#Nodes is determined")
+    {
+        CHECK(mgr.node_count() == 20);
+    }
+
+    SECTION("Size is computed")
     {
         CHECK(f.size() == 15);
     }
 
-    SECTION("Longest path is computed")
+    SECTION("Depth is computed")
     {
         CHECK(f.depth() == 3);
     }
@@ -150,11 +152,11 @@ TEST_CASE("ADD is constructed", "[basic]")
     }
 }
 
-TEST_CASE("MTBDD is substituted", "[basic]")
+TEST_CASE("ADD is substituted", "[basic]")
 {
-    dd::add_manager<float> mgr;
+    add_manager<float> mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
     auto const x0 = mgr.var(), x1 = mgr.var();
-    auto const f = mgr.constant(8.5f) - mgr.constant(20.0f) * x0 + mgr.two() * x1 + mgr.constant(4.0f) * x0 * x1;
+    auto const f = mgr.constant(8.5f) - mgr.constant(20.0f) * x1 + mgr.two() * x0 + mgr.constant(4.0f) * x0 * x1;
 
     SECTION("Variable is replaced by function")
     {
@@ -173,48 +175,82 @@ TEST_CASE("MTBDD is substituted", "[basic]")
         CHECK(f.restr(1, false).high().is_const());
     }
 
-    SECTION("Variable is removed by existential quantification")
+    SECTION("Variable is eliminated by existential quantification")
     {
         auto const g = f.exist(0);
 
         CHECK_FALSE(g.is_essential(0));
-        CHECK(g == mgr.constant(94.75f) - mgr.constant(20.0f) * x1 - mgr.constant(12.0f) * x1 * x1);
+        CHECK(g == -mgr.constant(70.25f) - mgr.constant(10.0f) * x1);
     }
 
-    SECTION("Variable is removed by universal quantification")
+    SECTION("Variable is eliminated by universal quantification")
     {
-        CHECK(f.forall(1) == mgr.constant(89.25f) - mgr.constant(346.0f) * x0 + mgr.constant(320.0f) * x0 * x0);
+        CHECK(f.forall(1) == mgr.constant(-97.75f) + mgr.constant(40.0f) * x0);
     }
 }
 
-TEST_CASE("MTBDD variable order is changeable", "[basic]")
+TEST_CASE("ADD variable order is changeable", "[basic]")
 {
-    dd::add_manager<std::int32_t> mgr;
+    add_manager<std::int32_t> mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 6}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x5 = mgr.var("x5"), x0 = mgr.var("x0"), x2 = mgr.var("x2"),
                x4 = mgr.var("x4");
-    auto const f = (x0 & x1) | (x2 & x3) | (x4 & x5);
+    auto const f = x0 & x1 | x2 & x3 | x4 & x5;
+    mgr.config().max_node_growth = 2.0f;
 
     SECTION("Levels can be swapped")
     {
         mgr.swap(1, 2);
 
-        CHECK(f.eval({true, false, false, true, false, false}));
-        CHECK(f.eval({false, true, false, false, true, false}));
-        CHECK(f.eval({false, false, true, false, false, true}));
+        CHECK(f.eval({true, false, false, true, false, false}) == 1);
+        CHECK(f.eval({false, true, false, false, true, false}) == 1);
+        CHECK(f.eval({false, false, true, false, false, true}) == 1);
     }
 
-    SECTION("Variable reordering finds a minimum")
+    SECTION("Reordering finds a minimum")
     {
-        auto const ncnt_old = mgr.node_count();
-        auto const ecnt_old = mgr.edge_count();
-        auto const size_old = f.size();
+        auto const prev_size = f.size();
         mgr.reorder();
 
-        CHECK(ncnt_old > mgr.node_count());
-        CHECK(ecnt_old > mgr.edge_count());
-        CHECK(size_old > f.size());
-        CHECK(f.eval({true, false, false, true, false, false}));
-        CHECK(f.eval({false, true, false, false, true, false}));
-        CHECK(f.eval({false, false, true, false, false, true}));
+        CHECK(prev_size > f.size());
+        CHECK(f.eval({true, false, false, true, false, false}) == 1);
+        CHECK(f.eval({false, true, false, false, true, false}) == 1);
+        CHECK(f.eval({false, false, true, false, false, true}) == 1);
     }
-}*/
+}
+
+TEST_CASE("ADD can be cleaned up", "[basic]")
+{
+    add_manager<float> mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const f = mgr.var() - mgr.var() - mgr.var();
+    auto const prev_ecount = mgr.edge_count();
+    auto const prev_ncount = mgr.node_count();
+    mgr.gc();
+    std::ostringstream oss;
+    oss << mgr << "\n\n";
+    oss << f << "\n\n";
+    f.dump_dot(oss);
+    // std::cout << oss.str();
+
+    CHECK(prev_ecount > mgr.edge_count());
+    CHECK(prev_ncount > mgr.node_count());
+}
+
+TEST_CASE("ADD detects misuse of word-level operations", "[basic]")
+{
+    add_manager<std::int32_t> imgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 0}};
+    auto const ic = imgr.constant(std::numeric_limits<std::int32_t>::max(), true);
+    add_manager<float> fmgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 0}};
+    auto const fc = fmgr.constant(std::numeric_limits<float>::max(), true);
+
+    SECTION("Multiplication can overflow")
+    {
+        CHECK_THROWS_AS(ic * imgr.two(), std::system_error);
+        CHECK_THROWS_AS(fc * fmgr.constant(std::nextafter(1.0f, 2.0f)), std::overflow_error);
+    }
+
+    SECTION("Addition can overflow")
+    {
+        CHECK_THROWS_AS(ic + imgr.one(), std::system_error);
+        CHECK_THROWS_AS(fc + fmgr.constant(std::ldexp(std::numeric_limits<float>::max(), -1)), std::overflow_error);
+    }
+}

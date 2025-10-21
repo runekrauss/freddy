@@ -171,7 +171,7 @@ class add final  // algebraic decision diagram (multi-terminal binary decision d
     [[nodiscard]] auto is_two() const noexcept;
 
     template <typename TruthValue, typename... TruthValues>
-    auto fn(TruthValue, TruthValues...) const noexcept;
+    [[nodiscard]] auto fn(TruthValue, TruthValues...) const noexcept;
 
     [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
 
@@ -280,7 +280,7 @@ class add_manager final : public detail::manager<bool, NValue>
         manager::dump_dot(transform(fs), outputs, oss);
 
         auto dot = oss.str();
-        boost::replace_all(dot, "label=\" 0 \"]", "]");
+        boost::replace_all(dot, "label=\" 0 \"]", "]");  // as no different edge weights are used
         os << dot;
     }
 
@@ -371,7 +371,7 @@ class add_manager final : public detail::manager<bool, NValue>
         return sub(plus(f, g), mul(f, g));
     }
 
-    auto merge([[maybe_unused]] NValue const& val1, [[maybe_unused]] NValue const& val2) const noexcept
+    [[nodiscard]] auto merge([[maybe_unused]] NValue const& val1, [[maybe_unused]] NValue const& val2) const noexcept
         -> NValue override
     {
         return 0;  // as no Davio expansion is used
