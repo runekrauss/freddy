@@ -133,7 +133,6 @@ common across all types. One such method called `dump_dot` involves drawing edge
 layout engine and looks like the following BMD:
 
 ![BMD](https://github.com/user-attachments/assets/d3ae1dae-b6ca-42fb-9480-d7f3e14c8877)
-![BMD](https://github.com/runekrauss/freddy/assets/5829946/4cf0d118-23f6-4157-999f-eb886d97197a)
 
 Again, it's possible to adjust various [configuration parameters](include/freddy/config.hpp) depending on the problem.
 For instance, the minimum capacity `cache_size_hint` of the cache can be passed to the manager, which is employed for
