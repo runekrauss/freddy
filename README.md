@@ -263,7 +263,7 @@ $ find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format -i
 ```
 
 Following these standards, you can submit a [pull request](https://github.com/runekrauss/freddy/pulls) – with or without
-an [issue](https://github.com/runekrauss/freddy/issues) – according to the
+an [issue](https://github.com/runekrauss/freddy/issues) – according to the commonly used
 [GitHub Standard Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962). The above
 policies are enforced through a [CI pipeline](https://github.com/runekrauss/freddy/actions) that consists of the
 following **workflows** and their respective requirements:
