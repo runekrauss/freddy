@@ -279,4 +279,4 @@ Changes are only merged into my main branch when all workflows have passed.
 > :information_source: In order to accelerate development, the CI process leverages branch-based caching through
 [Ccache](https://github.com/hendrikmuhs/ccache-action) and the [Cache action](https://github.com/actions/cache).
 
-Thank you so much for helping grow FrEDDY! :blush::sparkles:
+**Thank you so much for helping grow FrEDDY!** :blush::sparkles:
