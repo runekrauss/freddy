@@ -22,7 +22,7 @@
 
 ## :rocket: Getting Started
 
-The installation of FrEDDY is described first. Second, it is explained how a DD type can be used to solve a problem.
+The installation of FrEDDY is described first. Second, it's explained how a DD type can be used to solve a problem.
 
 ### :wrench: Installation
 
@@ -39,7 +39,7 @@ target_link_libraries(<target> freddy)
 
 Note that this stage may take some time depending on your system configuration. For example, FrEDDY relies on certain
 [Boost libraries](https://boost.org/libraries) like *Unordered*, which offers high-performance hash containers. If this
-dependency cannot be found locally, it will be downloaded from an
+dependency cannot be found locally, it'll be downloaded from an
 [external repository](https://github.com/boostorg/boost/releases) at configure time, with the required Boost modules
 automatically added to your build system.
 
@@ -139,13 +139,13 @@ For instance, the minimum capacity `cache_size_hint` of the cache can be passed 
 many other [operations](include/freddy/detail/operation) beyond multiplication. Here is an overview of the currently
 configurable parameters:
 
-| Parameter          | Default setting | Description                                                                 |
-| ------------------ | --------------- | --------------------------------------------------------------------------- |
-| `utable_size_hint` | 1,679           | Minimum capacity of a unique table                                          |
-| `cache_size_hint`  | 215,039         | Minimum capacity of the operation cache                                     |
-| `init_var_cap`     | 16              | Initial capacity of the variable list                                       |
-| `max_node_growth`  | 1.2             | Permitted node growth factor during reordering                              |
-| `heap_mem_limit`   | Unset           | Heap usage in bytes before garbage collection (auto-estimated if unset)     |
+| Parameter          | Default setting | Description                                                        |
+| ------------------ | --------------- | ------------------------------------------------------------------ |
+| `utable_size_hint` | 1,679           | Minimum capacity of a unique table                                 |
+| `cache_size_hint`  | 215,039         | Minimum capacity of the operation cache                            |
+| `init_var_cap`     | 16              | Initial capacity of the variable list                              |
+| `max_node_growth`  | 1.2             | Permitted node growth factor during reordering                     |
+| `heap_mem_limit`   | Unset           | Heap usage in bytes before garbage collection (estimated if unset) |
 
 You can also choose how a variable should be decomposed, provided the DD type supports it. Although the
 [positive Davio expansion](https://en.wikipedia.org/wiki/Reed–Muller_expansion) (*pD*) applies to BMDs, other expansion
@@ -219,7 +219,7 @@ method `cache` and retrieved via `cached`. Corresponding code snippets can be fo
 [compose](include/freddy/detail/operation/compose.hpp), [restr](include/freddy/detail/operation/restr.hpp), and others.
 
 While operations are provided by the derived manager class `<type>_manager`, an associated **wrapper** `<type>`
-ultimately enhances usability. It is implemented by simply forwarding a DD member, which corresponds to an
+ultimately enhances usability. It's implemented by simply forwarding a DD member, which corresponds to an
 [intrusive pointer](https://boost.org/library/latest/smart_ptr), as a parameter to the operations being invoked.
 Complete examples can be found in [bdd.hpp](include/freddy/dd/bdd.hpp), [bmd.hpp](include/freddy/dd/bmd.hpp),
 [bhd.hpp](include/freddy/dd/bhd.hpp), and [add.hpp](include/freddy/dd/add.hpp).
