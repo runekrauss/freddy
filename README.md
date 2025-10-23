@@ -152,7 +152,7 @@ You can also choose how a variable should be decomposed, provided the DD type su
 types, such as the [Shannon expansion](https://en.wikipedia.org/wiki/Boole%27s_expansion_theorem), are available in the
 [decomposition type list](include/freddy/expansion.hpp).
 
-To simplify working with multiple DD types at once, it's highly recommended to include the provided
+To simplify working with multiple DD types at once, it's recommended to include the provided
 [umbrella header](include/freddy.hpp).
 
 ## :white_check_mark: Tests
@@ -214,7 +214,7 @@ class `operation` contained in [operation.hpp](include/freddy/detail/operation.h
 > :information_source: The operation name is already hashed by default.
 
 First-class operations are **automatically registered** with the cache, where results are stored using the manager
-method `cache` and retrieved via `cached` if available. Corresponding code snippets can be found in the
+method `cache` and retrieved via `cached`. Corresponding code snippets can be found in the
 [manager methods](include/freddy/detail/manager.hpp) sharing the **same names** as the first-class operations, such as
 [compose](include/freddy/detail/operation/compose.hpp), [restr](include/freddy/detail/operation/restr.hpp), and others.
 
@@ -263,7 +263,7 @@ $ find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format -i
 ```
 
 Following these standards, you can submit a [pull request](https://github.com/runekrauss/freddy/pulls) – with or without
-an **issue** from the [tracking system](https://github.com/runekrauss/freddy/issues) – according to the
+an [issue](https://github.com/runekrauss/freddy/issues) – according to the
 [GitHub Standard Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962). The above
 policies are enforced through a [CI pipeline](https://github.com/runekrauss/freddy/actions) that consists of the
 following **workflows** and their respective requirements:
