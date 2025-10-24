@@ -191,9 +191,9 @@ must be implemented within the `freddy` namespace in the [dd directory](include/
 | `plus`        | Additive combination of DDs                    |
 | `regw`        | Regular weight of an edge                      |
 
-While virtual methods such as `ite` (if-then-else) can be overridden if needed, both the **contradiction** and
-**tautology** must be defined using a DD edge weight (`EWeight` template parameter) and node value (`NValue` template
-parameter), which are then passed to the base constructor.
+While virtual methods such as `ite` (if-then-else) can be overridden if specialized behavior is needed, both the
+**contradiction** and **tautology** must be defined using a DD edge weight (`EWeight` template parameter) and node value
+(`NValue` template parameter), which are then passed to the base constructor.
 
 > :information_source: If `EWeight` or `NValue` aren't built-in types, the equality operator `==` must be overloaded for
 hashing purposes. Of course, a custom specialization of [std::hash](https://en.cppreference.com/w/cpp/utility/hash)
@@ -206,10 +206,10 @@ manager concept. First-class operations are within the `freddy::detail` namespac
 **polymorphic class** `operation` contained in [operation.hpp](include/freddy/detail/operation.hpp) by overriding the
 following methods:
 
-| Method           | Description           |
-| ---------------- | --------------------- |
-| `equals`         | Comparing operands    |
-| `hash`           | Computing hash code   |
+| Method           | Description         |
+| ---------------- | ------------------- |
+| `equals`         | Comparing operands  |
+| `hash`           | Computing hash code |
 
 > :information_source: The operation name is already hashed by default.
 
