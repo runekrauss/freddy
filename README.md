@@ -131,7 +131,7 @@ common across all types. One such method called `dump_dot` involves drawing edge
 [DOT](https://en.wikipedia.org/wiki/DOT_(graph_description_language)). The resulting graph can be rendered using a
 layout engine and looks like the following BMD:
 
-![BMD](https://github.com/user-attachments/assets/d3ae1dae-b6ca-42fb-9480-d7f3e14c8877)
+![BMD](https://github.com/user-attachments/assets/4e2e229b-874f-42ab-9730-9633e1e1d2d4)
 
 Again, it's possible to adjust various [configuration parameters](include/freddy/config.hpp) depending on the problem.
 For instance, the minimum capacity `cache_size_hint` of the cache can be passed to the manager, which is employed for
