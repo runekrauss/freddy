@@ -106,8 +106,7 @@ int main()
 }
 ```
 
-The multiplier can now be formally **verified** by interpreting the network outputs as a word and applying the
-word-level encoding to the primary inputs:
+The multiplier can now be formally **verified** by interpreting the network outputs as a word:
 
 ```cpp
 /* includes */
@@ -193,8 +192,8 @@ must be implemented within the `freddy` namespace in the [dd directory](include/
 | `regw`        | Regular weight of an edge                      |
 
 While virtual methods such as `ite` (if-then-else) can be overridden if needed, both the **contradiction** and
-**tautology** must be defined using a DD edge weight (`EWeight`) and node value (`NValue`), which are then passed to the
-base constructor.
+**tautology** must be defined using a DD edge weight (`EWeight` template parameter) and node value (`NValue` template
+parameter), which are then passed to the base constructor.
 
 > :information_source: If `EWeight` or `NValue` aren't built-in types, the equality operator `==` must be overloaded for
 hashing purposes. Of course, a custom specialization of [std::hash](https://en.cppreference.com/w/cpp/utility/hash)
@@ -203,8 +202,9 @@ must be provided.
 Further DD operations can be implemented based on this foundation. A cache is available for so-called
 **first-class operations** that are time-sensitive and frequently invoked. If operations to be cached are not yet
 available in the [operation directory](include/freddy/detail/operation), they can be implemented similarly to the
-manager concept. First-class operations are within the `freddy::detail` namespace and inherit from the **polymorphic**
-class `operation` contained in [operation.hpp](include/freddy/detail/operation.hpp) by overriding the following methods:
+manager concept. First-class operations are within the `freddy::detail` namespace and inherit from the
+**polymorphic class** `operation` contained in [operation.hpp](include/freddy/detail/operation.hpp) by overriding the
+following methods:
 
 | Method           | Description           |
 | ---------------- | --------------------- |
@@ -227,7 +227,7 @@ Complete examples can be found in [bdd.hpp](include/freddy/dd/bdd.hpp), [bmd.hpp
 To check functionality, I use [Catch2](https://github.com/catchorg/Catch2). Existing **tests** are located in the
 [test directory](test) and serve as a reference for your own DD types. When
 [building the tests](#white_check_mark-tests), an executable is automatically created from each test file. To collect
-test coverage, execute `ctest -T Test -T Coverage` in a terminal.
+code coverage, execute `ctest -T Test -T Coverage` in a terminal.
 
 A **statistics module** is available to help analyze the behavior of implemented DD types during performance debugging.
 You can enable it with `-DFREDDY_STATS=ON` – for example, to measure the distribution of hash values in a specific
@@ -266,7 +266,7 @@ Following these standards, you can submit a [pull request](https://github.com/ru
 an [issue](https://github.com/runekrauss/freddy/issues) – according to the commonly used
 [GitHub Standard Fork & Pull Request Workflow](https://gist.github.com/Chaser324/ce0505fbed06b947d962). The above
 policies are enforced through a [CI pipeline](https://github.com/runekrauss/freddy/actions) that consists of the
-following **workflows** and their respective requirements:
+following **workflows** and their respective **requirements**:
 
 | Workflow           | Requirements                                                    |
 | ------------------ | --------------------------------------------------------------- |
