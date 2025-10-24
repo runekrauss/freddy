@@ -199,7 +199,7 @@ While virtual methods such as `ite` (if-then-else) can be overridden if speciali
 hashing purposes. Of course, a custom specialization of [std::hash](https://en.cppreference.com/w/cpp/utility/hash)
 must be provided.
 
-Further DD operations can be implemented based on this solid foundation. A cache is available for so-called
+Further DD operations can be implemented based on this foundation. A dedicated cache is available for so-called
 **first-class operations** that are time-sensitive and frequently invoked. If operations to be cached are not yet
 available in the [operation directory](include/freddy/detail/operation), they can be implemented similarly to the
 manager concept. First-class operations are within the `freddy::detail` namespace and inherit from the
