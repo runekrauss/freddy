@@ -192,8 +192,8 @@ must be implemented within the `freddy` namespace in the [dd directory](include/
 | `regw`        | Regular weight of an edge                      |
 
 While virtual methods such as `ite` (if-then-else) can be overridden if specialized behavior is needed, both the
-**contradiction** and **tautology** must be defined using a DD edge weight (`EWeight` template parameter) and
-node value (`NValue` template parameter), which are then passed to the base constructor.
+**contradiction** and **tautology** must be defined using a DD edge weight (`EWeight` template parameter) and node
+value (`NValue` template parameter), which are then passed to the base constructor.
 
 > :information_source: If `EWeight` or `NValue` aren't built-in types, the equality operator `==` must be overloaded for
 hashing purposes. Of course, a custom specialization of [std::hash](https://en.cppreference.com/w/cpp/utility/hash)
