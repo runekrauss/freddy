@@ -8,19 +8,7 @@ find_program(Ccache ccache)
 if(Ccache)
   message(STATUS "Using Ccache")
 
-  if(MSVC)
-    file(COPY_FILE "${Ccache}" "${CMAKE_BINARY_DIR}/cl.exe" ONLY_IF_DIFFERENT) # for safety reasons
-
-    # workaround for Windows support
-    set(CMAKE_VS_GLOBALS
-      "CLToolExe=cl.exe"
-      "CLToolPath=${CMAKE_BINARY_DIR}"
-      "TrackFileAccess=false"
-      "UseMultiToolTask=true"
-    )
-  else()
-    set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
-  endif()
+  set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
 
   message(STATUS "Using Ccache - done")
 endif()
@@ -85,7 +73,7 @@ if(FREDDY_TEST)
 
     FetchContent_Declare(Catch2
       GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-      GIT_TAG v3.9.1 # for the sake of robustness
+      GIT_TAG v3.11.0 # for the sake of robustness
       GIT_SHALLOW 1
       SYSTEM
     )
