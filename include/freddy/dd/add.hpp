@@ -12,8 +12,15 @@
 #include "freddy/detail/operation/plus.hpp"  // detail::plus
 #include "freddy/expansion.hpp"              // expansion::S
 
-#include <boost/algorithm/string.hpp>            // boost::replace_all
+#include <boost/algorithm/string.hpp>  // boost::replace_all
+#ifdef _MSC_VER
+#pragma warning(push)
+#pragma warning(disable : 4702)
+#endif
 #include <boost/safe_numerics/safe_integer.hpp>  // boost::safe_numerics::safe
+#ifdef _MSC_VER
+#pragma warning(pop)
+#endif
 
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
