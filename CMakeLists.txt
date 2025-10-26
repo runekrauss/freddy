@@ -85,7 +85,7 @@ if(FREDDY_TEST)
 
     FetchContent_Declare(Catch2
       GIT_REPOSITORY https://github.com/catchorg/Catch2.git
-      GIT_TAG v3.10.0 # for the sake of robustness
+      GIT_TAG v3.9.1 # for the sake of robustness
       GIT_SHALLOW 1
       SYSTEM
     )
