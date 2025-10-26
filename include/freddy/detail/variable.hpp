@@ -68,6 +68,26 @@ class variable final
 
     ~variable() = default;
 
+    auto decomposition() const noexcept
+    {
+        return t;
+    }
+
+    auto label() const noexcept -> std::string_view
+    {
+        return lbl;
+    }
+
+    auto edge_table() const noexcept -> unique_table<edge<EWeight, NValue>> const&
+    {
+        return etable;
+    }
+
+    auto node_table() const noexcept -> unique_table<node<EWeight, NValue>> const&
+    {
+        return ntable;
+    }
+
   private:
     friend manager<EWeight, NValue>;
 

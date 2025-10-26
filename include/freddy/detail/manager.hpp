@@ -126,10 +126,11 @@ class manager
 
         for (auto const x : mgr.lvl2var)  // variable with respect to the current order
         {
-            print_thead("Variable \""s + mgr.vlist[x].lbl + "\" [" + to_string(mgr.vlist[x].t) + ']');
-            print_tbody(mgr.vlist[x].etable, "ET");  // edge table
+            print_thead("Variable \""s + std::string{mgr.vlist[x].label()} + "\" [" +
+                        to_string(mgr.vlist[x].decomposition()) + ']');
+            print_tbody(mgr.vlist[x].edge_table(), "ET");  // edge table
             os << '\n';
-            print_tbody(mgr.vlist[x].ntable, "NT");  // node table
+            print_tbody(mgr.vlist[x].node_table(), "NT");  // node table
             os << "\n\n";
         }
 
