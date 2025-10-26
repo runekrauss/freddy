@@ -229,11 +229,11 @@ class manager
   protected:
     using edge = edge<EWeight, NValue>;
 
-    using edge_ptr = edge_ptr<EWeight, NValue>;
+    using edge_ptr = intrusive_edge_ptr<EWeight, NValue>;
 
     using node = node<EWeight, NValue>;
 
-    using node_ptr = node_ptr<EWeight, NValue>;
+    using node_ptr = intrusive_node_ptr<EWeight, NValue>;
 
     // terminals: [contradiction, tautology]
     manager(std::array<edge_ptr, 2> tmls, struct config const cfg) :

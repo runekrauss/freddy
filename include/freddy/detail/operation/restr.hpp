@@ -7,6 +7,7 @@
 #include "freddy/config.hpp"            // var_index
 #include "freddy/detail/common.hpp"     // P2
 #include "freddy/detail/edge.hpp"       // edge
+#include "freddy/detail/node.hpp"       // intrusive_edge_ptr
 #include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
@@ -30,7 +31,7 @@ class restr final : public operation  // variable substitution
   public:
     using edge = edge<EWeight, NValue>;
 
-    using edge_ptr = edge_ptr<EWeight, NValue>;
+    using edge_ptr = intrusive_edge_ptr<EWeight, NValue>;
 
     // for looking up a cached result using substitution input
     restr(edge_ptr const& f, var_index const x, bool const a) :

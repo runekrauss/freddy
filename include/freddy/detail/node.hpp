@@ -40,7 +40,7 @@ class edge;
 // =====================================================================================================================
 
 template <hashable EWeight, hashable NValue>
-using edge_ptr = boost::intrusive_ptr<edge<EWeight, NValue>>;  // for referencing an edge in a (shared) DD
+using intrusive_edge_ptr = boost::intrusive_ptr<edge<EWeight, NValue>>;  // for referencing an edge in a (shared) DD
 
 using ref_count = std::uint32_t;  // to decide in each case whether a DD is "dead"
 
@@ -58,7 +58,7 @@ template <hashable EWeight, hashable NValue>
 class node final
 {
   public:
-    using edge_ptr = edge_ptr<EWeight, NValue>;
+    using edge_ptr = intrusive_edge_ptr<EWeight, NValue>;
 
     struct branch
     {

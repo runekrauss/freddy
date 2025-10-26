@@ -6,7 +6,7 @@
 
 #include "freddy/detail/common.hpp"     // P3
 #include "freddy/detail/edge.hpp"       // edge
-#include "freddy/detail/node.hpp"       // edge_ptr
+#include "freddy/detail/node.hpp"       // intrusive_edge_ptr
 #include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
@@ -30,7 +30,7 @@ class ite final : public operation  // if-then-else
   public:
     using edge = edge<EWeight, NValue>;
 
-    using edge_ptr = edge_ptr<EWeight, NValue>;
+    using edge_ptr = intrusive_edge_ptr<EWeight, NValue>;
 
     // for looking up a cached result using ITE input
     ite(edge_ptr const& f, edge_ptr const& g, edge_ptr const& h) :

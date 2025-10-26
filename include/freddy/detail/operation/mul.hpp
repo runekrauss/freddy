@@ -6,7 +6,7 @@
 
 #include "freddy/detail/common.hpp"     // P2
 #include "freddy/detail/edge.hpp"       // edge
-#include "freddy/detail/node.hpp"       // edge_ptr
+#include "freddy/detail/node.hpp"       // intrusive_edge_ptr
 #include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
@@ -29,7 +29,7 @@ class mul final : public operation  // multiplication
   public:
     using edge = edge<EWeight, NValue>;
 
-    using edge_ptr = edge_ptr<EWeight, NValue>;
+    using edge_ptr = intrusive_edge_ptr<EWeight, NValue>;
 
     // for looking up a cached result using factors
     mul(edge_ptr const& f, edge_ptr const& g) :

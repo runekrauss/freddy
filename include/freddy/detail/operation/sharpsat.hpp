@@ -6,7 +6,7 @@
 
 #include "freddy/detail/common.hpp"     // hashable
 #include "freddy/detail/edge.hpp"       // edge
-#include "freddy/detail/node.hpp"       // edge_ptr
+#include "freddy/detail/node.hpp"       // intrusive_edge_ptr
 #include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
@@ -30,7 +30,7 @@ class sharpsat final : public operation  // sharp satisfiability problem
 {
   public:
     // for looking up a cached result using #SAT input
-    explicit sharpsat(edge_ptr<EWeight, NValue> const& f) :
+    explicit sharpsat(intrusive_edge_ptr<EWeight, NValue> const& f) :
             f{f.get()}
     {
         assert(this->f);

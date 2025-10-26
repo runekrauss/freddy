@@ -6,7 +6,7 @@
 
 #include "freddy/detail/common.hpp"     // P2
 #include "freddy/detail/edge.hpp"       // edge
-#include "freddy/detail/node.hpp"       // edge_ptr
+#include "freddy/detail/node.hpp"       // intrusive_edge_ptr
 #include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
@@ -31,7 +31,7 @@ class has_const final : public operation  // constant search
     using edge = edge<EWeight, NValue>;
 
     // for looking up a cached result using constant search input
-    has_const(edge_ptr<EWeight, NValue> const& f, NValue const& c) :
+    has_const(intrusive_edge_ptr<EWeight, NValue> const& f, NValue const& c) :
             f{f.get()},
             c{c}
     {
