@@ -41,17 +41,17 @@ class replace final : public operation  // 1-path replacement
 
     [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        assert(res);
+        assert(result);
 
-        return res;
+        return result;
     }
 
     auto set_result(edge_ptr const& res) noexcept
     {
         assert(res);
-        assert(!this->res);  // ensure a valid replacement result is only set once
+        assert(!result);  // ensure a valid replacement result is only set once
 
-        this->res = res.get();
+        result = res.get();
     }
 
   private:
@@ -71,7 +71,7 @@ class replace final : public operation  // 1-path replacement
 
     bool a;  // current evaluation
 
-    edge* res{};  // replacement result
+    edge* result{};  // replacement result
 };
 
 }  // namespace freddy::detail

@@ -42,17 +42,17 @@ class mul final : public operation  // multiplication
 
     [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        assert(res);
+        assert(result);
 
-        return res;
+        return result;
     }
 
     auto set_result(edge_ptr const& res) noexcept
     {
         assert(res);
-        assert(!this->res);  // ensure a valid product result is only set once
+        assert(!result);  // ensure a valid product result is only set once
 
-        this->res = res.get();
+        result = res.get();
     }
 
   private:
@@ -72,7 +72,7 @@ class mul final : public operation  // multiplication
 
     edge* g;  // 2nd factor
 
-    edge* res{};  // product result
+    edge* result{};  // product result
 };
 
 }  // namespace freddy::detail

@@ -43,17 +43,17 @@ class restr final : public operation  // variable substitution
 
     [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        assert(res);
+        assert(result);
 
-        return res;
+        return result;
     }
 
     auto set_result(edge_ptr const& res) noexcept
     {
         assert(res);
-        assert(!this->res);  // ensure a valid substitution result is only set once
+        assert(!result);  // ensure a valid substitution result is only set once
 
-        this->res = res.get();
+        result = res.get();
     }
 
   private:
@@ -77,7 +77,7 @@ class restr final : public operation  // variable substitution
 
     bool a;  // truth value for the variable
 
-    edge* res{};  // substitution result
+    edge* result{};  // substitution result
 };
 
 }  // namespace freddy::detail

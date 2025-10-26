@@ -45,17 +45,17 @@ class ite final : public operation  // if-then-else
 
     [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        assert(res);
+        assert(result);
 
-        return res;
+        return result;
     }
 
     auto set_result(edge_ptr const& res) noexcept
     {
         assert(res);
-        assert(!this->res);  // ensure a valid ITE result is only set once
+        assert(!result);  // ensure a valid ITE result is only set once
 
-        this->res = res.get();
+        result = res.get();
     }
 
   private:
@@ -77,7 +77,7 @@ class ite final : public operation  // if-then-else
 
     edge* h;  // else
 
-    edge* res{};  // conditional result
+    edge* result{};  // conditional result
 };
 
 }  // namespace freddy::detail

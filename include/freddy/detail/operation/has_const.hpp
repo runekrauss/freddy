@@ -40,16 +40,16 @@ class has_const final : public operation  // constant search
 
     [[nodiscard]] auto get_result() const noexcept
     {
-        assert(res);
+        assert(result);
 
-        return *res;
+        return *result;
     }
 
     auto set_result(bool const res) noexcept
     {
-        assert(!this->res);  // ensure a valid constant search result is only set once
+        assert(!result);  // ensure a valid constant search result is only set once
 
-        this->res = res;
+        result = res;
     }
 
   private:
@@ -69,7 +69,7 @@ class has_const final : public operation  // constant search
 
     NValue c;  // constant
 
-    std::optional<bool> res;  // constant search result designed this way for safety reasons
+    std::optional<bool> result;  // constant search result designed this way for safety reasons
 };
 
 }  // namespace freddy::detail

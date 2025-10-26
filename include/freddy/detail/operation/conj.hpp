@@ -42,17 +42,17 @@ class conj final : public operation  // conjunction
 
     [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        assert(res);
+        assert(result);
 
-        return res;
+        return result;
     }
 
     auto set_result(edge_ptr const& res) noexcept
     {
         assert(res);
-        assert(!this->res);  // ensure a valid conjunction result is only set once
+        assert(!result);  // ensure a valid conjunction result is only set once
 
-        this->res = res.get();
+        result = res.get();
     }
 
   private:
@@ -72,7 +72,7 @@ class conj final : public operation  // conjunction
 
     edge* g;  // 2nd conjunct
 
-    edge* res{};  // conjunction result
+    edge* result{};  // conjunction result
 };
 
 }  // namespace freddy::detail

@@ -42,17 +42,17 @@ class antiv final : public operation  // antivalence
 
     [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        assert(res);
+        assert(result);
 
-        return res;
+        return result;
     }
 
     auto set_result(edge_ptr const& res) noexcept
     {
         assert(res);
-        assert(!this->res);  // ensure a valid XOR result is only set once
+        assert(!result);  // ensure a valid XOR result is only set once
 
-        this->res = res.get();
+        result = res.get();
     }
 
   private:
@@ -72,7 +72,7 @@ class antiv final : public operation  // antivalence
 
     edge* g;  // 2nd XOR operand
 
-    edge* res{};  // XOR result
+    edge* result{};  // XOR result
 };
 
 }  // namespace freddy::detail

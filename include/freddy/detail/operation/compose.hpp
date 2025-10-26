@@ -44,17 +44,17 @@ class compose final : public operation  // function substitution
 
     [[nodiscard]] auto get_result() const noexcept -> edge_ptr
     {
-        assert(res);
+        assert(result);
 
-        return res;
+        return result;
     }
 
     auto set_result(edge_ptr const& res) noexcept
     {
         assert(res);
-        assert(!this->res);  // ensure a valid composition result is only set once
+        assert(!result);  // ensure a valid composition result is only set once
 
-        this->res = res.get();
+        result = res.get();
     }
 
   private:
@@ -78,7 +78,7 @@ class compose final : public operation  // function substitution
 
     edge* g;  // function that substitutes
 
-    edge* res{};  // composition result
+    edge* result{};  // composition result
 };
 
 }  // namespace freddy::detail

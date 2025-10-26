@@ -38,17 +38,17 @@ class sharpsat final : public operation  // sharp satisfiability problem
 
     [[nodiscard]] auto get_result() const noexcept
     {
-        assert(!std::isnan(res));
+        assert(!std::isnan(result));
 
-        return res;
+        return result;
     }
 
     auto set_result(double const res) noexcept
     {
         assert(res >= 0);
-        assert(std::isnan(this->res));  // ensure a valid #SAT result is only set once
+        assert(std::isnan(result));  // ensure a valid #SAT result is only set once
 
-        this->res = res;
+        result = res;
     }
 
   private:
@@ -64,7 +64,7 @@ class sharpsat final : public operation  // sharp satisfiability problem
 
     edge<EWeight, NValue>* f;  // #SAT instance
 
-    double res{std::numeric_limits<double>::quiet_NaN()};  // #SAT result, where NaN is the sentinel
+    double result{std::numeric_limits<double>::quiet_NaN()};  // #SAT result, where NaN is the sentinel
 };
 
 }  // namespace freddy::detail
