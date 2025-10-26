@@ -127,7 +127,7 @@ jobs:
 
   msvc:
     name: MSVC on Windows
-    runs-on: windows-2022
+    runs-on: windows-2022 # compatible with Ccache
     needs: clangformat
     if: (!cancelled()) && (needs.clangformat.result == 'skipped' || needs.clangformat.result == 'success')
     defaults:
