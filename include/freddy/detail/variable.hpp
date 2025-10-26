@@ -73,7 +73,7 @@ class variable final
         return t;
     }
 
-    auto label() const noexcept -> std::string_view
+    [[nodiscard]] auto label() const noexcept -> std::string_view
     {
         return lbl;
     }
