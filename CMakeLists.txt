@@ -8,7 +8,19 @@ find_program(Ccache ccache)
 if(Ccache)
   message(STATUS "Using Ccache")
 
-  set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
+  if(MSVC)
+    file(COPY_FILE "${Ccache}" "${CMAKE_BINARY_DIR}/cl.exe" ONLY_IF_DIFFERENT) # for safety reasons
+
+    # workaround for Windows support
+    set(CMAKE_VS_GLOBALS
+      "CLToolExe=cl.exe"
+      "CLToolPath=${CMAKE_BINARY_DIR}"
+      "TrackFileAccess=false"
+      "UseMultiToolTask=true"
+    )
+  else()
+    set(CMAKE_CXX_COMPILER_LAUNCHER ccache)
+  endif()
 
   message(STATUS "Using Ccache - done")
 endif()
