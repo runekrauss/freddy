@@ -6,7 +6,7 @@
 
 #include "freddy/config.hpp"                    // config
 #include "freddy/detail/manager.hpp"            // detail::manager
-#include "freddy/detail/node.hpp"               // detail::edge_ptr
+#include "freddy/detail/node.hpp"               // detail::intrusive_edge_ptr
 #include "freddy/detail/operation/conj.hpp"     // detail::conj
 #include "freddy/detail/operation/replace.hpp"  // detail::replace
 #include "freddy/expansion.hpp"                 // expansion::S
@@ -183,7 +183,7 @@ class bhd final  // binary hybrid diagram between BDD and SAT
     friend bhd_manager;
 
     // wrapper is controlled by its BHD manager
-    bhd(detail::edge_ptr<bool, bool> f, bhd_manager* const mgr) :
+    bhd(detail::intrusive_edge_ptr<bool, bool> f, bhd_manager* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
@@ -191,7 +191,7 @@ class bhd final  // binary hybrid diagram between BDD and SAT
         assert(this->mgr);
     }
 
-    detail::edge_ptr<bool, bool> f;  // BHD handle
+    detail::intrusive_edge_ptr<bool, bool> f;  // BHD handle
 
     bhd_manager* mgr{};  // must be destroyed after this BHD wrapper
 };

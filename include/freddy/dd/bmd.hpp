@@ -6,7 +6,7 @@
 
 #include "freddy/config.hpp"                 // config
 #include "freddy/detail/manager.hpp"         // detail::manager
-#include "freddy/detail/node.hpp"            // detail::edge_ptr
+#include "freddy/detail/node.hpp"            // detail::intrusive_edge_ptr
 #include "freddy/detail/operation/mul.hpp"   // detail::mul
 #include "freddy/detail/operation/plus.hpp"  // detail::plus
 #include "freddy/expansion.hpp"              // expansion::pD
@@ -237,7 +237,7 @@ class bmd final  // (multiplicative) binary moment diagram
     friend bmd_manager;
 
     // wrapper is controlled by its BMD manager
-    bmd(detail::edge_ptr<bmd_int, bmd_int> f, bmd_manager* const mgr) :
+    bmd(detail::intrusive_edge_ptr<bmd_int, bmd_int> f, bmd_manager* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
@@ -245,7 +245,7 @@ class bmd final  // (multiplicative) binary moment diagram
         assert(this->mgr);
     }
 
-    detail::edge_ptr<bmd_int, bmd_int> f;  // BMD handle
+    detail::intrusive_edge_ptr<bmd_int, bmd_int> f;  // BMD handle
 
     bmd_manager* mgr{};  // must be destroyed after this BMD wrapper
 };
