@@ -75,7 +75,7 @@ TEST_CASE("BDD can be characterized", "[basic]")
 {
     bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
-    auto const f = x0 & x1 | ~x2;
+    auto const f = (x0 & x1) | ~x2;
 
     SECTION("Variables are supported")
     {
@@ -165,7 +165,7 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
 {
     bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
-    auto const f = x0 & x1 | x2 & x3;
+    auto const f = (x0 & x1) | (x2 & x3);
     mgr.config().max_node_growth = 2.0f;
 
     SECTION("Levels can be swapped")
@@ -215,5 +215,5 @@ TEST_CASE("BDD solves #SAT", "[basic]")
 {
     bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
 
-    CHECK((mgr.var() & mgr.var() | ~mgr.var()).sharpsat() == 5);
+    CHECK(((mgr.var() & mgr.var()) | ~mgr.var()).sharpsat() == 5);
 }
