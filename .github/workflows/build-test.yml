@@ -111,6 +111,7 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ github.job }}-${{ env.REF }}
+          job-summary: Ccache Statistics
 
       - name: Cache dependencies
         uses: actions/cache@v4
