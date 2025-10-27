@@ -24,7 +24,7 @@ namespace freddy::detail
 // =====================================================================================================================
 
 template <hashable EWeight, hashable NValue>
-class replace final : public operation  // 1-path replacement
+class repl final : public operation  // 1-path replacement
 {
   public:
     using edge = detail::edge<EWeight, NValue>;
@@ -32,7 +32,7 @@ class replace final : public operation  // 1-path replacement
     using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
     // for looking up a cached result using replacement input
-    replace(edge_ptr const& f, bool const a) :
+    repl(edge_ptr const& f, bool const a) :
             f{f.get()},
             a{a}
     {
@@ -62,7 +62,7 @@ class replace final : public operation  // 1-path replacement
 
     [[nodiscard]] auto equals(operation const& op) const noexcept -> bool override
     {
-        auto& other = static_cast<replace const&>(op);
+        auto& other = static_cast<repl const&>(op);
 
         return f == other.f && a == other.a;
     }

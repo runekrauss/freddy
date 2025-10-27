@@ -4,12 +4,12 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/config.hpp"                    // config
-#include "freddy/detail/manager.hpp"            // detail::manager
-#include "freddy/detail/node.hpp"               // detail::edge_ptr
-#include "freddy/detail/operation/conj.hpp"     // detail::conj
-#include "freddy/detail/operation/replace.hpp"  // detail::replace
-#include "freddy/expansion.hpp"                 // expansion::S
+#include "freddy/config.hpp"                 // config
+#include "freddy/detail/manager.hpp"         // detail::manager
+#include "freddy/detail/node.hpp"            // detail::edge_ptr
+#include "freddy/detail/operation/conj.hpp"  // detail::conj
+#include "freddy/detail/operation/repl.hpp"  // detail::repl
+#include "freddy/expansion.hpp"              // expansion::S
 
 #include <boost/algorithm/string.hpp>  // boost::replace_all
 
@@ -423,7 +423,7 @@ class bhd_manager final : public detail::manager<bool, bool>
         return ucs;
     }
 
-    auto replace(edge_ptr const& f, bool const m = false)
+    auto repl(edge_ptr const& f, bool const m = false)
     {  // redirect 1-paths to the expansion node for compactness reasons
         if (is_exp(f))
         {
@@ -440,14 +440,14 @@ class bhd_manager final : public detail::manager<bool, bool>
             return f == constant(0) ? f : constant(2);  // expansion node
         }
 
-        detail::replace op{f, m};
+        detail::repl op{f, m};
         if (auto const* const entry = cached(op))
         {
             return entry->get_result();
         }
 
-        auto hi = f->weight() ? replace(f->ch()->br().hi, !m) : replace(f->ch()->br().hi, m);
-        auto lo = f->weight() ? replace(f->ch()->br().lo, !m) : replace(f->ch()->br().lo, m);
+        auto hi = f->weight() ? repl(f->ch()->br().hi, !m) : repl(f->ch()->br().hi, m);
+        auto lo = f->weight() ? repl(f->ch()->br().lo, !m) : repl(f->ch()->br().lo, m);
         if (hi == lo)
         {
             op.set_result(hi);
@@ -495,9 +495,9 @@ class bhd_manager final : public detail::manager<bool, bool>
         {
             return g->is_const() || g->ch()->br().x < exp_thresh
                        ? branch(x, compress(f, g, x, true), compress(f, g, x, false))
-                       : replace(f);
+                       : repl(f);
         }
-        return g->is_const() || g->ch()->br().x < exp_thresh ? replace(g) : constant(2);  // expansion node
+        return g->is_const() || g->ch()->br().x < exp_thresh ? repl(g) : constant(2);  // expansion node
     }
 
     auto memory_heur(edge_ptr const& f, edge_ptr const& g, var_index const x) -> edge_ptr
@@ -505,7 +505,7 @@ class bhd_manager final : public detail::manager<bool, bool>
         // no overflow protection, as the theoretical worst-case scenario merely leads to conjunction
         if (edge_count() * sizeof(edge) + node_count() * sizeof(node) >= exp_thresh)
         {
-            return replace(f);  // because f is usually larger than g
+            return repl(f);  // because f is usually larger than g
         }
         return branch(x, compress(f, g, x, true), compress(f, g, x, false));  // conjunction
     }
@@ -575,11 +575,11 @@ class bhd_manager final : public detail::manager<bool, bool>
         // terminal cases regarding the expansion node
         if (is_exp(f))
         {
-            return is_exp(g) ? constant(2) : replace(g);
+            return is_exp(g) ? constant(2) : repl(g);
         }
         if (is_exp(g))
         {
-            return replace(f);
+            return repl(f);
         }
 
         detail::conj op{f, g};
