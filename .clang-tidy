@@ -13,6 +13,7 @@ Checks: |
   -bugprone-unchecked-optional-access,   # since even checks by has_value are ignored
 
   cert-*,
+  -cert-dcl58-cpp, # specialization of std::hash
 
   concurrency-*,
 
