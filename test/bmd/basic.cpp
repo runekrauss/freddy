@@ -217,8 +217,8 @@ TEST_CASE("BMD variable order is changeable", "[basic]")
 
 TEST_CASE("BMD can be cleaned up", "[basic]")
 {
-    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
-    auto const f = (mgr.var() + mgr.var()) + mgr.var();
+    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3, .heap_mem_limit = 4uz << 30uz}};
+    auto const f = mgr.var() + mgr.var() + mgr.var();
     auto const prev_ecount = mgr.edge_count();
     auto const prev_ncount = mgr.node_count();
     mgr.gc();

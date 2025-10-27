@@ -197,7 +197,7 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
 TEST_CASE("BDD can be cleaned up", "[basic]")
 {
     bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
-    auto const f = (mgr.var() | mgr.var()) | mgr.var();
+    auto const f = mgr.var() | mgr.var() | mgr.var();
     auto const prev_ecount = mgr.edge_count();
     auto const prev_ncount = mgr.node_count();
     mgr.gc();
