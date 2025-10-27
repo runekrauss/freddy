@@ -6,8 +6,8 @@
 
 #include "freddy/config.hpp"                      // config
 #include "freddy/detail/common.hpp"               // parallel_for
-#include "freddy/detail/edge.hpp"                 // edge
-#include "freddy/detail/node.hpp"                 // node
+#include "freddy/detail/edge.hpp"                 // detail::edge
+#include "freddy/detail/node.hpp"                 // detail::node
 #include "freddy/detail/operation.hpp"            // operation
 #include "freddy/detail/operation/compose.hpp"    // detail::compose
 #include "freddy/detail/operation/has_const.hpp"  // detail::has_const
@@ -227,13 +227,13 @@ class manager
     }
 
   protected:
-    using edge = edge<EWeight, NValue>;
+    using edge = detail::edge<EWeight, NValue>;
 
-    using edge_ptr = intrusive_edge_ptr<EWeight, NValue>;
+    using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
-    using node = node<EWeight, NValue>;
+    using node = detail::node<EWeight, NValue>;
 
-    using node_ptr = intrusive_node_ptr<EWeight, NValue>;
+    using node_ptr = detail::node_ptr<EWeight, NValue>;
 
     // terminals: [contradiction, tautology]
     manager(std::array<edge_ptr, 2> tmls, struct config const cfg) :

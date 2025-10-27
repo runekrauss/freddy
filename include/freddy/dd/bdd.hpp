@@ -6,7 +6,7 @@
 
 #include "freddy/config.hpp"                     // config
 #include "freddy/detail/manager.hpp"             // detail::manager
-#include "freddy/detail/node.hpp"                // detail::intrusive_edge_ptr
+#include "freddy/detail/node.hpp"                // detail::edge_ptr
 #include "freddy/detail/operation/antiv.hpp"     // detail::antiv
 #include "freddy/detail/operation/conj.hpp"      // detail::conj
 #include "freddy/detail/operation/ite.hpp"       // detail::ite
@@ -171,7 +171,7 @@ class bdd final  // binary decision diagram
     friend bdd_manager;
 
     // wrapper is controlled by its BDD manager
-    bdd(detail::intrusive_edge_ptr<bool, bool> f, bdd_manager* const mgr) :
+    bdd(detail::edge_ptr<bool, bool> f, bdd_manager* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
@@ -179,7 +179,7 @@ class bdd final  // binary decision diagram
         assert(this->mgr);
     }
 
-    detail::intrusive_edge_ptr<bool, bool> f;  // BDD handle
+    detail::edge_ptr<bool, bool> f;  // BDD handle
 
     bdd_manager* mgr{};  // must be destroyed after this BDD wrapper
 };

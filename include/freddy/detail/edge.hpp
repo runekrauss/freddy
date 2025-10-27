@@ -34,7 +34,7 @@ class manager;
 // =====================================================================================================================
 
 template <hashable EWeight, hashable NValue>
-using intrusive_node_ptr = boost::intrusive_ptr<node<EWeight, NValue>>;  // for referencing nodes in a (shared) DD
+using node_ptr = boost::intrusive_ptr<node<EWeight, NValue>>;  // for referencing nodes in a (shared) DD
 
 // =====================================================================================================================
 // Types
@@ -44,7 +44,7 @@ template <hashable EWeight, hashable NValue>
 class edge final
 {
   public:
-    using node_ptr = intrusive_node_ptr<EWeight, NValue>;
+    using node_ptr = detail::node_ptr<EWeight, NValue>;
 
     edge(EWeight&& w, node_ptr v) noexcept(std::is_nothrow_move_constructible_v<EWeight>) :  // v may already exist.
             v{std::move(v)},

@@ -6,8 +6,8 @@
 
 #include "freddy/config.hpp"            // var_index
 #include "freddy/detail/common.hpp"     // P2
-#include "freddy/detail/edge.hpp"       // edge
-#include "freddy/detail/node.hpp"       // intrusive_edge_ptr
+#include "freddy/detail/edge.hpp"       // detail::edge
+#include "freddy/detail/node.hpp"       // detail::edge_ptr
 #include "freddy/detail/operation.hpp"  // operation
 
 #include <cassert>     // assert
@@ -29,9 +29,9 @@ template <hashable EWeight, hashable NValue>
 class compose final : public operation  // function substitution
 {
   public:
-    using edge = edge<EWeight, NValue>;
+    using edge = detail::edge<EWeight, NValue>;
 
-    using edge_ptr = intrusive_edge_ptr<EWeight, NValue>;
+    using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
     // for looking up a cached result using composition input
     compose(edge_ptr const& f, var_index const x, edge_ptr const& g) :

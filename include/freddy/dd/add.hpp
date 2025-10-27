@@ -6,8 +6,9 @@
 
 #include "freddy/config.hpp"                 // config
 #include "freddy/detail/common.hpp"          // detail::hashable
+#include "freddy/detail/edge.hpp"            // detail::edge
 #include "freddy/detail/manager.hpp"         // detail::manager
-#include "freddy/detail/node.hpp"            // detail::intrusive_edge_ptr
+#include "freddy/detail/node.hpp"            // detail::edge_ptr
 #include "freddy/detail/operation/mul.hpp"   // detail::mul
 #include "freddy/detail/operation/plus.hpp"  // detail::plus
 #include "freddy/expansion.hpp"              // expansion::S
@@ -208,7 +209,7 @@ class add final  // algebraic decision diagram (multi-terminal binary decision d
     friend add_manager<NValue>;
 
     // wrapper is controlled by its ADD manager
-    add(detail::intrusive_edge_ptr<bool, NValue> f, add_manager<NValue>* const mgr) :
+    add(detail::edge_ptr<bool, NValue> f, add_manager<NValue>* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
@@ -216,7 +217,7 @@ class add final  // algebraic decision diagram (multi-terminal binary decision d
         assert(this->mgr);
     }
 
-    detail::intrusive_edge_ptr<bool, NValue> f;  // ADD handle
+    detail::edge_ptr<bool, NValue> f;  // ADD handle
 
     add_manager<NValue>* mgr{};  // must be destroyed after this ADD wrapper
 };
@@ -294,7 +295,7 @@ class add_manager final : public detail::manager<bool, NValue>
   private:
     using manager = detail::manager<bool, NValue>;
 
-    using edge_ptr = detail::intrusive_edge_ptr<bool, NValue>;
+    using edge_ptr = detail::edge_ptr<bool, NValue>;
 
     friend add<NValue>;
 
