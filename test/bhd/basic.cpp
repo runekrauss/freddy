@@ -271,7 +271,9 @@ TEST_CASE("BHD heuristics restrict solution spaces", "[basic]")
         bhd_manager mgr{bhd_heuristic::MEMORY,
                         1'024,
                         {.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 8}};
-        auto const f = mgr.var() & mgr.var() & mgr.var() & mgr.var() & mgr.var() & mgr.var() & mgr.var() & mgr.var();
+        auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var(), x4 = mgr.var(), x5 = mgr.var(),
+                   x6 = mgr.var(), x7 = mgr.var();
+        auto const f = x0 & x1 & x2 & x3 & x4 & x5 & x6 & x7;
 
         CHECK(f.depth() == 6);
         CHECK(f.has_exp());
