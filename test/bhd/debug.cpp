@@ -348,7 +348,7 @@ auto mux_sim(std::vector<std::vector<bool>> const& patterns)  // stuck-at fault 
 TEST_CASE("MUX f/0 is debugged", "[example]")
 {
     auto mgr = mux_mgr();
-    auto const diff = mgr.zero() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));  // miter
+    auto const diff = mgr.zero() ^ ((mgr.var(0) & mgr.var(1)) | (~mgr.var(0) & mgr.var(2)));  // miter
 
     // test patterns
     auto patterns = diff.sat_solutions();                                  // BHD
@@ -365,7 +365,7 @@ TEST_CASE("MUX f/0 is debugged", "[example]")
 TEST_CASE("MUX f/1 is debugged", "[example]")
 {
     auto mgr = mux_mgr();
-    auto const diff = mgr.one() ^ (mgr.var(0) & mgr.var(1) | ~mgr.var(0) & mgr.var(2));
+    auto const diff = mgr.one() ^ ((mgr.var(0) & mgr.var(1)) | (~mgr.var(0) & mgr.var(2)));
 
     auto patterns = diff.sat_solutions();
     auto more_patterns = mux_sat({{-1, -2}, {1, -3}}, diff.unit_clauses());
