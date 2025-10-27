@@ -66,6 +66,7 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }} # branch-based
+          job-summary: 'Ccache Statistics'
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -111,7 +112,7 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ github.job }}-${{ env.REF }}
-          job-summary: Ccache Statistics
+          job-summary: 'Ccache Statistics'
 
       - name: Cache dependencies
         uses: actions/cache@v4
@@ -143,6 +144,7 @@ jobs:
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ github.job }}-${{ env.REF }}
+          job-summary: 'Ccache Statistics'
 
       - name: Cache dependencies
         uses: actions/cache@v4
