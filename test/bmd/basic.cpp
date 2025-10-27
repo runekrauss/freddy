@@ -191,7 +191,7 @@ TEST_CASE("BMD variable order is changeable", "[basic]")
     bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 6}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x5 = mgr.var("x5"), x0 = mgr.var("x0"), x2 = mgr.var("x2"),
                x4 = mgr.var("x4");
-    auto const f = x0 & x1 | x2 & x3 | x4 & x5;
+    auto const f = (x0 & x1) | (x2 & x3) | (x4 & x5);
     mgr.config().max_node_growth = 2.0f;
 
     SECTION("Levels can be swapped")
