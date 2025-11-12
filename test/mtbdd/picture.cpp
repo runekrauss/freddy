@@ -15,7 +15,7 @@ auto create_vars(int& amount, dd::mtbdd_manager<std::int32_t>& mgr){
 }
 
 auto operate_and(freddy::dd::mtbdd<int>& f, std::vector<bool>& bits, dd::mtbdd_manager<std::int32_t>& mgr){
-    for (int i = 0; i < bits.size(); ++i) {
+    for (std::size_t i = 0; i < bits.size(); ++i) {
         if (bits[i]){
             f &= mgr.var(i);
         } else {
