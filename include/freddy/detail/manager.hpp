@@ -153,6 +153,17 @@ class manager
         }
     }
 
+    auto reorder(std::vector<int32_t> const & order)
+    {
+        for(int32_t i = 0; i < order.size(); i++)
+        {
+            for(int32_t lvl = var2lvl[order[i]]; lvl > i; lvl--)
+            {
+                exchange(lvl-1);
+            }
+        }
+    }
+
     auto virtual gc() noexcept -> void  // performance of many EDA tasks depends on garbage collection
     {
         ct.clear();  // to avoid invalid results
@@ -502,8 +513,154 @@ class manager
     }
     // NOLINTEND
 
+    void collect_nodes_per_level(node_ptr n, std::vector<std::unordered_set<node_ptr, hash, comp>> & nodes_per_lvl) const
+    {
+        if(n->is_const())
+        {
+            nodes_per_lvl[var_count()].insert(n);
+            return;
+        }
+        auto var = n->br().x;
+        if(nodes_per_lvl[var].contains(n)) return;
+        nodes_per_lvl[var].insert(n);
+        collect_nodes_per_level(n->br().lo->v, nodes_per_lvl);
+        collect_nodes_per_level(n->br().hi->v, nodes_per_lvl);
+    };
+
+
+    auto virtual to_dot_alt(std::vector<edge_ptr> const& fs,
+                                 std::vector<std::string> const& outputs,
+                                 std::ostream& os,
+                                 const bool darkmode) const -> void
+    {
+        assert(outputs.empty() ? true : outputs.size() == fs.size());
+
+        const std::string ind = "    ";
+
+        os << "digraph DD{\n"
+           << ind << "remincross = true;\n"
+           << ind << "center = true;\n"
+           << ind << "bgcolor = transparent;\n"
+           << ind << "edge [fontname = \"times italic\", dir = none];\n"
+           << ind << "node [fontname = \"times italic\"];\n\n"
+           << ind << "//variables & levels\n"
+           << ind << "{\n"
+           << ind << ind << "node [shape = plaintext"
+           << (darkmode ? ", fontcolor = \"#607B8B\"" : "")
+           << "];\n"
+           << ind << ind << "edge [style = invis];\n";
+
+        std::vector<int> essential_vars_ordered = {};
+        for (auto lvl = 0; lvl < var_count(); ++lvl)
+        {
+            auto var = lvl2var[lvl];
+            if (std::any_of(fs.begin(), fs.end(), [this,var](const auto& fi) { return is_essential(fi, var); }))
+            {
+                essential_vars_ordered.push_back(var);
+            }
+        }
+
+        os << ind << ind << "outputs[style = invis];\n";
+        for(const auto var : essential_vars_ordered)
+        {
+            std::string decomposition;
+            switch (vl[var].t)
+            {
+                case expansion::S: decomposition = "S"; break;
+                case expansion::PD: decomposition = "pD"; break;
+                default: assert(false);
+            }
+            os << ind << ind << "x" << var
+               << "[label = \"" << var << " " << decomposition << ":  " << vl[var].l << "\"];\n";
+        }
+        os << ind << ind << "constants[style = invis];\n";
+        os << ind << ind << "outputs -> ";
+        for(const auto var : essential_vars_ordered)
+        {
+            os << "x" << var << " -> ";
+        }
+        os << "constants;\n"
+           << ind << "}\n\n"
+           << ind << "//output labels\n"
+           << ind << "{\n"
+           << ind << ind << "node [shape = rectangle"
+           << (darkmode ? R"(, color = "#607B8B", fontcolor = "#607B8B")" : "")
+           << "];\n"
+           << ind << ind << "rank = same;\n"
+           << ind << ind << "outputs;\n";
+        for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
+        {
+            os << ind << ind << "f" << i << "[label = \"" <<
+                (outputs.empty() ? "f"+std::to_string(i) : outputs[i]) << "\"];\n";
+        }
+        os << ind << "}\n\n";
+
+        std::vector<std::unordered_set<node_ptr, hash, comp>> nodes_per_lvl(var_count()+1);
+        for(const auto f : fs)
+        {
+            collect_nodes_per_level(f->v, nodes_per_lvl);
+        }
+
+        for(const auto var : essential_vars_ordered)
+        {
+            os << ind << "// level " << var2lvl[var] << "\n"
+               << ind << "{\n"
+               << ind << ind << "node [style = filled, "
+               << (darkmode ? R"(color = "#607B8B")" :
+                            R"(color = "black", fontcolor="white")")
+               << ", fixedsize= true, width = 0.5, regular = true, label = \""<< var << "\""
+               << (vl[var].t == expansion::PD ? ", shape = octagon" : ", shape = circle") << "];\n"
+               //               << ind << ind << "node [ label = \""<< var << "\"];\n"
+               << ind << ind << "rank = same;\n"
+               << ind << ind << "x" << var << ";\n";
+
+            for(const node_ptr & n : nodes_per_lvl[var])
+            {
+                os << ind << ind << "n" << n << ";\n";
+            }
+            os << ind << "}\n\n";
+        }
+
+        os << ind << "// level constants\n"
+           << ind << "{\n"
+           << ind << ind << "node [shape = box, style = filled, "
+           << "color = \"red\", fontcolor=\"white\"];\n"
+           << ind << ind << "rank = same;\n"
+           << ind << ind << "constants;\n";
+
+        for(const node_ptr & n : nodes_per_lvl[var_count()])
+        {
+            os << ind << ind << "n" << n << "[label = \"" << n->c() << "\"];\n";
+        }
+        os << ind << "}\n\n";
+
+        os << ind << "// edges from fi\n";
+        for (auto i = 0; i < static_cast<std::int32_t>(fs.size()); ++i)
+        {
+            os << ind << "f" << i << " -> n" << fs[i]->v << " [label = \"" << fs[i]->w << "\""
+               << (darkmode ? "color = \"#607B8B\"" : "") << "];\n";
+        }
+        os << "\n";
+        for(auto var : essential_vars_ordered)
+        {
+            os << ind << "// edges from x" << var << "\n";
+            for(const node_ptr & n : nodes_per_lvl[var])
+            {
+                os << ind << "n" << n << " -> n" << n->br().hi->v <<
+                    " [label = \"" << n->br().hi->w << "\", color = \"blue\", fontcolor = \"blue\"]" <<
+                    ";\n";
+                os << ind << "n" << n << " -> n" << n->br().lo->v <<
+                    " [label = \"" << n->br().lo->w << "\", color = \"red\", fontcolor = \"red\", style = dotted]" <<
+                    ";\n";
+            }
+            os << "\n";
+        }
+
+        os << "}";
+    }
+
     auto virtual to_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs,
-                        std::ostream& s) const -> void
+                        std::ostream& s, bool unessential_levels = true) const -> void
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
@@ -515,31 +672,43 @@ class manager
         {
             s << "f -> c [style=invis];\n";
         }
-        for (auto i = 0; i < var_count(); ++i)  // arrange nodes per level
+        std::vector<int> relevant_vars_ordered = {};
+        for (auto lvl = 0; lvl < var_count(); ++lvl)  // var nodes per level
+        {
+            auto var = lvl2var[lvl];
+            bool is_essential_fs = unessential_levels;
+            for (auto f : fs)
+            {
+                is_essential_fs |= is_essential(f, var);
+            }
+            if (is_essential_fs)
+            {
+                relevant_vars_ordered.push_back(var);
+                std::string decomposition;
+                switch (vl[lvl2var[lvl]].t)
+                {
+                    case expansion::S: decomposition = "S"; break;
+                    case expansion::PD: decomposition = "PD"; break;
+                    default: assert(false);
+                }
+                s << 'x' << lvl2var[lvl] << R"( [shape=plaintext,fontname="times italic",label=")" << lvl2var[lvl]
+                  << " " << decomposition << "\"];\n";
+            }
+        }
+        for (auto i = 0; i < relevant_vars_ordered.size(); ++i)  // arrange nodes per level
         {
             if (i == 0)
             {
-                s << "f -> x" << lvl2var[i] << " [style=invis];\n";
+                s << "f -> x" << relevant_vars_ordered[i] << " [style=invis];\n";
             }
 
-            std::string decomposition;
-            switch (vl[lvl2var[i]].t)
+            if (i + 1 < relevant_vars_ordered.size())
             {
-                case expansion::S: decomposition = "S"; break;
-                case expansion::PD: decomposition = "PD"; break;
-                default: assert(false);
-            }
-
-            s << 'x' << lvl2var[i] << R"( [shape=plaintext,fontname="times italic",label=")"
-              << lvl2var[i] << " " << decomposition << "\"];\n";
-
-            if (i + 1 < var_count())
-            {
-                s << 'x' << lvl2var[i] << " -> x" << lvl2var[i + 1] << " [style=invis];\n";
+                s << 'x' << relevant_vars_ordered[i] << " -> x" << relevant_vars_ordered[i + 1] << " [style=invis];\n";
             }
             else
             {
-                s << 'x' << lvl2var[i] << " -> c [style=invis];\n";
+                s << 'x' << relevant_vars_ordered[i] << " -> c [style=invis];\n";
             }
         }
 
