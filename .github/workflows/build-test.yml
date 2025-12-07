@@ -13,7 +13,7 @@ on:
   workflow_dispatch: # enables manual execution of this pipeline
   workflow_call:     # allow this workflow to be called by others such as CD
   schedule:
-    - cron: '0 3 */6 * *' # "weekly" due to potential package upgrades
+    - cron: '0 3 * * 0' # weekly due to potential package upgrades
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }} # REF is not available here.

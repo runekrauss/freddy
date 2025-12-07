@@ -198,6 +198,7 @@ TEST_CASE("BMD variable order is changeable", "[basic]")
     {
         mgr.swap(1, 2);
 
+        CHECK(f.eval({true, true, true, false, false, false}) == 0);
         CHECK(f.eval({true, false, false, true, false, false}) == 1);
         CHECK(f.eval({false, true, false, false, true, false}) == 1);
         CHECK(f.eval({false, false, true, false, false, true}) == 1);
@@ -209,6 +210,7 @@ TEST_CASE("BMD variable order is changeable", "[basic]")
         mgr.reorder();
 
         CHECK(prev_size > f.size());
+        CHECK(f.eval({true, true, true, false, false, false}) == 0);
         CHECK(f.eval({true, false, false, true, false, false}) == 1);
         CHECK(f.eval({false, true, false, false, true, false}) == 1);
         CHECK(f.eval({false, false, true, false, false, true}) == 1);

@@ -27,8 +27,9 @@ The installation of FrEDDY is described first. Second, it's explained how a DD t
 ### :wrench: Installation
 
 FrEDDY is designed as a **header-only library** that can be easily integrated into external projects. To integrate
-FrEDDY into your [CMake](https://github.com/Kitware/CMake) project `<target>`, simply clone it inside your project
-directory and add the following lines to its *CMakeLists.txt*:
+FrEDDY into your [CMake](https://github.com/Kitware/CMake) project, simply clone it inside your project directory or add
+it as a [Git submodule](https://git-scm.com/book/en/v2/Git-Tools-Submodules), and include the following lines of code in
+its _CMakeLists.txt_:
 
 ```cmake
 add_subdirectory(freddy)
@@ -38,7 +39,7 @@ target_link_libraries(<target> freddy)
 > :information_source: Depending on where FrEDDY is located, you may need to adjust the path accordingly.
 
 Note that this stage may take some time depending on your system configuration. For example, FrEDDY relies on certain
-[Boost libraries](https://boost.org/libraries) like *Unordered*, which offers high-performance hash containers. If this
+[Boost libraries](https://boost.org/libraries) like _Unordered_, which offers high-performance hash containers. If this
 dependency cannot be found locally, it'll be downloaded from an
 [external repository](https://github.com/boostorg/boost/releases) at configure time, with the required Boost modules
 automatically added to your build system.
@@ -147,7 +148,7 @@ configurable parameters:
 | `heap_mem_limit`   | Unset           | Heap usage in bytes before garbage collection (estimated if unset) |
 
 You can also choose how a variable should be decomposed, provided the DD type supports it. Although the
-[positive Davio expansion](https://en.wikipedia.org/wiki/Reed–Muller_expansion) (*pD*) applies to BMDs, other expansion
+[positive Davio expansion](https://en.wikipedia.org/wiki/Reed–Muller_expansion) (_pD_) applies to BMDs, other expansion
 types, such as the [Shannon expansion](https://en.wikipedia.org/wiki/Boole%27s_expansion_theorem), are available in the
 [decomposition type list](include/freddy/expansion.hpp).
 
