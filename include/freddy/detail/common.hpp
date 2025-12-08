@@ -4,17 +4,24 @@
 // Includes
 // *********************************************************************************************************************
 
-#include <algorithm>    // std::min
+#include <boost/smart_ptr/intrusive_ptr.hpp>  // boost::intrusive_ptr
+
+#if defined(__APPLE__) || defined(__linux__)
+#include <sys/resource.h>  // getrlimit
+#elifdef _WIN32
+#define WIN32_LEAN_AND_MEAN  // exclude unused APIs such as cryptography
+#define NOMINMAX             // preventing conflicts with std::max
+#include <windows.h>         // MEMORYSTATUSEX
+#endif
+
+#include <algorithm>    // std::max
 #include <cassert>      // assert
-#include <cmath>        // std::ceil
-#include <concepts>     // std::integral
+#include <concepts>     // std::convertible_to
 #include <cstddef>      // std::size_t
-#include <cstdint>      // std::int32_t
-#include <memory>       // std::shared_ptr
-#include <string>       // std::string
-#include <string_view>  // std::string_view
+#include <memory>       // std::pointer_traits
 #include <thread>       // std::thread
-#include <type_traits>  // std::false_type
+#include <type_traits>  // std::true_type
+#include <utility>      // std::declval
 #include <vector>       // std::vector
 
 // *********************************************************************************************************************
@@ -25,132 +32,127 @@ namespace freddy::detail
 {
 
 // =====================================================================================================================
-// Types
+// Concepts
 // =====================================================================================================================
 
 template <typename T>
-struct shared_ptr : std::false_type
-{};
-
-template <typename T>
-struct shared_ptr<std::shared_ptr<T>> : std::true_type
-{};
-
-template <typename T>
-concept is_shared_ptr = shared_ptr<T>::value;
-
-template <typename T>
-struct unique_ptr : std::false_type
-{};
-
-template <typename T>
-struct unique_ptr<std::unique_ptr<T>> : std::true_type
-{};
-
-template <typename T>
-concept is_unique_ptr = unique_ptr<T>::value;
-
-struct hash
-{
-    using is_avalanching = std::true_type;  // do not use post-mixing
-
-    using is_transparent = void;  // activate searches with a type other than the key
-
-    template <typename T>
-        requires is_shared_ptr<T> || is_unique_ptr<T> || std::is_pointer_v<T>
-    auto operator()(T const& p) const
-    {
-        assert(p);
-
-        return p->operator()();
-    }
-};
-
-struct comp
-{
-    using is_transparent = void;
-
-    template <typename T1, typename T2>
-        requires(is_shared_ptr<T1> || is_unique_ptr<T1> || std::is_pointer_v<T1>) &&
-                (is_shared_ptr<T2> || is_unique_ptr<T2> || std::is_pointer_v<T2>)  // already stored value
-    auto operator()(T1 const& lhs, T2 const& rhs) const
-    {
-        assert(lhs);
-        assert(rhs);
-
-        return *lhs == *rhs;
-    }
+concept hashable = requires(T const& key, T const& key2) {  // for unordered containers
+    { std::hash<T>{}(key) } -> std::convertible_to<std::size_t>;
+    { key == key2 } -> std::convertible_to<bool>;
 };
 
 // =====================================================================================================================
 // Constants
 // =====================================================================================================================
 
-auto inline constexpr P1 = 12583037;  // prime
+inline constexpr auto P1 = 12'583'037;  // prime
 
-auto inline constexpr P2 = 4256383;
+inline constexpr auto P2 = 4'256'383;
 
-auto inline constexpr P3 = 741563;
+inline constexpr auto P3 = 741'563;
+
+template <typename T1, typename T2>
+inline constexpr auto is_nothrow_comparable = noexcept(std::declval<T1 const&>() == std::declval<T2 const&>());
+
+// =====================================================================================================================
+// Aliases
+// =====================================================================================================================
+
+template <typename Ptr>
+using pointee = std::pointer_traits<Ptr>::element_type;  // data type pointed to
+
+// =====================================================================================================================
+// Types
+// =====================================================================================================================
+
+struct hash final
+{
+    using is_transparent = void;  // enable heterogeneous lookup
+
+    using is_avalanching = std::true_type;  // do not use post-mixing
+
+    template <class Ptr>
+        requires std::is_same_v<Ptr, boost::intrusive_ptr<pointee<Ptr>>> ||
+                 std::is_same_v<Ptr, std::unique_ptr<pointee<Ptr>>> || std::is_pointer_v<Ptr>
+    auto operator()(Ptr const& ptr) const noexcept(std::is_nothrow_invocable_v<pointee<Ptr> const&>)
+    {
+        assert(ptr);
+
+        return (*ptr)();  // using the key from ptr
+    }
+};
+
+struct equal final
+{
+    using is_transparent = void;
+
+    template <typename Ptr, typename StoredPtr>
+        requires (std::is_same_v<Ptr, boost::intrusive_ptr<pointee<Ptr>>> ||
+                  std::is_same_v<Ptr, std::unique_ptr<pointee<Ptr>>> || std::is_pointer_v<Ptr>) &&
+                 (std::is_same_v<StoredPtr, boost::intrusive_ptr<pointee<StoredPtr>>> ||
+                  std::is_same_v<StoredPtr, std::unique_ptr<pointee<StoredPtr>>> || std::is_pointer_v<StoredPtr>)
+    auto operator()(Ptr const& needle, StoredPtr const& val) const
+        noexcept(is_nothrow_comparable<pointee<Ptr>, pointee<StoredPtr>>)
+    {
+        assert(needle);
+        assert(val);
+
+        return *needle == *val;  // typeid(decltype(needle)).name()
+    }
+};
 
 // =====================================================================================================================
 // Functions
 // =====================================================================================================================
 
-template <typename T, typename Callable>
-    requires std::integral<T>
-auto inline parallel_for(T const a, T const b, Callable func)
+inline auto heap_mem_limit() noexcept  // in bytes
 {
-    assert(b >= a);
-
-    auto static const n = std::thread::hardware_concurrency();
-
-    assert(n > 0);
-
-    auto const slice = static_cast<std::int32_t>(std::ceil((b - a) / static_cast<float>(n)));
-
-    auto const run = [&func](auto const a2, auto const b2) {
-        for (auto i = a2; i < b2; ++i)
-        {
-            func(i);
-        }
-    };
-
-    // create pool and run jobs
-    std::vector<std::thread> pool;
-    pool.reserve(n);
-    auto a2 = a;
-    auto b2 = std::min(a + slice, b);
-    for (auto i = 0; i + 1 < static_cast<std::int32_t>(n) && a2 < b; ++i)
+#if defined(__APPLE__) || defined(__linux__)
+    rlimit res{};  // resource
+    if (getrlimit(RLIMIT_DATA, &res) == 0 && res.rlim_cur != RLIM_INFINITY)
     {
-        pool.emplace_back(run, a2, b2);
-
-        a2 = b2;
-        b2 = std::min(a2 + slice, b);
+        return static_cast<std::size_t>(res.rlim_cur);  // soft data limit
     }
-    if (a2 < b)
+#elifdef _WIN32
+    MEMORYSTATUSEX status;
+    status.dwLength = sizeof(status);
+    if (GlobalMemoryStatusEx(&status))
     {
-        pool.emplace_back(run, a2, b);
+        return static_cast<std::size_t>(status.ullTotalPhys);  // since there is no equivalent to getrlimit
+    }
+#endif
+    return 4uz << 30uz;  // unsupported platform or fallback
+}
+
+inline auto parallel_for(std::integral auto const a, std::integral auto const b, auto func)  // [a, b)
+{
+    assert(b > a);
+
+    // determine workload
+    static auto const n = std::max(1u, std::thread::hardware_concurrency());
+    auto const total = b - a;  // number of iterations
+    auto const workers = std::min<decltype(total)>(n, total);
+    auto const slice = (total + workers - 1) / workers;  // How many iterations should each thread run?
+
+    std::vector<std::thread> pool;
+    pool.reserve(workers);
+
+    for (std::remove_const_t<decltype(workers)> i = 0; i < workers; ++i)
+    {  // run job
+        auto const begin = a + i * slice;
+        auto const end = std::min(begin + slice, b);
+        pool.emplace_back([begin, end, &func]() {
+            for (auto j = begin; j < end; ++j)
+            {
+                func(j);
+            }
+        });
     }
 
     for (auto& thread : pool)
     {
         thread.join();
     }
-}
-
-auto inline replace_all(std::string& str, std::string_view from, std::string_view to)
-{
-    assert(!from.empty());
-
-    std::size_t pos{};
-    while ((pos = str.find(from, pos)) != std::string::npos)
-    {
-        str.replace(pos, from.length(), to);
-
-        pos += to.length();  // "from" can be a substring of "to"
-    }
-
-    return str;
 }
 
 }  // namespace freddy::detail

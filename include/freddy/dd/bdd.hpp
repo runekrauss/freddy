@@ -4,41 +4,47 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/manager.hpp"  // detail::manager
-#include "freddy/op/antiv.hpp"        // op::antiv
-#include "freddy/op/conj.hpp"         // op::conj
-#include "freddy/op/ite.hpp"          // op::ite
-#include "freddy/op/sharpsat.hpp"     // op::sharpsat
+#include "freddy/config.hpp"                     // config
+#include "freddy/detail/manager.hpp"             // detail::manager
+#include "freddy/detail/node.hpp"                // detail::edge_ptr
+#include "freddy/detail/operation/antiv.hpp"     // detail::antiv
+#include "freddy/detail/operation/conj.hpp"      // detail::conj
+#include "freddy/detail/operation/ite.hpp"       // detail::ite
+#include "freddy/detail/operation/sharpsat.hpp"  // detail::sharpsat
+#include "freddy/expansion.hpp"                  // expansion::S
 
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
-#include <cmath>        // std::pow
+#include <cstdint>      // std::int32_t
 #include <iostream>     // std::cout
-#include <iterator>     // std::back_inserter
 #include <ostream>      // std::ostream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
-#include <utility>      // std::move
+#include <utility>      // std::forward
 #include <vector>       // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::dd
+namespace freddy
 {
+
+// =====================================================================================================================
+// Forwards
+// =====================================================================================================================
+
+class bdd_manager;
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-class bdd_manager;
-
-class bdd  // binary decision diagram
+class bdd final  // binary decision diagram
 {
   public:
-    bdd() = default;  // so that BDDs initially work with standard containers
+    bdd() noexcept = default;  // enable default BDD construction for compatibility with standard containers
 
     auto operator~() const;
 
@@ -48,81 +54,98 @@ class bdd  // binary decision diagram
 
     auto operator^=(bdd const&) -> bdd&;
 
-    auto friend operator&(bdd lhs, bdd const& rhs)
+    friend auto operator&(bdd lhs, bdd const& rhs)
     {
         lhs &= rhs;
         return lhs;
     }
 
-    auto friend operator|(bdd lhs, bdd const& rhs)
+    friend auto operator|(bdd lhs, bdd const& rhs)
     {
         lhs |= rhs;
         return lhs;
     }
 
-    auto friend operator^(bdd lhs, bdd const& rhs)
+    friend auto operator^(bdd lhs, bdd const& rhs)
     {
         lhs ^= rhs;
         return lhs;
     }
 
-    auto friend operator==(bdd const& lhs, bdd const& rhs) noexcept
+    friend auto operator==(bdd const& lhs, bdd const& rhs) noexcept
     {
         assert(lhs.mgr == rhs.mgr);  // check for the same BDD manager
 
         return lhs.f == rhs.f;
     }
 
-    auto friend operator!=(bdd const& lhs, bdd const& rhs) noexcept
+    friend auto operator!=(bdd const& lhs, bdd const& rhs) noexcept
     {
         return !(lhs == rhs);
     }
 
-    auto friend operator<<(std::ostream& s, bdd const& g) -> std::ostream&
+    friend auto operator<<(std::ostream& os, bdd const& g) -> std::ostream&
     {
-        s << "Wrapper: " << g.f;
-        s << "\nBDD manager: " << g.mgr;
-        return s;
+        os << "BDD handle: " << g.f << '\n';
+        os << "BDD manager: " << g.mgr;
+        return os;
     }
 
     [[nodiscard]] auto same_node(bdd const& g) const noexcept
     {
         assert(f);
+        assert(mgr == g.mgr);  // BDD g is valid in any case
 
-        return f->v == g.f->v;
+        return f->ch() == g.f->ch();
     }
 
     [[nodiscard]] auto is_complemented() const noexcept
     {
         assert(f);
 
-        return f->w;
+        return f->weight();
     }
 
     [[nodiscard]] auto is_const() const noexcept
     {
         assert(f);
 
-        return f->v->is_const();
+        return f->is_const();
+    }
+
+    [[nodiscard]] auto var() const noexcept
+    {
+        assert(!is_const());
+
+        return f->ch()->br().x;
+    }
+
+    [[nodiscard]] auto high() const noexcept
+    {
+        assert(mgr);
+        assert(!is_const());
+
+        return bdd{f->ch()->br().hi, mgr};
+    }
+
+    [[nodiscard]] auto low() const noexcept
+    {
+        assert(mgr);
+        assert(!is_const());
+
+        return bdd{f->ch()->br().lo, mgr};
     }
 
     [[nodiscard]] auto is_zero() const noexcept;
 
     [[nodiscard]] auto is_one() const noexcept;
 
-    [[nodiscard]] auto var() const
-    {
-        assert(!is_const());
+    template <typename TruthValue, typename... TruthValues>
+    auto fn(TruthValue, TruthValues...) const;
 
-        return f->v->br().x;
-    }
+    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
 
-    [[nodiscard]] auto high() const;
-
-    [[nodiscard]] auto low() const;
-
-    template <typename T, typename... Ts>
-    auto fn(T, Ts...) const;
+    [[nodiscard]] auto ite(bdd const&, bdd const&) const;
 
     [[nodiscard]] auto size() const;
 
@@ -130,163 +153,190 @@ class bdd  // binary decision diagram
 
     [[nodiscard]] auto path_count() const noexcept;
 
-    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
+    [[nodiscard]] auto is_essential(var_index) const noexcept;
 
-    [[nodiscard]] auto has_const(bool) const;
+    [[nodiscard]] auto compose(var_index, bdd const&) const;
 
-    [[nodiscard]] auto is_essential(std::int32_t) const;
+    [[nodiscard]] auto restr(var_index, bool) const;
 
-    [[nodiscard]] auto ite(bdd const&, bdd const&) const;
+    [[nodiscard]] auto exist(var_index) const;
 
-    [[nodiscard]] auto compose(std::int32_t, bdd const&) const;
-
-    [[nodiscard]] auto restr(std::int32_t, bool) const;
-
-    [[nodiscard]] auto exist(std::int32_t) const;
-
-    [[nodiscard]] auto forall(std::int32_t) const;
+    [[nodiscard]] auto forall(var_index) const;
 
     [[nodiscard]] auto sharpsat() const;
 
-    auto print(std::ostream& = std::cout) const;
+    auto dump_dot(std::ostream& = std::cout) const;
 
   private:
     friend bdd_manager;
 
     // wrapper is controlled by its BDD manager
-    bdd(std::shared_ptr<detail::edge<bool, bool>> f, bdd_manager* const mgr) :
+    bdd(detail::edge_ptr<bool, bool> f, bdd_manager* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
         assert(this->f);
-        assert(mgr);
+        assert(this->mgr);
     }
 
-    std::shared_ptr<detail::edge<bool, bool>> f;  // DD handle
+    detail::edge_ptr<bool, bool> f;  // BDD handle
 
-    bdd_manager* mgr{};  // must be destroyed after this wrapper
+    bdd_manager* mgr{};  // must be destroyed after this BDD wrapper
 };
 
-class bdd_manager : public detail::manager<bool, bool>
+class bdd_manager final : public detail::manager<bool, bool>
 {
   public:
-    friend bdd;
-
-    bdd_manager() :
-            manager{tmls()}
+    explicit bdd_manager(struct config const cfg = {}) :
+            // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) because BDD terminals are intrusive
+            manager{tmls(), cfg}
     {}
 
-    auto var(std::string_view l = {})
+    auto var(std::string_view lbl = {})
     {
-        return bdd{make_var(expansion::S, l), this};
+        return bdd{manager::var(expansion::S, lbl), this};
     }
 
-    auto var(std::int32_t const i) noexcept
+    auto var(var_index const x) noexcept
     {
-        assert(i >= 0);
-        assert(i < var_count());
-
-        return bdd{vars[i], this};
+        return bdd{manager::var(x), this};
     }
 
     auto zero() noexcept
     {
-        return bdd{consts[0], this};
+        return bdd{constant(0), this};
     }
 
     auto one() noexcept
     {
-        return bdd{consts[1], this};
+        return bdd{constant(1), this};
     }
 
     [[nodiscard]] auto size(std::vector<bdd> const& fs) const
     {
-        return node_count(transform(fs));
+        return manager::size(transform(fs));
     }
 
     [[nodiscard]] auto depth(std::vector<bdd> const& fs) const
     {
         assert(!fs.empty());
 
-        return longest_path(transform(fs));
+        return manager::depth(transform(fs));
     }
 
-    auto print(std::vector<bdd> const& fs, std::vector<std::string> const& outputs = {},
-               std::ostream& s = std::cout) const
+    auto dump_dot(std::vector<bdd> const& fs, std::vector<std::string> const& outputs = {},
+                  std::ostream& os = std::cout) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        to_dot(transform(fs), outputs, s);
+        manager::dump_dot(transform(fs), outputs, os);
     }
 
   private:
-    auto static tmls() -> std::array<edge_ptr, 2>
-    {
-        // choose the 0-leaf due to complemented edges in order to ensure canonicity
-        auto const leaf = std::make_shared<detail::node<bool, bool>>(false);
+    friend bdd;
 
-        return std::array<edge_ptr, 2>{std::make_shared<detail::edge<bool, bool>>(false, leaf),
-                                       std::make_shared<detail::edge<bool, bool>>(true, leaf)};
+    // NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks)
+    static auto tmls() -> std::array<edge_ptr, 2>
+    {
+        node_ptr const leaf{new node{false}};  // use the 0-leaf to support complemented edges and ensure canonicity
+        return {edge_ptr{new edge{false, leaf}}, edge_ptr{new edge{true, leaf}}};
+    }
+    // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
+
+    static auto transform(std::vector<bdd> const& gs) -> std::vector<edge_ptr>
+    {
+        std::vector<edge_ptr> fs(gs.size());
+        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
+        return fs;
     }
 
-    auto static transform(std::vector<bdd> const& fs) -> std::vector<edge_ptr>
+    auto antiv(edge_ptr const& f, edge_ptr const& g)
     {
-        std::vector<edge_ptr> gs;
-        gs.reserve(fs.size());
-        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
+        assert(f);
+        assert(g);
 
-        return gs;
+        if (f == constant(0))
+        {
+            return g;
+        }
+        if (g == constant(0))
+        {
+            return f;
+        }
+        if (f == constant(1))
+        {
+            return complement(g);
+        }
+        if (g == constant(1))
+        {
+            return complement(f);
+        }
+        if (f == g)
+        {
+            return constant(0);
+        }
+        if (f == complement(g))
+        {
+            return constant(1);
+        }
+
+        detail::antiv op{f, g};
+        if (auto const* const entry = cached(op))
+        {
+            return entry->get_result();
+        }
+
+        auto const x = top_var(f, g);
+
+        op.set_result(branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false))));
+        return cache(std::move(op))->get_result();
     }
 
     auto sharpsat(edge_ptr const& f)
     {
         assert(f);
 
-        if (f->v->is_const())
+        if (f->is_const())
         {
-            return f == consts[0] ? 0 : std::pow(2, var_count());
+            return f == constant(0) ? 0 : static_cast<double>(1uz << var_count());  // 2^var_count()
         }
 
-        op::sharpsat op{f};
-        if (auto const* const ent = cached(op))
+        detail::sharpsat op{f};
+        if (auto const* const entry = cached(op))
         {
-            return ent->r;
+            return entry->get_result();
         }
 
-        auto count = (sharpsat(f->v->br().hi) + sharpsat(f->v->br().lo)) / 2;
-        if (f->w)
+        auto count = (sharpsat(f->ch()->br().hi) + sharpsat(f->ch()->br().lo)) / 2;
+        if (f->weight())
         {  // complemented edge
-            count = std::pow(2, var_count()) - count;
+            count = static_cast<double>(1uz << var_count()) - count;
         }
 
-        op.r = count;
-        return cache(std::move(op))->r;
+        op.set_result(count);
+        return cache(std::move(op))->get_result();
     }
 
     auto simplify(edge_ptr const& f, edge_ptr& g, edge_ptr& h) const noexcept
     {
-        assert(f);
-        assert(g);
-        assert(h);
-
         if (f == g)
         {  // ite(f, f, h) => ite(f, 1, h)
-            g = consts[1];
+            g = constant(1);
             return 1;
         }
         if (f == h)
         {  // ite(f, g, f) => ite(f, g, 0)
-            h = consts[0];
+            h = constant(0);
             return 2;
         }
-        if (f->v == h->v && !(f->w == h->w))
+        if (f->ch() == h->ch() && f->weight() != h->weight())
         {  // ite(f, g, ~f) => ite(f, g, 1)
-            h = consts[1];
+            h = constant(1);
             return 3;
         }
-        if (f->v == g->v && !(f->w == g->w))
+        if (f->ch() == g->ch() && f->weight() != g->weight())
         {  // ite(f, ~f, h) => ite(f, 0, h)
-            g = consts[0];
+            g = constant(0);
             return 4;
         }
         return 0;
@@ -294,49 +344,120 @@ class bdd_manager : public detail::manager<bool, bool>
 
     auto std_triple(std::int32_t const simpl, edge_ptr& f, edge_ptr& g, edge_ptr& h)
     {
-        assert(f);
-        assert(!f->v->is_const());
-        assert(g);
-        assert(h);
-
         switch (simpl)
         {
             case 1:
-                assert(!h->v->is_const());
+                assert(!h->is_const());
 
-                if (var2lvl[f->v->br().x] >= var2lvl[h->v->br().x])
+                if (lvl_ge(f->ch()->br().x, h->ch()->br().x))
                 {  // ite(f, 1, h) == ite(h, 1, f)
                     std::swap(f, h);
                 }
                 break;
             case 2:
-                assert(!g->v->is_const());
+                assert(!g->is_const());
 
-                if (var2lvl[f->v->br().x] >= var2lvl[g->v->br().x])
+                if (lvl_ge(f->ch()->br().x, g->ch()->br().x))
                 {  // ite(f, g, 0) == ite(g, f, 0)
                     std::swap(f, g);
                 }
                 break;
             case 3:
-                assert(!g->v->is_const());
+                assert(!g->is_const());
 
-                if (var2lvl[f->v->br().x] >= var2lvl[g->v->br().x])
+                if (lvl_ge(f->ch()->br().x, g->ch()->br().x))
                 {  // ite(f, g, 1) == ite(~g, ~f, 1)
-                    f = complement(g);
-                    g = complement(f);
+                    std::swap(f, g);
+
+                    f = complement(f);
+                    g = complement(g);
                 }
                 break;
             case 4:
-                assert(!h->v->is_const());
+                assert(!h->is_const());
 
-                if (var2lvl[f->v->br().x] >= var2lvl[h->v->br().x])
+                if (lvl_ge(f->ch()->br().x, h->ch()->br().x))
                 {  // ite(f, 0, h) == ite(~h, 0, ~f)
-                    f = complement(h);
-                    h = complement(f);
+                    std::swap(f, h);
+
+                    f = complement(f);
+                    h = complement(h);
                 }
                 break;
-            default: assert(false);
+            default: assert(false); std::unreachable();
         }
+    }
+
+    [[nodiscard]] auto agg(bool const& w, bool const& val) const noexcept -> bool override
+    {
+        return w != val;  // XOR
+    }
+
+    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
+    {
+        assert(x < var_count());
+        assert(hi);
+        assert(lo);
+
+        if (hi == lo)  // redundancy rule
+        {
+            return hi;  // without limitation of generality
+        }
+
+        // normalization
+        auto const w = lo->weight();
+        return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
+    }
+
+    [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
+    {
+        return w1 != w2;
+    }
+
+    auto complement(edge_ptr const& f) -> edge_ptr override  // O(1) instead of O(n) where n is the number of nodes
+    {
+        assert(f);
+
+        return f->weight() ? uedge(false, f->ch()) : uedge(true, f->ch());
+    }
+
+    auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
+    {
+        assert(f);
+        assert(g);
+
+        if (f == constant(0) || g == constant(0))
+        {  // something conjugated with 0 is 0
+            return constant(0);
+        }
+        if (f == constant(1))
+        {  // 1g == g
+            return g;
+        }
+        if (g == constant(1))
+        {  // f1 == f
+            return f;
+        }
+        if (f->ch() == g->ch())
+        {  // check for complement
+            return f->weight() == g->weight() ? f : constant(0);
+        }
+
+        detail::conj op{f, g};
+        if (auto const* const entry = cached(op))
+        {
+            return entry->get_result();
+        }
+
+        auto const x = top_var(f, g);
+
+        op.set_result(branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false))));
+        return cache(std::move(op))->get_result();
+    }
+
+    auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
+    {
+        return complement(conj(complement(f), complement(g)));
     }
 
     auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr override
@@ -348,23 +469,19 @@ class bdd_manager : public detail::manager<bool, bool>
         auto const ret = simplify(f, g, h);
 
         // terminal cases
-        if (f == consts[0])
+        if (f == constant(0))
         {
             return h;
         }
-        if (f == consts[1])
+        if (f == constant(1) || g == h)
         {
             return g;
         }
-        if (g == h)
-        {
-            return g;
-        }
-        if (h == consts[0] && g == consts[1])
+        if (h == constant(0) && g == constant(1))
         {
             return f;
         }
-        if (g == consts[0] && h == consts[1])
+        if (g == constant(0) && h == constant(1))
         {
             return complement(f);
         }
@@ -374,154 +491,32 @@ class bdd_manager : public detail::manager<bool, bool>
             std_triple(ret, f, g, h);
         }
 
-        op::ite op{f, g, h};
-        if (auto const* const ent = cached(op))
+        detail::ite op{f, g, h};
+        if (auto const* const entry = cached(op))
         {
-            return ent->r;
+            return entry->get_result();
         }
 
-        auto const x = f->v->br().x == top_var(f, g) ? top_var(f, h) : top_var(g, h);
+        auto const x = f->ch()->br().x == top_var(f, g) ? top_var(f, h) : top_var(g, h);
 
-        op.r = make_branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
-                           ite(cof(f, x, false), cof(g, x, false), cof(h, x, false)));
-        return cache(std::move(op))->r;
-    }
-
-    auto antiv(edge_ptr const& f, edge_ptr const& g)
-    {
-        assert(f);
-        assert(g);
-
-        if (f == consts[0])
-        {
-            return g;
-        }
-        if (g == consts[0])
-        {
-            return f;
-        }
-        if (f == consts[1])
-        {
-            return complement(g);
-        }
-        if (g == consts[1])
-        {
-            return complement(f);
-        }
-        if (f == g)
-        {
-            return consts[0];
-        }
-        if (f == complement(g))
-        {
-            return consts[1];
-        }
-
-        op::antiv op{f, g};
-        if (auto const* const ent = cached(op))
-        {
-            return ent->r;
-        }
-
-        auto const x = top_var(f, g);
-
-        op.r = make_branch(x, antiv(cof(f, x, true), cof(g, x, true)), antiv(cof(f, x, false), cof(g, x, false)));
-        return cache(std::move(op))->r;
-    }
-
-    auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
-    {
-        assert(f);
-        assert(g);
-
-        return antiv(f, g);
-    }
-
-    [[nodiscard]] auto agg(bool const& w, bool const& val) const noexcept -> bool override
-    {
-        return !(w == val);  // XOR
-    }
-
-    [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
-    {
-        return !(w1 == w2);
-    }
-
-    auto complement(edge_ptr const& f) -> edge_ptr override
-    {
-        assert(f);
-
-        return !f->w ? uedge(true, f->v) : uedge(false, f->v);
-    }
-
-    auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
-    {
-        assert(f);
-        assert(g);
-
-        if (f == consts[0] || g == consts[0])
-        {  // something conjugated with 0 is 0
-            return consts[0];
-        }
-        if (f == consts[1])
-        {  // 1g == g
-            return g;
-        }
-        if (g == consts[1])
-        {  // f1 == f
-            return f;
-        }
-        if (f->v == g->v)
-        {  // check for complement
-            return f->w == g->w ? f : consts[0];
-        }
-
-        op::conj op{f, g};
-        if (auto const* const ent = cached(op))
-        {
-            return ent->r;
-        }
-
-        auto const x = top_var(f, g);
-
-        op.r = make_branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)));
-        return cache(std::move(op))->r;
-    }
-
-    auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
-    {
-        assert(f);
-        assert(g);
-
-        return complement(conj(complement(f), complement(g)));
-    }
-
-    auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
-    {
-        assert(x < var_count());
-        assert(hi);
-        assert(lo);
-
-        if (hi == lo)  // redundancy rule
-        {
-            return hi;  // without limitation of generality
-        }
-
-        auto const w = lo->w;
-        return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
+        op.set_result(branch(x, ite(cof(f, x, true), cof(g, x, true), cof(h, x, true)),
+                             ite(cof(f, x, false), cof(g, x, false), cof(h, x, false))));
+        return cache(std::move(op))->get_result();
     }
 
     [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
     {
-        return !(val1 == val2);
+        return val1 != val2;
     }
 
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
-        assert(f);
-        assert(g);
-
         return conj(f, g);
+    }
+
+    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
+    {
+        return antiv(f, g);
     }
 
     [[nodiscard]] auto regw() const noexcept -> bool override
@@ -530,122 +525,73 @@ class bdd_manager : public detail::manager<bool, bool>
     }
 };
 
-auto inline bdd::operator~() const
+inline auto bdd::operator~() const
 {
     assert(mgr);
 
     return bdd{mgr->complement(f), mgr};
 }
 
-auto inline bdd::operator&=(bdd const& rhs) -> bdd&
+inline auto bdd::operator&=(bdd const& rhs) -> bdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
 
     f = mgr->conj(f, rhs.f);
+
     return *this;
 }
 
-auto inline bdd::operator|=(bdd const& rhs) -> bdd&
+inline auto bdd::operator|=(bdd const& rhs) -> bdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
 
     f = mgr->disj(f, rhs.f);
+
     return *this;
 }
 
-auto inline bdd::operator^=(bdd const& rhs) -> bdd&
+inline auto bdd::operator^=(bdd const& rhs) -> bdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
 
     f = mgr->antiv(f, rhs.f);
+
     return *this;
 }
 
-auto inline bdd::is_zero() const noexcept
+inline auto bdd::is_zero() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->zero();
 }
 
-auto inline bdd::is_one() const noexcept
+inline auto bdd::is_one() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->one();
 }
 
-auto inline bdd::high() const
+template <typename TruthValue, typename... TruthValues>
+inline auto bdd::fn(TruthValue const a, TruthValues... as) const
 {
     assert(mgr);
-    assert(!f->v->is_const());
 
-    return bdd{f->v->br().hi, mgr};
+    return bdd{mgr->fn(f, a, std::forward<TruthValues>(as)...), mgr};
 }
 
-auto inline bdd::low() const
+inline auto bdd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
-    assert(!f->v->is_const());
-
-    return bdd{f->v->br().lo, mgr};
-}
-
-template <typename T, typename... Ts>
-auto inline bdd::fn(T const a, Ts... args) const
-{
-    assert(mgr);
-
-    return bdd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
-}
-
-auto inline bdd::size() const
-{
-    assert(mgr);
-
-    return mgr->size({*this});
-}
-
-auto inline bdd::depth() const
-{
-    assert(mgr);
-
-    return mgr->depth({*this});
-}
-
-auto inline bdd::path_count() const noexcept
-{
-    assert(mgr);
-
-    return mgr->path_count(f);
-}
-
-auto inline bdd::eval(std::vector<bool> const& as) const noexcept
-{
-    assert(mgr);
-    assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
 
     return mgr->eval(f, as);
 }
 
-auto inline bdd::has_const(bool const c) const
-{
-    assert(mgr);
-
-    return mgr->has_const(f, c);
-}
-
-auto inline bdd::is_essential(std::int32_t const x) const
-{
-    assert(mgr);
-
-    return mgr->is_essential(f, x);
-}
-
-auto inline bdd::ite(bdd const& g, bdd const& h) const
+inline auto bdd::ite(bdd const& g, bdd const& h) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -654,7 +600,35 @@ auto inline bdd::ite(bdd const& g, bdd const& h) const
     return bdd{mgr->ite(f, g.f, h.f), mgr};
 }
 
-auto inline bdd::compose(std::int32_t const x, bdd const& g) const
+inline auto bdd::size() const
+{
+    assert(mgr);
+
+    return mgr->size({*this});
+}
+
+inline auto bdd::depth() const
+{
+    assert(mgr);
+
+    return mgr->depth({*this});
+}
+
+inline auto bdd::path_count() const noexcept
+{
+    assert(mgr);
+
+    return mgr->path_count(f);
+}
+
+inline auto bdd::is_essential(var_index const x) const noexcept
+{
+    assert(mgr);
+
+    return mgr->is_essential(f, x);
+}
+
+inline auto bdd::compose(var_index const x, bdd const& g) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -662,39 +636,39 @@ auto inline bdd::compose(std::int32_t const x, bdd const& g) const
     return bdd{mgr->compose(f, x, g.f), mgr};
 }
 
-auto inline bdd::restr(std::int32_t const x, bool const a) const
+inline auto bdd::restr(var_index const x, bool const a) const
 {
     assert(mgr);
 
     return bdd{mgr->restr(f, x, a), mgr};
 }
 
-auto inline bdd::exist(std::int32_t const x) const
+inline auto bdd::exist(var_index const x) const
 {
     assert(mgr);
 
     return bdd{mgr->exist(f, x), mgr};
 }
 
-auto inline bdd::forall(std::int32_t const x) const
+inline auto bdd::forall(var_index const x) const
 {
     assert(mgr);
 
     return bdd{mgr->forall(f, x), mgr};
 }
 
-auto inline bdd::sharpsat() const
+inline auto bdd::sharpsat() const
 {
     assert(mgr);
 
     return mgr->sharpsat(f);
 }
 
-auto inline bdd::print(std::ostream& s) const
+inline auto bdd::dump_dot(std::ostream& os) const
 {
     assert(mgr);
 
-    mgr->print({*this}, {}, s);
+    mgr->dump_dot({*this}, {}, os);
 }
 
-}  // namespace freddy::dd
+}  // namespace freddy

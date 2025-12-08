@@ -1,33 +1,46 @@
 #pragma once
 
 // *********************************************************************************************************************
+// Includes
+// *********************************************************************************************************************
+
+#include <cstddef>      // std::size_t
+#include <cstdint>      // std::uint32_t
+#include <optional>     // std::nullopt
+#include <type_traits>  // std::is_unsigned_v
+
+// *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::config
+namespace freddy
 {
 
 // =====================================================================================================================
-// Variables
+// Aliases
 // =====================================================================================================================
 
-// ---------------------------------------------------------------------------------------------------------------------
-// Sizes
-// ---------------------------------------------------------------------------------------------------------------------
+using var_index = std::uint32_t;  // variable index used to label internal nodes
 
-auto inline ct_size = 262147;  // minimum capacity of the computed table (operation cache)
+static_assert(std::is_integral_v<var_index> && std::is_unsigned_v<var_index>, "var_index must be unsigned");
 
-auto inline ut_size = 257;  // minimum capacity of a unique table (per DD level)
+// =====================================================================================================================
+// Types
+// =====================================================================================================================
 
-auto inline vl_size = 32;  // minimum capacity of the variable list
+struct config final
+{
+    std::size_t utable_size_hint{1'679};  // minimum capacity of each UT per DD level
 
-// ---------------------------------------------------------------------------------------------------------------------
-// Factors
-// ---------------------------------------------------------------------------------------------------------------------
+    std::size_t cache_size_hint{215'039};  // minimum capacity of the operation cache (a.k.a. CT)
 
-// percentage of how many nodes/edges must be deleted so that UTs are halved instead of doubled
-auto inline dead_factor = 0.75f;
+    var_index init_var_cap{16};  // initial capacity for variables, which is subsequently doubled on demand
 
-auto inline growth_factor = 1.2f;  // permitted growth of nodes during variable reordering
+    float max_node_growth{1.2f};  // permitted node growth factor during variable reordering
 
-}  // namespace freddy::config
+    std::optional<std::size_t> heap_mem_limit{std::nullopt};  // heap usage in bytes before GC (auto-estimated if unset)
+};
+
+static_assert(std::is_trivially_copyable_v<config>, "config must be trivially copyable");
+
+}  // namespace freddy

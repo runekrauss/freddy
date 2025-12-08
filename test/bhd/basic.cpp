@@ -4,11 +4,10 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/bhd.hpp>  // dd::bhd_manager
+#include <freddy/config.hpp>  // var_index
+#include <freddy/dd/bhd.hpp>  // bhd_manager
 
-#ifndef NDEBUG
-#include <iostream>  // std::cout
-#endif
+#include <sstream>  // std::ostringstream
 #include <utility>  // std::pair
 #include <vector>   // std::vector
 
@@ -24,7 +23,7 @@ using namespace freddy;
 
 TEST_CASE("BHD is constructed", "[basic]")
 {
-    dd::bhd_manager mgr;
+    bhd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation uses complemented edges")
@@ -38,17 +37,6 @@ TEST_CASE("BHD is constructed", "[basic]")
         CHECK(f.fn(false).is_one());
     }
 
-    SECTION("Combination by disjunction")
-    {
-        auto const f = x0 | x1;
-
-        CHECK(f == x0.ite(mgr.one(), x1));
-        CHECK_FALSE(f.eval({false, false}).value());
-        CHECK(f.eval({false, true}).value());
-        CHECK(f.eval({true, false}).value());
-        CHECK(f.eval({true, true}).value());
-    }
-
     SECTION("Combination by conjunction")
     {
         auto const f = x0 & x1;
@@ -57,6 +45,17 @@ TEST_CASE("BHD is constructed", "[basic]")
         CHECK_FALSE(f.eval({false, false}).value());
         CHECK_FALSE(f.eval({false, true}).value());
         CHECK_FALSE(f.eval({true, false}).value());
+        CHECK(f.eval({true, true}).value());
+    }
+
+    SECTION("Combination by disjunction")
+    {
+        auto const f = x0 | x1;
+
+        CHECK(f == x0.ite(mgr.one(), x1));
+        CHECK_FALSE(f.eval({false, false}).value());
+        CHECK(f.eval({false, true}).value());
+        CHECK(f.eval({true, false}).value());
         CHECK(f.eval({true, true}).value());
     }
 
@@ -72,28 +71,24 @@ TEST_CASE("BHD is constructed", "[basic]")
         CHECK_FALSE(f.eval({true, true}).value());
     }
 
-    SECTION("EXP maintains its level")
+    SECTION("Computing with the expansion node")
+    {
+        CHECK((mgr.exp() & ~mgr.exp()) == mgr.exp());
+    }
+
+    SECTION("Expansion node maintains its level")
     {
         auto const f = x0 & mgr.exp();
-#ifndef NDEBUG
-        std::cout << mgr << '\n';
-        std::cout << f << '\n';
-        f.print();
-#endif
+
         CHECK(f.high().is_exp());
         CHECK(f.low().is_zero());
         CHECK((f & x1) == f);
-    }
-
-    SECTION("Computing with EXP")
-    {
-        CHECK((mgr.exp() & ~mgr.exp()) == mgr.exp());
     }
 }
 
 TEST_CASE("BHD can be characterized", "[basic]")
 {
-    dd::bhd_manager mgr;
+    bhd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 | x1) & (x2 | mgr.exp());
 
@@ -109,22 +104,22 @@ TEST_CASE("BHD can be characterized", "[basic]")
         CHECK(f.has_const(true));
     }
 
-    SECTION("#Nodes is determined")
-    {
-        CHECK(mgr.node_count() == 9);
-    }
-
     SECTION("#Edges is determined")
     {
         CHECK(mgr.edge_count() == 16);
     }
 
-    SECTION("Nodes are counted")
+    SECTION("#Nodes is determined")
+    {
+        CHECK(mgr.node_count() == 9);
+    }
+
+    SECTION("Size is computed")
     {
         CHECK(f.size() == 5);
     }
 
-    SECTION("Longest path is computed")
+    SECTION("Depth is computed")
     {
         CHECK(f.depth() == 3);
     }
@@ -147,7 +142,7 @@ TEST_CASE("BHD can be characterized", "[basic]")
 
 TEST_CASE("BHD is substituted", "[basic]")
 {
-    dd::bhd_manager mgr;
+    bhd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 & x1) | ~(x2 ^ mgr.exp());
 
@@ -169,7 +164,7 @@ TEST_CASE("BHD is substituted", "[basic]")
         CHECK(f.restr(2, false).low().is_const());
     }
 
-    SECTION("Variable is removed by existential quantification")
+    SECTION("Variable is eliminated by existential quantification")
     {
         auto const g = f.exist(1);
 
@@ -178,7 +173,7 @@ TEST_CASE("BHD is substituted", "[basic]")
         CHECK(g.eval({true, true, true}).value());
     }
 
-    SECTION("Variable is removed by universal quantification")
+    SECTION("Variable is eliminated by universal quantification")
     {
         CHECK(f.forall(1) == ~(mgr.var(2) ^ mgr.exp()));
     }
@@ -186,9 +181,10 @@ TEST_CASE("BHD is substituted", "[basic]")
 
 TEST_CASE("BHD variable order is changeable", "[basic]")
 {
-    dd::bhd_manager mgr;
+    bhd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
     auto const f = (x0 & x1) | (x2 & x3) | mgr.exp();
+    mgr.config().max_node_growth = 2.0f;
 
     SECTION("Levels can be swapped")
     {
@@ -203,16 +199,12 @@ TEST_CASE("BHD variable order is changeable", "[basic]")
         CHECK_FALSE(f.eval({false, true, true, false}).has_value());
     }
 
-    SECTION("Variable reordering finds a minimum")
+    SECTION("Reordering finds a minimum")
     {
-        auto const ncnt_old = mgr.node_count();
-        auto const ecnt_old = mgr.edge_count();
-        auto const size_old = f.size();
+        auto const prev_size = f.size();
         mgr.reorder();
 
-        CHECK(ncnt_old > mgr.node_count());
-        CHECK(ecnt_old > mgr.edge_count());
-        CHECK(size_old > f.size());
+        CHECK(prev_size > f.size());
         CHECK(f.eval({true, false, true, false}).value());
         CHECK(f.eval({false, true, false, true}).value());
         CHECK_FALSE(f.eval({true, false, false, true}).has_value());
@@ -220,15 +212,32 @@ TEST_CASE("BHD variable order is changeable", "[basic]")
     }
 }
 
-TEST_CASE("BHD SAT is analyzed", "[basic]")
+TEST_CASE("BHD can be cleaned up", "[basic]")
 {
-    dd::bhd_manager mgr;
+    bhd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const f = mgr.var() & mgr.var() & mgr.var() & mgr.exp();
+    auto const prev_ecount = mgr.edge_count();
+    auto const prev_ncount = mgr.node_count();
+    mgr.gc();
+    std::ostringstream oss;
+    oss << mgr << "\n\n";
+    oss << f << "\n\n";
+    f.dump_dot(oss);
+    // std::cout << oss.str();
+
+    CHECK(prev_ecount > mgr.edge_count());
+    CHECK(prev_ncount > mgr.node_count());
+}
+
+TEST_CASE("BHD SAT can be utilized", "[basic]")
+{
+    bhd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 | x2) & (x1 | mgr.exp());
 
-    SECTION("Solutions are generated symbolically")
+    SECTION("Solutions are represented simultaneously")
     {
-        auto const sols = f.sat();
+        auto const sols = f.sat_solutions();
 
         REQUIRE(sols.size() == 2);
         CHECK(sols[0] == std::vector{false, true, true});
@@ -237,35 +246,37 @@ TEST_CASE("BHD SAT is analyzed", "[basic]")
 
     SECTION("Unit clauses are generated")
     {
-        auto const uclauses = f.uc();
+        auto const ucs = f.unit_clauses();
 
-        REQUIRE(uclauses.size() == 2);
-        CHECK(uclauses[0] == std::vector{std::pair{0, false}, std::pair{1, false}});
-        CHECK(uclauses[1] == std::vector{std::pair{0, true}, std::pair{1, false}});
+        REQUIRE(ucs.size() == 2);
+        CHECK(ucs[0] == std::vector{std::pair<var_index, bool>{0, false}, std::pair<var_index, bool>{1, false}});
+        CHECK(ucs[1] == std::vector{std::pair<var_index, bool>{0, true}, std::pair<var_index, bool>{1, false}});
     }
 }
 
-TEST_CASE("BHD heuristics restrict solution space", "[basic]")
+TEST_CASE("BHD heuristics restrict solution spaces", "[basic]")
 {
-    SECTION("Level heuristic introduces EXP")
+    SECTION("Level heuristic can create expansion paths")
     {
-        dd::bhd_manager mgr{dd::bhd_heuristic::LVL, 2};
-        auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var();
-        auto const f = x0 & x1 & x2 & x3;
+        bhd_manager mgr{bhd_heuristic::LEVEL, 2, {.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
+        auto const f = mgr.var() & mgr.var() & mgr.var() & mgr.var();
 
         CHECK(f.depth() == 2);
-        CHECK(f.has_const(true));
+        CHECK(f.has_exp());
         CHECK_FALSE(f.eval({false, false, false, false}).value());
     }
 
-    SECTION("Memory heuristic introduces EXP")
+    SECTION("Memory heuristic can create expansion paths")
     {
-        dd::bhd_manager mgr{dd::bhd_heuristic::MEM, 1};
-        auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var(), x4 = mgr.var(), x5 = mgr.var();
-        auto const f = x0 & x1 & x2 & x3 & x4 & x5;
+        bhd_manager mgr{bhd_heuristic::MEMORY,
+                        1'024,
+                        {.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 8}};
+        auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var(), x4 = mgr.var(), x5 = mgr.var(),
+                   x6 = mgr.var(), x7 = mgr.var();
+        auto const f = x0 & x1 & x2 & x3 & x4 & x5 & x6 & x7;
 
-        CHECK(f.depth() == 4);
-        CHECK(f.has_const(true));
-        CHECK_FALSE(f.eval(std::vector(6, true)).has_value());
+        CHECK(f.depth() == 6);
+        CHECK(f.has_exp());
+        CHECK_FALSE(f.eval(std::vector(mgr.var_count(), true)).has_value());
     }
 }

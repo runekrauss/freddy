@@ -4,42 +4,51 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/manager.hpp"  // detail::manager
-#include "freddy/op/conj.hpp"         // op::conj
-#include "freddy/op/repl.hpp"         // op::repl
+#include "freddy/config.hpp"                 // config
+#include "freddy/detail/manager.hpp"         // detail::manager
+#include "freddy/detail/node.hpp"            // detail::edge_ptr
+#include "freddy/detail/operation/conj.hpp"  // detail::conj
+#include "freddy/detail/operation/repl.hpp"  // detail::repl
+#include "freddy/expansion.hpp"              // expansion::S
+
+#include <boost/algorithm/string.hpp>  // boost::replace_all
 
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cstddef>      // std::size_t
+#include <cstdint>      // std::uint8_t
 #include <functional>   // std::function
 #include <iostream>     // std::cout
-#include <iterator>     // std::back_inserter
 #include <optional>     // std::optional
 #include <ostream>      // std::ostream
 #include <sstream>      // std::ostringstream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
-#include <utility>      // std::move
+#include <utility>      // std::pair
 #include <vector>       // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::dd
+namespace freddy
 {
+
+// =====================================================================================================================
+// Forwards
+// =====================================================================================================================
+
+class bhd_manager;
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-class bhd_manager;
-
-class bhd  // binary hybrid diagram
+class bhd final  // binary hybrid diagram between BDD and SAT
 {
   public:
-    bhd() = default;  // so that BHDs initially work with standard containers
+    bhd() noexcept = default;  // enable default BHD construction for compatibility with standard containers
 
     auto operator~() const;
 
@@ -49,83 +58,100 @@ class bhd  // binary hybrid diagram
 
     auto operator^=(bhd const&) -> bhd&;
 
-    auto friend operator&(bhd lhs, bhd const& rhs)
+    friend auto operator&(bhd lhs, bhd const& rhs)
     {
         lhs &= rhs;
         return lhs;
     }
 
-    auto friend operator|(bhd lhs, bhd const& rhs)
+    friend auto operator|(bhd lhs, bhd const& rhs)
     {
         lhs |= rhs;
         return lhs;
     }
 
-    auto friend operator^(bhd lhs, bhd const& rhs)
+    friend auto operator^(bhd lhs, bhd const& rhs)
     {
         lhs ^= rhs;
         return lhs;
     }
 
-    auto friend operator==(bhd const& lhs, bhd const& rhs) noexcept
+    friend auto operator==(bhd const& lhs, bhd const& rhs) noexcept
     {
         assert(lhs.mgr == rhs.mgr);  // check for the same BHD manager
 
         return lhs.f == rhs.f;
     }
 
-    auto friend operator!=(bhd const& lhs, bhd const& rhs) noexcept
+    friend auto operator!=(bhd const& lhs, bhd const& rhs) noexcept
     {
         return !(lhs == rhs);
     }
 
-    auto friend operator<<(std::ostream& s, bhd const& g) -> std::ostream&
+    friend auto operator<<(std::ostream& os, bhd const& g) -> std::ostream&
     {
-        s << "Wrapper: " << g.f;
-        s << "\nBHD manager: " << g.mgr;
-        return s;
+        os << "BHD handle: " << g.f << '\n';
+        os << "BHD manager: " << g.mgr;
+        return os;
     }
 
     [[nodiscard]] auto same_node(bhd const& g) const noexcept
     {
         assert(f);
+        assert(mgr == g.mgr);  // BHD g is valid in any case
 
-        return f->v == g.f->v;
+        return f->ch() == g.f->ch();
     }
 
     [[nodiscard]] auto is_complemented() const noexcept
     {
         assert(f);
 
-        return f->w;
+        return f->weight();
     }
 
     [[nodiscard]] auto is_const() const noexcept
     {
         assert(f);
 
-        return f->v->is_const();
+        return f->is_const();
+    }
+
+    [[nodiscard]] auto var() const noexcept
+    {
+        assert(!is_const());
+
+        return f->ch()->br().x;
+    }
+
+    [[nodiscard]] auto high() const noexcept
+    {
+        assert(mgr);
+        assert(!is_const());
+
+        return bhd{f->ch()->br().hi, mgr};
+    }
+
+    [[nodiscard]] auto low() const noexcept
+    {
+        assert(mgr);
+        assert(!is_const());
+
+        return bhd{f->ch()->br().lo, mgr};
     }
 
     [[nodiscard]] auto is_zero() const noexcept;
 
     [[nodiscard]] auto is_one() const noexcept;
 
-    [[nodiscard]] auto is_exp() const noexcept;  // Is there an expansion path (EXP) for SAT solving?
+    [[nodiscard]] auto is_exp() const noexcept;  // Is there an expansion for SAT solving?
 
-    [[nodiscard]] auto var() const
-    {
-        assert(!is_const());
+    template <typename TruthValue, typename... TruthValues>
+    auto fn(TruthValue, TruthValues...) const;
 
-        return f->v->br().x;
-    }
+    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
 
-    [[nodiscard]] auto high() const;
-
-    [[nodiscard]] auto low() const;
-
-    template <typename T, typename... Ts>
-    auto fn(T, Ts...) const;
+    [[nodiscard]] auto ite(bhd const&, bhd const&) const;
 
     [[nodiscard]] auto size() const;
 
@@ -133,439 +159,363 @@ class bhd  // binary hybrid diagram
 
     [[nodiscard]] auto path_count() const noexcept;
 
-    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
-
     [[nodiscard]] auto has_const(bool) const;
 
-    [[nodiscard]] auto is_essential(std::int32_t) const;
+    [[nodiscard]] auto has_exp() const;
 
-    [[nodiscard]] auto ite(bhd const&, bhd const&) const;
+    [[nodiscard]] auto is_essential(var_index) const noexcept;
 
-    [[nodiscard]] auto compose(std::int32_t, bhd const&) const;
+    [[nodiscard]] auto compose(var_index, bhd const&) const;
 
-    [[nodiscard]] auto restr(std::int32_t, bool) const;
+    [[nodiscard]] auto restr(var_index, bool) const;
 
-    [[nodiscard]] auto exist(std::int32_t) const;
+    [[nodiscard]] auto exist(var_index) const;
 
-    [[nodiscard]] auto forall(std::int32_t) const;
+    [[nodiscard]] auto forall(var_index) const;
 
-    [[nodiscard]] auto sat() const;  // one existing solution per path
+    [[nodiscard]] auto sat_solutions() const;  // one existing solution per path
 
-    [[nodiscard]] auto uc() const;  // unit clauses per EXP for solving subfunctions by SAT
+    [[nodiscard]] auto unit_clauses() const;  // for each expansion path to solve subfunctions via a SAT solver
 
-    auto print(std::ostream& = std::cout) const;
+    auto dump_dot(std::ostream& = std::cout) const;
 
   private:
     friend bhd_manager;
 
     // wrapper is controlled by its BHD manager
-    bhd(std::shared_ptr<detail::edge<bool, bool>> f, bhd_manager* const mgr) :
+    bhd(detail::edge_ptr<bool, bool> f, bhd_manager* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
         assert(this->f);
-        assert(mgr);
+        assert(this->mgr);
     }
 
-    std::shared_ptr<detail::edge<bool, bool>> f;
+    detail::edge_ptr<bool, bool> f;  // BHD handle
 
-    bhd_manager* mgr{};
+    bhd_manager* mgr{};  // must be destroyed after this BHD wrapper
 };
 
-enum struct bhd_heuristic : std::uint8_t  // to determine when EXPs are made
+enum struct bhd_heuristic : std::uint8_t  // to determine when expansion paths are created
 {
-    LVL,  // BDD level
-    MEM   // peak BDD size in KB
+    LEVEL,  // BDD level
+    MEMORY  // shared BDD size in bytes
 };
 
-class bhd_manager : public detail::manager<bool, bool>
+class bhd_manager final : public detail::manager<bool, bool>
 {
   public:
-    friend bhd;
-
-    bhd_manager() :
-            manager{tmls()}
+    // behavior similar to that of a BDD
+    explicit bhd_manager(struct config const cfg = {}) :
+            // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) because BHD terminals are intrusive
+            manager{tmls(), cfg}
     {
-        consts.push_back(make_const(false, true));  // last node in EXP is treated as a constant
-        consts.push_back(make_const(true, true));   // for reasons of consistency
+        manager::constant(false, true, true);  // The last and only expansion node is treated as a constant.
+        manager::constant(true, true, true);   // for reasons of consistency
     }
 
-    bhd_manager(bhd_heuristic const heur, std::size_t const cost) :
-            bhd_manager{}
+    bhd_manager(bhd_heuristic const heur, std::size_t const exp_thresh, struct config const cfg = {}) :
+            bhd_manager{cfg}
     {
-        if (heur == bhd_heuristic::LVL)
+        if (heur == bhd_heuristic::LEVEL)
         {
-            this->heur = [this](auto const& f, auto const& g, auto const x) { return lvl_heur(f, g, x); };
+            this->heur = [this](auto const& f, auto const& g, auto const x) { return level_heur(f, g, x); };
         }
-        else
+        else  // memory heuristic
         {
-            this->heur = [this](auto const& f, auto const& g, auto const x) { return mem_heur(f, g, x); };
+            this->heur = [this](auto const& f, auto const& g, auto const x) { return memory_heur(f, g, x); };
         }
-        this->cost = cost;
+        this->exp_thresh = exp_thresh;
     }
 
-    auto var(std::string_view l = {})
+    auto var(std::string_view lbl = {})
     {
-        return bhd{make_var(expansion::S, l), this};
+        return bhd{manager::var(expansion::S, lbl), this};
     }
 
-    auto var(std::int32_t const i) noexcept
+    auto var(var_index const x) noexcept
     {
-        assert(i >= 0);
-        assert(i < var_count());
-
-        return bhd{vars[i], this};
+        return bhd{manager::var(x), this};
     }
 
     auto zero() noexcept
     {
-        return bhd{consts[0], this};
+        return bhd{constant(0), this};
     }
 
     auto one() noexcept
     {
-        return bhd{consts[1], this};
+        return bhd{constant(1), this};
     }
 
     auto exp() noexcept
     {
-        return bhd{consts[2], this};
+        return bhd{constant(2), this};
     }
 
     [[nodiscard]] auto size(std::vector<bhd> const& fs) const
     {
-        return node_count(transform(fs));
+        return manager::size(transform(fs));
     }
 
     [[nodiscard]] auto depth(std::vector<bhd> const& fs) const
     {
         assert(!fs.empty());
 
-        return longest_path(transform(fs));
+        return manager::depth(transform(fs));
     }
 
-    auto print(std::vector<bhd> const& fs, std::vector<std::string> const& outputs = {},
-               std::ostream& s = std::cout) const
+    auto dump_dot(std::vector<bhd> const& fs, std::vector<std::string> const& outputs = {},
+                  std::ostream& os = std::cout) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        std::ostringstream buf;  // for highlighting EXP
-        to_dot(transform(fs), outputs, buf);
+        // to highlight the expansion node labeled with "EXP" that marks the end of all expansion paths
+        std::ostringstream oss;
+        manager::dump_dot(transform(fs), outputs, oss);
 
-        auto dot = buf.str();
-        detail::replace_all(dot, "[shape=box,style=filled,color=chocolate,fontcolor=white,label=\"1\"]",
-                            "[shape=triangle,style=filled,color=darkviolet,fontcolor=white,label=\"EXP\"]");
-        s << dot;
+        auto dot = oss.str();
+        boost::replace_all(dot, "[shape=box,style=filled,color=chocolate,fontcolor=white,label=\"1\"]",
+                           "[shape=triangle,style=filled,color=darkviolet,fontcolor=white,label=\"EXP\"]");
+        os << dot;
     }
 
   private:
-    auto static tmls() -> std::array<edge_ptr, 2>
+    friend bhd;
+
+    // NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks)
+    static auto tmls() -> std::array<edge_ptr, 2>
     {
-        auto const leaf = std::make_shared<detail::node<bool, bool>>(false);
-        return std::array<edge_ptr, 2>{std::make_shared<detail::edge<bool, bool>>(false, leaf),
-                                       std::make_shared<detail::edge<bool, bool>>(true, leaf)};
+        node_ptr const leaf{new node{false}};
+        return {edge_ptr{new edge{false, leaf}}, edge_ptr{new edge{true, leaf}}};
     }
+    // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
 
-    auto static transform(std::vector<bhd> const& fs) -> std::vector<edge_ptr>
+    static auto transform(std::vector<bhd> const& gs) -> std::vector<edge_ptr>
     {
-        std::vector<edge_ptr> gs;
-        gs.reserve(fs.size());
-        std::ranges::transform(fs, std::back_inserter(gs), [](auto const& g) { return g.f; });
-
-        return gs;
+        std::vector<edge_ptr> fs(gs.size());
+        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
+        return fs;
     }
 
     [[nodiscard]] auto is_exp(edge_ptr const& f) const noexcept
     {
-        return f == consts[2] || f == consts[3];
+        return f == constant(2) || f == constant(3);
     }
 
-    auto sat(edge_ptr const& f, std::vector<bool>& path, bool const m, std::vector<std::vector<bool>>& sols) const
+    // since the expansion node is treated as the 1-leaf
+    [[nodiscard]] auto eval(edge_ptr const& f, std::vector<bool> const& as) const noexcept
     {
-        assert(f);
-        assert(!path.empty());
+        assert(as.size() == var_count());
 
+        auto exp_is_reached = [&as, this](edge_ptr const& e) {
+            auto trav = [&as, this](auto const& self, edge_ptr const& e) {  // traversal
+                assert(e);
+
+                if (is_exp(e))
+                {  // The function value cannot be determined at this point.
+                    return true;
+                }
+                if (e->is_const())
+                {
+                    return false;
+                }
+                return as[e->ch()->br().x] ? self(self, e->ch()->br().hi) : self(self, e->ch()->br().lo);
+            };
+
+            return trav(trav, e);
+        };
+
+        return exp_is_reached(f) ? std::nullopt : std::optional{manager::eval(f, as)};
+    }
+
+    auto sat_solutions(edge_ptr const& f, bool const m, std::vector<bool>& path,
+                       std::vector<std::vector<bool>>& sols) const
+    {
         if (is_exp(f))
         {
             return;
         }
 
-        if (f->v->is_const())
+        if (f->is_const())
         {
             if (m)
-            {  // complement bit is odd => satisfying solution
+            {  // mark (complement bit) is "odd" => satisfying solution
                 sols.push_back(path);
             }
             return;
         }
 
-        path[f->v->br().x] = false;  // truth value is independent of complemented edges
-        sat(f->v->br().lo, path, comb(m, f->v->br().lo->w), sols);
+        path[f->ch()->br().x] = false;
+        sat_solutions(f->ch()->br().lo, comb(m, f->ch()->br().lo->weight()), path, sols);
 
-        path[f->v->br().x] = true;
-        sat(f->v->br().hi, path, comb(m, f->v->br().hi->w), sols);
+        path[f->ch()->br().x] = true;
+        sat_solutions(f->ch()->br().hi, comb(m, f->ch()->br().hi->weight()), path, sols);
     }
 
-    [[nodiscard]] auto sat(edge_ptr const& f) const
+    [[nodiscard]] auto sat_solutions(edge_ptr const& f) const
     {
         assert(f);
 
-        std::vector<std::vector<bool>> sols;  // initial variable ordering applies
+        std::vector<std::vector<bool>> sols;  // where the initial variable order applies
 
-        if (f == consts[1])
+        if (f == constant(1))
         {
-            sols.emplace_back(var_count());  // assignment consisting of only "false" is one solution
+            sols.emplace_back(var_count());  // assignment consisting only of "false" is one solution
         }
-        else if (f != consts[0] && !is_exp(f))
-        {                                         // collect solutions
-            std::vector<bool> path(var_count());  // maximum depth
-            sat(f, path, f->w, sols);
+        else if (f != constant(0) && !is_exp(f))
+        {
+            sols.reserve(var_count());
+            std::vector<bool> path(var_count());        // don't care terms at maximum depth
+            sat_solutions(f, f->weight(), path, sols);  // collect simultaneously represented solutions
         }
 
         return sols;
     }
 
-    auto uc(edge_ptr const& f, std::vector<std::optional<bool>>& path,
-            std::vector<std::vector<std::pair<std::int32_t, bool>>>& uclauses) const
+    auto unit_clauses(edge_ptr const& f, std::vector<std::optional<bool>>& exp_path,
+                      std::vector<std::vector<std::pair<var_index, bool>>>& ucs) const
     {
-        assert(f);
-
         if (is_exp(f))
         {
-            std::vector<std::pair<std::int32_t, bool>> tmp;
-            for (auto i = 0; i < static_cast<std::int32_t>(path.size()); ++i)
+            std::vector<std::pair<var_index, bool>> path;
+            for (auto i = 0uz; i < exp_path.size(); ++i)
             {
-                if (path[i].has_value())
-                {
-                    tmp.emplace_back(i, *path[i]);
+                if (exp_path[i])
+                {  // variable has been encountered
+                    path.emplace_back(static_cast<var_index>(i), *exp_path[i]);
                 }
             }
-            uclauses.push_back(std::move(tmp));
+            ucs.push_back(std::move(path));
 
             return;
         }
 
-        if (f->v->is_const())
+        if (f->is_const())
         {
             return;
         }
 
-        path[f->v->br().x] = false;
-        uc(f->v->br().lo, path, uclauses);
+        exp_path[f->ch()->br().x] = false;
+        unit_clauses(f->ch()->br().lo, exp_path, ucs);
 
-        path[f->v->br().x] = true;
-        uc(f->v->br().hi, path, uclauses);
+        exp_path[f->ch()->br().x] = true;  // truth value is independent of complemented edges
+        unit_clauses(f->ch()->br().hi, exp_path, ucs);
 
-        path[f->v->br().x].reset();
+        exp_path[f->ch()->br().x].reset();
     }
 
-    auto uc(edge_ptr const& f)
+    auto unit_clauses(edge_ptr const& f)
     {
         assert(f);
 
-        std::vector<std::vector<std::pair<std::int32_t, bool>>> uclauses;
+        std::vector<std::vector<std::pair<var_index, bool>>> ucs;  // generated unit clauses
 
         if (!has_const(f, true))
-        {  // there are no EXPs
-            return uclauses;
+        {  // there are no expansion paths
+            return ucs;
         }
 
-        std::vector<std::optional<bool>> path(var_count());  // not every variable must be on the path
-        uc(f, path, uclauses);
+        ucs.reserve(var_count());
+        std::vector<std::optional<bool>> exp_path(var_count());  // not every variable must be on a path
+        unit_clauses(f, exp_path, ucs);
 
-        return uclauses;
+        return ucs;
     }
 
-    auto repl(edge_ptr const& f, bool const m = false)  // works with AND
-    {                                                   // redirect 1-paths in f to exp for compacting reasons
-        assert(f);
-
+    auto repl(edge_ptr const& f, bool const m = false)
+    {  // redirect 1-paths to the expansion node for compactness reasons
         if (is_exp(f))
         {
             return f;
         }
 
-        if (f->v->is_const())
+        if (f->is_const())
         {
             if (m)
             {
-                return f == consts[0] ? consts[2] : f;
+                return f == constant(0) ? constant(2) : f;
             }
 
-            return f == consts[0] ? f : consts[2];
+            return f == constant(0) ? f : constant(2);  // expansion node
         }
 
-        op::repl op{f, m};
-        if (auto const* const ent = cached(op))
+        detail::repl op{f, m};
+        if (auto const* const entry = cached(op))
         {
-            return ent->r;
+            return entry->get_result();
         }
 
-        auto hi = f->w ? repl(f->v->br().hi, !m) : repl(f->v->br().hi, m);
-        auto lo = f->w ? repl(f->v->br().lo, !m) : repl(f->v->br().lo, m);
+        auto hi = f->weight() ? repl(f->ch()->br().hi, !m) : repl(f->ch()->br().hi, m);
+        auto lo = f->weight() ? repl(f->ch()->br().lo, !m) : repl(f->ch()->br().lo, m);
         if (hi == lo)
         {
-            op.r = hi;
-            return cache(std::move(op))->r;
+            op.set_result(hi);
+            return cache(std::move(op))->get_result();
         }
 
         // normalize if needed
-        auto w = lo->w;
+        auto w = lo->weight();
         if (w)
         {
             hi = complement(hi);
             lo = complement(lo);
         }
-        w = f->w ? !w : w;  // due to bit flipping
+        w = f->weight() ? !w : w;  // bit flipping
 
-        op.r = uedge(w, unode(f->v->br().x, std::move(hi), std::move(lo)));
-        return cache(std::move(op))->r;
+        op.set_result(uedge(w, unode(f->ch()->br().x, std::move(hi), std::move(lo))));
+        return cache(std::move(op))->get_result();
     }
 
-    auto compr(edge_ptr const& f, edge_ptr const& g, std::int32_t const x, bool const a)
-    {  // EXPs remain at the same level for validation reasons
-        assert(f);
-        assert(g);
-        assert(x == top_var(f, g));
-
-        auto gx = cof(g, x, a);
-        if (is_exp(gx) && !f->v->is_const() && f->v->br().x != x)
-        {  // f is below g => hide in EXP
-            return gx;
+    auto compress(edge_ptr const& f, edge_ptr const& g, var_index const x, bool const a)
+    {  // preserve expansion paths for validation purposes
+        auto fx = cof(f, x, a);
+        if (is_exp(fx) && !g->is_const() && g->ch()->br().x != x)
+        {  // g is below f => "hide" in the expansion node
+            return fx;
         }
 
-        auto fx = cof(f, x, a);
-        if (is_exp(fx) && !g->v->is_const() && g->v->br().x != x)
+        auto gx = cof(g, x, a);
+        if (is_exp(gx) && !f->is_const() && f->ch()->br().x != x)
         {
-            return fx;
+            return gx;
         }
 
         return conj(fx, gx);
     }
 
-    auto no_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
-    {  // conjunction without making EXPs
-        assert(f);
-        assert(g);
-        assert(x == top_var(f, g));
-
-        return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
+    auto no_heur(edge_ptr const& f, edge_ptr const& g, var_index const x) -> edge_ptr
+    {  // do not restrict the solution space
+        return branch(x, compress(f, g, x, true), compress(f, g, x, false));
     }
 
-    auto lvl_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
-    {  // heuristic that makes EXPs from a predetermined BDD level
-        assert(f);
-        assert(g);
-        assert(x == top_var(f, g));
-
-        if (f->v->is_const() || f->v->br().x < static_cast<std::int32_t>(cost))
+    auto level_heur(edge_ptr const& f, edge_ptr const& g, var_index const x) -> edge_ptr
+    {  // restrict the solution space based on a predetermined level threshold
+        if (f->is_const() || f->ch()->br().x < exp_thresh)
         {
-            return g->v->is_const() || g->v->br().x < static_cast<std::int32_t>(cost)
-                       ? make_branch(x, compr(f, g, x, true), compr(f, g, x, false))
+            return g->is_const() || g->ch()->br().x < exp_thresh
+                       ? branch(x, compress(f, g, x, true), compress(f, g, x, false))
                        : repl(f);
         }
-        return g->v->is_const() || g->v->br().x < static_cast<std::int32_t>(cost) ? repl(g) : consts[2];
+        return g->is_const() || g->ch()->br().x < exp_thresh ? repl(g) : constant(2);  // expansion node
     }
 
-    auto mem_heur(edge_ptr const& f, edge_ptr const& g, std::int32_t const x) -> edge_ptr
-    {  // heuristic that makes EXPs when a peak BDD size (nodes and edges) in KB is reached
-        assert(f);
-        assert(g);
-        assert(x == top_var(f, g));
-
-        if (((static_cast<float>(node_count()) * sizeof(detail::node<bool, bool>) +
-              static_cast<float>(edge_count()) * sizeof(detail::edge<bool, bool>)) /
-             1e3f) >= static_cast<float>(cost))
+    auto memory_heur(edge_ptr const& f, edge_ptr const& g, var_index const x) -> edge_ptr
+    {  // restrict the solution space based on a predetermined memory threshold (shared BDD size)
+        // no overflow protection, as the theoretical worst-case scenario merely leads to conjunction
+        if (edge_count() * sizeof(edge) + node_count() * sizeof(node) >= exp_thresh)
         {
-            return repl(f);  // to ensure canonicity and because f is usually larger than g
+            return repl(f);  // because f is usually larger than g
         }
-        return make_branch(x, compr(f, g, x, true), compr(f, g, x, false));
-    }
-
-    auto add(edge_ptr f, edge_ptr g) -> edge_ptr override
-    {
-        assert(f);
-        assert(g);
-
-        return disj(conj(complement(f), g), conj(f, complement(g)));  // stands for XOR
+        return branch(x, compress(f, g, x, true), compress(f, g, x, false));  // conjunction
     }
 
     [[nodiscard]] auto agg(bool const& w, bool const& val) const noexcept -> bool override
     {
-        return !(w == val);
+        return w != val;
     }
 
-    [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
-    {
-        return !(w1 == w2);
-    }
-
-    auto complement(edge_ptr const& f) -> edge_ptr override
-    {
-        assert(f);
-
-        return !f->w ? uedge(true, f->v) : uedge(false, f->v);
-    }
-
-    auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
-    {
-        assert(f);
-        assert(g);
-
-        // constant terminal cases
-        if (f == consts[0] || g == consts[0])
-        {
-            return consts[0];
-        }
-        if (f == consts[1])
-        {
-            return g;
-        }
-        if (g == consts[1])
-        {
-            return f;
-        }
-        if (f->v == g->v)
-        {
-            if (f->w == g->w)
-            {
-                return f;
-            }
-            if (!has_const(f, true))
-            {  // f & !f = 0
-                return consts[0];
-            }  // EXP is never removed
-        }
-
-        // EXP terminal cases
-        if (is_exp(f))
-        {
-            return is_exp(g) ? consts[2] : repl(g);
-        }
-        if (is_exp(g))
-        {
-            return repl(f);
-        }
-
-        op::conj op{f, g};
-        if (auto const* const ent = cached(op))
-        {
-            return ent->r;
-        }
-
-        op.r = heur(f, g, top_var(f, g));
-        return cache(std::move(op))->r;
-    }
-
-    auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
-    {
-        assert(f);
-        assert(g);
-
-        return complement(conj(complement(f), complement(g)));
-    }
-
-    auto make_branch(std::int32_t const x, edge_ptr hi, edge_ptr lo) -> edge_ptr override
+    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
     {
         assert(x < var_count());
         assert(hi);
@@ -576,21 +526,90 @@ class bhd_manager : public detail::manager<bool, bool>
             return hi;
         }
 
-        auto const w = lo->w;
+        auto const w = lo->weight();
         return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
     }
 
-    [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
+    [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
     {
-        return !(val1 == val2);
+        return w1 != w2;
     }
 
-    auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
+    auto complement(edge_ptr const& f) -> edge_ptr override
+    {
+        assert(f);
+
+        return f->weight() ? uedge(false, f->ch()) : uedge(true, f->ch());
+    }
+
+    auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
         assert(g);
 
+        // terminal cases regarding standard constants
+        if (f == constant(0) || g == constant(0))
+        {
+            return constant(0);
+        }
+        if (f == constant(1))
+        {
+            return g;
+        }
+        if (g == constant(1))
+        {
+            return f;
+        }
+        if (f->ch() == g->ch())
+        {
+            if (f->weight() == g->weight())
+            {
+                return f;
+            }
+            if (!has_const(f, true))  // The expansion node is never removed.
+            {
+                return constant(0);  // f & !f = 0
+            }
+        }
+
+        // terminal cases regarding the expansion node
+        if (is_exp(f))
+        {
+            return is_exp(g) ? constant(2) : repl(g);
+        }
+        if (is_exp(g))
+        {
+            return repl(f);
+        }
+
+        detail::conj op{f, g};
+        if (auto const* const entry = cached(op))
+        {
+            return entry->get_result();
+        }
+
+        op.set_result(heur(f, g, top_var(f, g)));
+        return cache(std::move(op))->get_result();
+    }
+
+    auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
+    {
+        return complement(conj(complement(f), complement(g)));
+    }
+
+    [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
+    {
+        return val1 != val2;
+    }
+
+    auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
+    {
         return conj(f, g);
+    }
+
+    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
+    {
+        return disj(conj(complement(f), g), conj(f, complement(g)));  // stands for XOR
     }
 
     [[nodiscard]] auto regw() const noexcept -> bool override
@@ -598,155 +617,88 @@ class bhd_manager : public detail::manager<bool, bool>
         return false;
     }
 
-    // heuristic conjunction used to decrease BDDs
-    std::function<edge_ptr(edge_ptr const&, edge_ptr const&, std::int32_t)> heur{
+    // heuristic technique that can be used to reduce BDD sizes during conjunction
+    std::function<edge_ptr(edge_ptr const&, edge_ptr const&, var_index)> heur{
         [this](auto const& f, auto const& g, auto const x) { return no_heur(f, g, x); }};
 
-    std::size_t cost{};  // determine when EXPs are made depending on the heuristic
+    // threshold value from which expansion paths are automatically created depending on the heuristic
+    std::size_t exp_thresh{};
 };
 
-auto inline bhd::operator~() const
+inline auto bhd::operator~() const
 {
     assert(mgr);
 
     return bhd{mgr->complement(f), mgr};
 }
 
-auto inline bhd::operator&=(bhd const& rhs) -> bhd&
+inline auto bhd::operator&=(bhd const& rhs) -> bhd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
 
     f = mgr->conj(f, rhs.f);
+
     return *this;
 }
 
-auto inline bhd::operator|=(bhd const& rhs) -> bhd&
+inline auto bhd::operator|=(bhd const& rhs) -> bhd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
 
     f = mgr->disj(f, rhs.f);
+
     return *this;
 }
 
-auto inline bhd::operator^=(bhd const& rhs) -> bhd&
+inline auto bhd::operator^=(bhd const& rhs) -> bhd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
 
-    f = mgr->add(f, rhs.f);
+    f = mgr->plus(f, rhs.f);
+
     return *this;
 }
 
-auto inline bhd::is_zero() const noexcept
+inline auto bhd::is_zero() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->zero();
 }
 
-auto inline bhd::is_one() const noexcept
+inline auto bhd::is_one() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->one();
 }
 
-auto inline bhd::is_exp() const noexcept
+inline auto bhd::is_exp() const noexcept
 {
     assert(mgr);
 
     return mgr->is_exp(f);
 }
 
-auto inline bhd::high() const
-{
-    assert(mgr);
-    assert(!f->v->is_const());
-
-    return bhd{f->v->br().hi, mgr};
-}
-
-auto inline bhd::low() const
-{
-    assert(mgr);
-    assert(!f->v->is_const());
-
-    return bhd{f->v->br().lo, mgr};
-}
-
-template <typename T, typename... Ts>
-auto inline bhd::fn(T const a, Ts... args) const
+template <typename TruthValue, typename... TruthValues>
+inline auto bhd::fn(TruthValue const a, TruthValues... as) const
 {
     assert(mgr);
 
-    return bhd{mgr->fn(f, a, std::forward<Ts>(args)...), mgr};
+    return bhd{mgr->fn(f, a, std::forward<TruthValues>(as)...), mgr};
 }
 
-auto inline bhd::size() const
+inline auto bhd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
 
-    return mgr->size({*this});
+    return mgr->eval(f, as);
 }
 
-auto inline bhd::depth() const
-{
-    assert(mgr);
-
-    return mgr->depth({*this});
-}
-
-auto inline bhd::path_count() const noexcept
-{
-    assert(mgr);
-
-    return mgr->path_count(f);
-}
-
-auto inline bhd::eval(std::vector<bool> const& as) const noexcept
-{
-    assert(mgr);
-    assert(static_cast<std::int32_t>(as.size()) == mgr->var_count());
-
-    // since the last node in EXP is treated as a constant (1)
-    auto exp_is_reached = [&as, this](auto const& f) {
-        auto trv = [&as, this](auto const& self, auto const& f) {
-            assert(f);
-
-            if (mgr->is_exp(f))
-            {
-                return true;
-            }
-            if (f->v->is_const())
-            {
-                return false;
-            }
-            return as[f->v->br().x] ? self(self, f->v->br().hi) : self(self, f->v->br().lo);
-        };
-
-        return trv(trv, f);
-    };
-
-    return exp_is_reached(f) ? std::nullopt : std::make_optional(mgr->eval(f, as));
-}
-
-auto inline bhd::has_const(bool const c) const
-{
-    assert(mgr);
-
-    return mgr->has_const(f, c);
-}
-
-auto inline bhd::is_essential(std::int32_t const x) const
-{
-    assert(mgr);
-
-    return mgr->is_essential(f, x);
-}
-
-auto inline bhd::ite(bhd const& g, bhd const& h) const
+inline auto bhd::ite(bhd const& g, bhd const& h) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -755,7 +707,47 @@ auto inline bhd::ite(bhd const& g, bhd const& h) const
     return bhd{mgr->ite(f, g.f, h.f), mgr};
 }
 
-auto inline bhd::compose(std::int32_t const x, bhd const& g) const
+inline auto bhd::size() const
+{
+    assert(mgr);
+
+    return mgr->size({*this});
+}
+
+inline auto bhd::depth() const
+{
+    assert(mgr);
+
+    return mgr->depth({*this});
+}
+
+inline auto bhd::path_count() const noexcept
+{
+    assert(mgr);
+
+    return mgr->path_count(f);
+}
+
+inline auto bhd::has_const(bool const c) const
+{
+    assert(mgr);
+
+    return mgr->has_const(f, c);
+}
+
+inline auto bhd::has_exp() const
+{
+    return has_const(true);
+}
+
+inline auto bhd::is_essential(var_index const x) const noexcept
+{
+    assert(mgr);
+
+    return mgr->is_essential(f, x);
+}
+
+inline auto bhd::compose(var_index const x, bhd const& g) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
@@ -763,46 +755,46 @@ auto inline bhd::compose(std::int32_t const x, bhd const& g) const
     return bhd{mgr->compose(f, x, g.f), mgr};
 }
 
-auto inline bhd::restr(std::int32_t const x, bool const a) const
+inline auto bhd::restr(var_index const x, bool const a) const
 {
     assert(mgr);
 
     return bhd{mgr->restr(f, x, a), mgr};
 }
 
-auto inline bhd::exist(std::int32_t const x) const
+inline auto bhd::exist(var_index const x) const
 {
     assert(mgr);
 
     return bhd{mgr->exist(f, x), mgr};
 }
 
-auto inline bhd::forall(std::int32_t const x) const
+inline auto bhd::forall(var_index const x) const
 {
     assert(mgr);
 
     return bhd{mgr->forall(f, x), mgr};
 }
 
-auto inline bhd::sat() const
+inline auto bhd::sat_solutions() const
 {
     assert(mgr);
 
-    return mgr->sat(f);
+    return mgr->sat_solutions(f);
 }
 
-auto inline bhd::uc() const
+inline auto bhd::unit_clauses() const
 {
     assert(mgr);
 
-    return mgr->uc(f);
+    return mgr->unit_clauses(f);
 }
 
-auto inline bhd::print(std::ostream& s) const
+inline auto bhd::dump_dot(std::ostream& os) const
 {
     assert(mgr);
 
-    mgr->print({*this}, {}, s);
+    mgr->dump_dot({*this}, {}, os);
 }
 
-}  // namespace freddy::dd
+}  // namespace freddy
