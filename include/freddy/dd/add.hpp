@@ -335,7 +335,7 @@ class add_manager final : public detail::manager<bool, NValue>
 
     [[nodiscard]] auto agg(bool const& w, NValue const& val) const noexcept -> NValue override
     {
-        assert(w == false);
+        assert(!w);
 
         return w + val;
     }
