@@ -333,9 +333,11 @@ class add_manager final : public detail::manager<bool, NValue>
         return sub(plus(f, g), mul(manager::constant(2), mul(f, g)));
     }
 
-    [[nodiscard]] auto agg([[maybe_unused]] bool const& w, NValue const& val) const noexcept -> NValue override
+    [[nodiscard]] auto agg(bool const& w, NValue const& val) const noexcept -> NValue override
     {
-        return val;
+        assert(w == false);
+
+        return w + val;
     }
 
     auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override

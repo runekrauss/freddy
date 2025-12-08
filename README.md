@@ -197,7 +197,7 @@ While virtual methods such as `ite` (if-then-else) can be overridden if speciali
 value (`NValue` template parameter), which are then passed to the base constructor.
 
 > :information_source: If `EWeight` or `NValue` aren't built-in types, the equality operator `==` must be overloaded for
-hashing purposes. Of course, a custom specialization of [std::hash](https://en.cppreference.com/w/cpp/utility/hash)
+hashing purposes. Of course, a custom specialization of [`std::hash`](https://en.cppreference.com/w/cpp/utility/hash)
 must be provided.
 
 Further DD operations can be implemented based on this foundation. A dedicated cache is available for so-called
