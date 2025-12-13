@@ -6,6 +6,7 @@ AllowAllParametersOfDeclarationOnNextLine: false
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortLoopsOnASingleLine: true
+AlwaysBreakTemplateDeclarations: Yes # deprecated
 BraceWrapping:
   AfterCaseLabel: true
   AfterClass: true
@@ -23,7 +24,6 @@ BraceWrapping:
   SplitEmptyNamespace: false
 BreakBeforeBraces: Custom
 BreakConstructorInitializers: AfterColon
-BreakTemplateDeclarations: Yes
 ColumnLimit: 120
 ConstructorInitializerIndentWidth: 8
 IncludeBlocks: Regroup
