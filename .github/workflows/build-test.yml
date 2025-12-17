@@ -54,7 +54,7 @@ jobs:
 
       - name: Cache dependencies
         id: dep
-        if: steps.cache.conclusion == 'success' # since success() may be false due to previous steps
+        if: failure() && steps.cache.outcome == 'success' # since success() may be false due to previous steps
         uses: actions/cache@v5
         with:
           path: build/_deps
@@ -63,7 +63,7 @@ jobs:
 
       - name: Configure project # depending on linting, as Clang-Tidy is only pre-installed on Ubuntu
         id: config
-        if: steps.dep.conclusion == 'success'
+        if: steps.dep.outcome == 'success'
         run: >
           cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
           -DCLANG_TIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'
