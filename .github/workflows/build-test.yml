@@ -56,7 +56,11 @@ jobs:
       - name: Cache dependencies
         id: dep
         if: success() || steps.cache.outcome == 'success' # success() may be false due to previous steps
-        run: exit 1
+        uses: actions/cache@v5
+        with:
+          path: build/_deps
+          key: deps-${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }}-
 
       - name: Configure project # depending on linting, as Clang-Tidy is only pre-installed on Ubuntu
         id: config
