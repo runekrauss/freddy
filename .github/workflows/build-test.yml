@@ -41,12 +41,13 @@ jobs:
         run: exit 1
 
       - name: Check source formatting # with pre-installed ClangFormat before fetching dependencies
+        id: clangformat
         run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format --dry-run --Werror
 
       # should come after checkout
       - name: Set up cache
         id: cache
-        if: success() || failure() # Code formatting is not a reason to cancel the job.
+        if: success() || (failure() && steps.clangformat.outcome == 'success') # Code formatting is not a reason to cancel the job.
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }} # branch-based
