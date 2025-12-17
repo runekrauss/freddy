@@ -47,7 +47,7 @@ jobs:
       - name: Set up cache
         id: cache
         if: success() || failure() # Code formatting is not a reason to cancel the job.
-        run: exit 1
+        run: exit 0
 
       - name: Cache dependencies
         id: dep
