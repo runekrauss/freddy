@@ -87,7 +87,7 @@ jobs:
         run: |
           cov_min=80
           cov=$(ctest -T Coverage | grep -o '[^ ]*%' | sed 's/%//' | cut -d. -f1)
-          if (( cov > cov_min )); then
+          if (( cov < cov_min )); then
             echo -e "\e[31mTest coverage ($cov%) below $cov_min%\e[0m"
             exit 1
           fi
