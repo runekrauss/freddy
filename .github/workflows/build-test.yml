@@ -42,6 +42,7 @@ jobs:
 
       - name: Check source formatting # with pre-installed ClangFormat before fetching dependencies
         id: clangformat
+        if: success() || (steps.clangformat.outcome == 'failure')
         run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format --dry-run --Werror
 
       # should come after checkout
