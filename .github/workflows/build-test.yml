@@ -38,18 +38,16 @@ jobs:
 
     steps:
       - name: Check out repository
-        id: checkout
-        run: exit 1
+        run: actions/checkout@v6
 
       - name: Check source formatting # with pre-installed ClangFormat before fetching dependencies
         id: clangformat
-        if: success() || steps.checkout.outcome == 'failure'
         run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format --dry-run --Werror
 
       # should come after checkout
       - name: Set up cache
         id: cache
-        if: success() || (failure() && steps.clangformat.outcome == 'success') # Code formatting is not a reason to cancel the job.
+        if: success() || steps.clangformat.outcome == 'failure' # Code formatting is not a reason to cancel the job.
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }} # branch-based
@@ -57,7 +55,7 @@ jobs:
 
       - name: Cache dependencies
         id: dep
-        if: success() || (failure() && steps.cache.outcome == 'success') # success() may be false due to previous steps
+        if: success() || steps.cache.outcome == 'success' # success() may be false due to previous steps
         uses: actions/cache@v5
         with:
           path: build/_deps
