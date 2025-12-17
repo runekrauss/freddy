@@ -45,6 +45,7 @@ jobs:
 
       # should come after checkout
       - name: Set up cache
+        id: cache
         if: success() || failure() # Code formatting is not a reason to cancel the job.
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -52,6 +53,8 @@ jobs:
           job-summary: 'Ccache Statistics'
 
       - name: Cache dependencies
+        id: dep
+        if: steps.cache.outcome == 'success' # since success() may be false due to previous steps
         uses: actions/cache@v5
         with:
           path: build/_deps
@@ -59,19 +62,26 @@ jobs:
           restore-keys: deps-${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }}-
 
       - name: Configure project # depending on linting, as Clang-Tidy is only pre-installed on Ubuntu
+        id: config
+        if: steps.dep.outcome == 'success'
         run: >
           cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
           -DCLANG_TIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'
           -DFREDDY_STATS=ON -DFREDDY_TEST=ON
 
       - name: Lint sources / Build binaries
+        id: linter_build
+        if: steps.config.outcome == 'success'
         run: cmake --build build -j$(nproc)
 
       - name: Run tests # on Ubuntu, as the associated VM is one of the fastest runners
+        id: test
+        if: steps.linter_build.outcome == 'success'
         working-directory: ./build
         run: ctest --output-on-failure -j$(nproc)
 
       - name: Measure coverage
+        if: steps.test.outcome == 'success'
         working-directory: ./build
         run: |
           cov_min=80
