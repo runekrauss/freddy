@@ -44,8 +44,8 @@ if(NOT Boost_FOUND)
   set(BOOST_INCLUDE_LIBRARIES algorithm safe_numerics smart_ptr unordered) # dummies to avoid full Boost configuration
 
   FetchContent_Declare(Boost
-    URL https://github.com/boostorg/boost/releases/download/boost-1.89.0/boost-1.89.0-cmake.tar.xz # performance reasons
-    URL_HASH SHA256=67acec02d0d118b5de9eb441f5fb707b3a1cdd884be00ca24b9a73c995511f74
+    URL https://github.com/boostorg/boost/releases/download/boost-1.90.0/boost-1.90.0-cmake.tar.xz # performance reasons
+    URL_HASH SHA256=aca59f889f0f32028ad88ba6764582b63c916ce5f77b31289ad19421a96c555f
     DOWNLOAD_EXTRACT_TIMESTAMP ON
   )
   FetchContent_MakeAvailable(Boost)

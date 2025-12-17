@@ -7,6 +7,7 @@ on:
     paths:
       - '.github/workflows/build-test.yml'
       - 'CMakeLists.txt'
+      - '.clang-format' # changes here may affect string literals or macro expansions -> run CI
       - '.clang-tidy'
       - '**/*.cpp'
       - '**/*.hpp'
@@ -26,31 +27,9 @@ env:
   REF: ${{ github.head_ref || github.ref_name }} # used as part of the cache keys
 
 jobs:
-  clangformat:
-    name: ClangFormat on C++
-    runs-on: ubuntu-latest # since this tool is pre-installed there
-    if: github.ref == 'refs/heads/main'
-    permissions:
-      contents: write # to be able to create a commit
-
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v6
-
-      - name: Format sources
-        run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format -i
-
-      - name: Push changes
-        run: |
-          git config user.name github-actions[bot]
-          git config user.email github-actions[bot]@users.noreply.github.com
-          git diff --exit-code || (git commit -a -m 'style: format sources' && git push)
-
   gcc:
     name: GCC on Linux (${{ matrix.build_type }})
     runs-on: ubuntu-latest
-    needs: clangformat
-    if: (!cancelled()) && (needs.clangformat.result == 'skipped' || needs.clangformat.result == 'success')
     strategy:
       fail-fast: false
       matrix:
@@ -61,8 +40,12 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v6
 
+      - name: Check source formatting # with pre-installed ClangFormat before fetching dependencies
+        run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format --dry-run --Werror
+
       # should come after checkout
       - name: Set up cache
+        if: success() || failure() # Code formatting is not a reason to cancel the job.
         uses: hendrikmuhs/ccache-action@v1.2
         with:
           key: ${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }} # branch-based
@@ -101,8 +84,6 @@ jobs:
   clang:
     name: Clang on macOS
     runs-on: macos-latest
-    needs: clangformat
-    if: (!cancelled()) && (needs.clangformat.result == 'skipped' || needs.clangformat.result == 'success')
 
     steps:
       - name: Check out repository
@@ -130,8 +111,6 @@ jobs:
   msvc:
     name: MSVC on Windows
     runs-on: windows-2022 # compatible with Ccache
-    needs: clangformat
-    if: (!cancelled()) && (needs.clangformat.result == 'skipped' || needs.clangformat.result == 'success')
     defaults:
       run:
         shell: bash # since the default shell on Windows runners was changed to PowerShell
