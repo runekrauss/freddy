@@ -47,10 +47,7 @@ jobs:
       - name: Set up cache
         id: cache
         if: success() || failure() # Code formatting is not a reason to cancel the job.
-        uses: hendrikmuhs/ccache-action@v1.2
-        with:
-          key: ${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }} # branch-based
-          job-summary: 'Ccache Statistics'
+        run: exit 1
 
       - name: Cache dependencies
         id: dep
