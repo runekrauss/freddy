@@ -64,7 +64,7 @@ jobs:
 
       - name: Configure project # depending on linting, as Clang-Tidy is only pre-installed on Ubuntu
         id: config
-        if: success() || (failure() && steps.dep.outcome == 'success')
+        if: success() || steps.dep.outcome == 'success'
         run: >
           cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
           -DCLANG_TIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'
@@ -72,17 +72,17 @@ jobs:
 
       - name: Lint sources / Build binaries
         id: linter_build
-        if: success() || (failure() && steps.config.outcome == 'success')
+        if: success() || steps.config.outcome == 'success'
         run: cmake --build build -j$(nproc)
 
       - name: Run tests # on Ubuntu, as the associated VM is one of the fastest runners
         id: test
-        if: success() || (failure() && steps.linter_build.outcome == 'success')
+        if: success() || steps.linter_build.outcome == 'success'
         working-directory: ./build
         run: ctest --output-on-failure -j$(nproc)
 
       - name: Measure coverage
-        if: success() || (failure() && steps.test.outcome == 'success')
+        if: success() || steps.test.outcome == 'success'
         working-directory: ./build
         run: |
           cov_min=80
