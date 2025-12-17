@@ -38,7 +38,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        run: actions/checkout@v6
+        uses: actions/checkout@v6
 
       - name: Check source formatting # with pre-installed ClangFormat before fetching dependencies
         id: clangformat
