@@ -349,8 +349,8 @@ class add_manager final : public detail::manager<bool, NValue>
         return hi == lo ? hi : this->uedge(false, this->unode(x, std::move(hi), std::move(lo)));
     }
 
-    [[nodiscard]] auto comb([[maybe_unused]] bool const& w1, [[maybe_unused]] bool const& w2) const noexcept
-        -> bool override
+    [[nodiscard]] auto comb([[maybe_unused]] bool const& w1,
+                            [[maybe_unused]] bool const& w2) const noexcept -> bool override
     {
         return false;
     }
@@ -381,8 +381,8 @@ class add_manager final : public detail::manager<bool, NValue>
         return sub(plus(f, g), mul(f, g));
     }
 
-    [[nodiscard]] auto merge([[maybe_unused]] NValue const& val1, [[maybe_unused]] NValue const& val2) const noexcept
-        -> NValue override
+    [[nodiscard]] auto merge([[maybe_unused]] NValue const& val1,
+                             [[maybe_unused]] NValue const& val2) const noexcept -> NValue override
     {
         return 0;  // as no Davio expansion is used
     }
