@@ -21,8 +21,9 @@ namespace freddy
 
 enum struct expansion : std::uint8_t
 {
-    S,  // Shannon
-    pD  // positive Davio
+    S,   // Shannon
+    pD,  // positive Davio
+    nD   // negative Davio
 };
 
 // =====================================================================================================================
@@ -35,6 +36,7 @@ constexpr auto to_string(expansion const t) noexcept
     {
         case expansion::S: return "S";
         case expansion::pD: return "pD";
+        case expansion::nD: return "nD";
         default: assert(false); std::unreachable();
     }
 }
