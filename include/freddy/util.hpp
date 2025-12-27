@@ -36,12 +36,14 @@ template <typename DD1, typename DD2>
 
     std::uint64_t const no_combs = 1ULL << no_vars;
 
+    // Pre-allocate input vector once to avoid repeated allocations in the loop
+    std::vector<bool> input_vars(no_vars);
+
     for (std::uint64_t i = 0; i < no_combs; i += skip)
     {
-        std::vector<bool> input_vars;
         for (std::uint32_t j = 0; j < no_vars; j++)
         {
-            input_vars.push_back((i & (1ULL << j)) != 0u);
+            input_vars[j] = (i & (1ULL << j)) != 0u;
         }
         if (dd1.eval(input_vars) != dd2.eval(input_vars))
         {
