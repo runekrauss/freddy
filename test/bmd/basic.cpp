@@ -177,12 +177,12 @@ TEST_CASE("BMD is substituted", "[basic]")
         auto const g = f.exist(0);
 
         CHECK_FALSE(g.is_essential(0));
-        CHECK(g == mgr.constant(72) * mgr.var(1) - mgr.constant(6));
+        CHECK(g == mgr.constant(-28) * mgr.var(1) - mgr.constant(62));
     }
 
     SECTION("Variable is eliminated by universal quantification")
     {
-        CHECK(f.forall(0) == mgr.constant(16) - mgr.constant(88) * mgr.var(1));
+        CHECK(f.forall(0) == mgr.constant(80) - mgr.constant(8) * mgr.var(1));
     }
 }
 

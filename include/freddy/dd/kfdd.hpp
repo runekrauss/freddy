@@ -28,7 +28,7 @@
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::dd
+namespace freddy
 {
 
 // =====================================================================================================================
@@ -421,7 +421,7 @@ class kfdd_manager final : public detail::manager<bool, bool>
         assert(hi);
         assert(lo);
 
-        auto const t = vlist[x].decomposition();
+        auto const t = decomposition(x);
         edge_ptr r;
         bool w{};
 
@@ -508,7 +508,7 @@ class kfdd_manager final : public detail::manager<bool, bool>
         edge_ptr high;
         edge_ptr low;
 
-        switch (vlist[x].decomposition())
+        switch (decomposition(x))
         {
             case expansion::S:
                 high = conj(f_high, g_high);
@@ -742,4 +742,4 @@ inline auto kfdd::dump_dot(std::ostream& os) const
     mgr->dump_dot({*this}, {}, os);
 }
 
-}  // namespace freddy::dd
+}  // namespace freddy

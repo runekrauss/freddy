@@ -455,6 +455,18 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return val1 + val2;
     }
 
+    auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr override
+    {
+        assert(f);
+        assert(x < var_count());
+
+        if (f->is_const() || f->ch()->br().x != x)
+        {
+            return a ? manager::constant(0) : f;  // dependent on two subtrees: f ^ f = 0
+        }
+        return a ? apply(f->weight(), f->ch()->br().hi) : apply(f->weight(), f->ch()->br().lo);
+    }
+
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override  // defined over "words"
     {
         assert(f);

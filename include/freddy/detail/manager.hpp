@@ -311,14 +311,15 @@ class manager
             (*ct.insert(std::make_unique<Operation>(std::forward<Operation>(op))).first).get());
     }
 
-    auto cof(edge_ptr const& f, var_index const x, bool const a)
+    virtual auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr
     {
         assert(f);
         assert(x < var_count());
 
         if (f->is_const() || f->v->inner.x != x)
         {
-            if ((vlist[x].t == expansion::pD || vlist[x].t == expansion::nD) && a)  // dependent on two subtrees: f ^ f = 0
+            if ((vlist[x].t == expansion::pD || vlist[x].t == expansion::nD) &&
+                a)  // dependent on two subtrees: f ^ f = 0
             {
                 return consts[0];
             }
@@ -326,14 +327,10 @@ class manager
         }
         switch (vlist[x].t)
         {
-            case expansion::S:
-                return a ? apply(f->w, f->v->inner.hi) : apply(f->w, f->v->inner.lo);
+            case expansion::S: return a ? apply(f->w, f->v->inner.hi) : apply(f->w, f->v->inner.lo);
             case expansion::pD:
-            case expansion::nD:
-                return a ? f->v->inner.hi : apply(f->w, f->v->inner.lo);
-            default:
-                assert(false);
-                std::unreachable();
+            case expansion::nD: return a ? f->v->inner.hi : apply(f->w, f->v->inner.lo);
+            default: assert(false); std::unreachable();
         }
     }
 
@@ -466,7 +463,7 @@ class manager
         }
         else
         {
-            vars.push_back(uedge(regw(), unode(x, consts[1], consts[0])));  // Variables always stay alive.
+            vars.push_back(uedge(regw(), unode(x, consts[1], consts[0])));
         }
 
         assert(var2lvl.size() == var_count());
@@ -501,6 +498,13 @@ class manager
         assert(i < consts.size());
 
         return consts[i];
+    }
+
+    auto decomposition(var_index const x) const noexcept
+    {
+        assert(x < var_count());
+
+        return vlist[x].decomposition();
     }
 
     template <typename TruthValue>
@@ -685,17 +689,14 @@ class manager
             // Restriction semantics differ from cofactor for Davio decompositions
             switch (vlist[x].t)
             {
-                case expansion::S:
-                    return cof(f, x, a);
+                case expansion::S: return cof(f, x, a);
                 case expansion::pD:
                     // pD: f = f⁰ ⊕ x·f², so f|_{x=0} = f⁰ = lo, f|_{x=1} = f⁰ ⊕ f² = lo ⊕ hi
                     return apply(f->w, a ? plus(f->v->inner.hi, f->v->inner.lo) : f->v->inner.lo);
                 case expansion::nD:
                     // nD: f = f¹ ⊕ x̄·f², so f|_{x=0} = f¹ ⊕ f² = lo ⊕ hi, f|_{x=1} = f¹ = lo
                     return apply(f->w, a ? f->v->inner.lo : plus(f->v->inner.hi, f->v->inner.lo));
-                default:
-                    assert(false);
-                    std::unreachable();
+                default: assert(false); std::unreachable();
             }
         }
 
@@ -824,6 +825,8 @@ class manager
     }
 
   private:
+    using computed_table = boost::unordered_flat_set<std::unique_ptr<operation>, hash, equal>;  // CT
+
     // Result type for DTL sifting
     struct dtl_sift_result
     {
@@ -833,13 +836,13 @@ class manager
         expansion exp;
     };
 
-    void move_to_bottom(var_index const x)
+    [[nodiscard]] auto depth(edge_ptr const& f) const noexcept -> var_index
     {
-        sift(var2lvl[x], var_count() - 1);
+        return f->is_const() ? 1 : std::max(depth(f->v->inner.hi), depth(f->v->inner.lo)) + 1;
     }
 
-    auto dtl_find_smallest_level(dtl_sift_result const& curr_best, expansion const exp,
-                                  std::vector<edge_ptr> const& fs) -> dtl_sift_result
+    auto dtl_find_smallest_level(dtl_sift_result const& curr_best, expansion const exp, std::vector<edge_ptr> const& fs)
+        -> dtl_sift_result
     {
         auto res = curr_best;
         auto const x = curr_best.x;
@@ -893,14 +896,6 @@ class manager
         sift(var2lvl[x], res.pos);
 
         return res;
-    }
-
-  private:
-    using computed_table = boost::unordered_flat_set<std::unique_ptr<operation>, hash, equal>;  // CT
-
-    [[nodiscard]] auto depth(edge_ptr const& f) const noexcept -> var_index
-    {
-        return f->is_const() ? 1 : std::max(depth(f->v->inner.hi), depth(f->v->inner.lo)) + 1;
     }
 
     auto dump_dot(edge_ptr const& f, boost::unordered_flat_set<node*, hash, equal>& marks, std::ostream& os) const
@@ -1094,6 +1089,11 @@ class manager
         return bytes;
     }
 
+    void move_to_bottom(var_index const x)
+    {
+        sift(var2lvl[x], static_cast<var_index>(var_count() - 1));
+    }
+
     auto sift_down(var_index lvl, std::pair<var_index, std::size_t>& min)
     {
         auto prev_ncount = 0uz;
@@ -1150,22 +1150,21 @@ class manager
         }
     }
 
+    struct config cfg;  // configuration settings such as hash table sizes
+
     std::vector<edge_ptr> consts;  // DD constants that are never cleared
 
     computed_table ct;  // to cache already computed results of operations
 
     unique_table<edge> etable;  // edges pointing to constants
 
-    unique_table<node> ntable;  // constants
-
-    std::vector<edge_ptr> vars;  // DD variables that are never cleared
-
-  protected:
-    struct config cfg;  // configuration settings such as hash table sizes
-
     std::vector<var_index> lvl2var;  // for efficient GC
 
+    unique_table<node> ntable;  // constants
+
     std::vector<var_index> var2lvl;  // for reasons of reordering
+
+    std::vector<edge_ptr> vars;  // DD variables that are never cleared
 
     std::vector<variable<EWeight, NValue>> vlist;  // variable list
 };
