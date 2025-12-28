@@ -842,7 +842,6 @@ class manager
     }
 
     auto dtl_find_smallest_level(dtl_sift_result const& curr_best, expansion const exp, std::vector<edge_ptr> const& fs)
-        -> dtl_sift_result
     {
         auto res = curr_best;
         auto const x = curr_best.x;
