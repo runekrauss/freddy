@@ -68,7 +68,7 @@ class variable final
 
     ~variable() = default;
 
-    auto decomposition() const noexcept
+    [[nodiscard]] auto decomposition() const noexcept
     {
         return t;
     }
@@ -78,12 +78,12 @@ class variable final
         return lbl;
     }
 
-    auto edge_table() const noexcept -> unique_table<edge<EWeight, NValue>> const&
+    [[nodiscard]] auto edge_table() const noexcept -> unique_table<edge<EWeight, NValue>> const&
     {
         return etable;
     }
 
-    auto node_table() const noexcept -> unique_table<node<EWeight, NValue>> const&
+    [[nodiscard]] auto node_table() const noexcept -> unique_table<node<EWeight, NValue>> const&
     {
         return ntable;
     }

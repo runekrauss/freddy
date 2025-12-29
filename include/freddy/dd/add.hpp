@@ -349,10 +349,12 @@ class add_manager final : public detail::manager<bool, NValue>
         return hi == lo ? hi : this->uedge(false, this->unode(x, std::move(hi), std::move(lo)));
     }
 
-    [[nodiscard]] auto comb([[maybe_unused]] bool const& w1,
-                            [[maybe_unused]] bool const& w2) const noexcept -> bool override
+    [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
     {
-        return false;
+        assert(!w1);
+        assert(!w2);
+
+        return w1 && w2;
     }
 
     auto complement(edge_ptr const& f) -> edge_ptr override
@@ -381,10 +383,9 @@ class add_manager final : public detail::manager<bool, NValue>
         return sub(plus(f, g), mul(f, g));
     }
 
-    [[nodiscard]] auto merge([[maybe_unused]] NValue const& val1,
-                             [[maybe_unused]] NValue const& val2) const noexcept -> NValue override
+    [[nodiscard]] auto merge(NValue const& val1, [[maybe_unused]] NValue const& val2) const noexcept -> NValue override
     {
-        return 0;  // as no Davio expansion is used
+        return val1 * 0;  // as no Davio expansion is used
     }
 
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override

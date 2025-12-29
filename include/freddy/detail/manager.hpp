@@ -311,22 +311,6 @@ class manager
             (*ct.insert(std::make_unique<Operation>(std::forward<Operation>(op))).first).get());
     }
 
-    auto cof(edge_ptr const& f, var_index const x, bool const a)
-    {
-        assert(f);
-        assert(x < var_count());
-
-        if (f->is_const() || f->v->inner.x != x)
-        {
-            if (vlist[x].t == expansion::pD && a)  // dependent on two subtrees: f ^ f = 0
-            {
-                return consts[0];
-            }
-            return f;
-        }
-        return a ? apply(f->w, f->v->inner.hi) : apply(f->w, f->v->inner.lo);
-    }
-
     [[nodiscard]] auto top_var(edge_ptr const& f, edge_ptr const& g) const noexcept
     {
         assert(f);
@@ -385,6 +369,67 @@ class manager
         return uedge(comb(w, f->w), f->v);
     }
 
+    // handling bit-level DDs with edge weight inversion for nD transitions
+    virtual auto change_decomposition(var_index const x, expansion const t) -> void  // at the bottom variable level
+    {
+        assert(x < var_count());
+        assert(var2lvl[x] == var_count() - 1);
+        assert(vlist[x].ntable.size() == 1);
+
+        auto const orig_t = vlist[x].t;
+        if (orig_t == t)
+        {  // variable already has the desired decomposition type
+            return;
+        }
+
+        gc();  // for performance reasons
+
+        // Edge adjustments are only necessary when changing from or to nD.
+        if (t == expansion::nD || orig_t == expansion::nD)
+        {  // invert all edges pointing to the node at this level
+            std::vector<edge_ptr> tmp;
+            tmp.reserve(vlist[x].etable.size());
+
+            for (auto it = vlist[x].etable.begin(); it != vlist[x].etable.end();)
+            {
+                auto const e = *it;
+                it = vlist[x].etable.erase(it);
+
+                e->w = agg(e->w, true);
+                tmp.push_back(std::move(e));
+            }
+
+            vlist[x].etable.insert(tmp.begin(), tmp.end());
+        }
+
+        vlist[x].t = t;
+
+        gc();
+    }
+
+    virtual auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr  // edge weights could be factored
+    {
+        assert(f);
+        assert(x < var_count());
+
+        if (f->is_const() || f->v->inner.x != x)
+        {
+            if ((vlist[x].t == expansion::pD || vlist[x].t == expansion::nD) && a)
+            {
+                return consts[0];
+            }
+            return f;
+        }
+
+        switch (vlist[x].t)
+        {
+            case expansion::S: return a ? apply(f->w, f->v->inner.hi) : apply(f->w, f->v->inner.lo);
+            case expansion::pD:
+            case expansion::nD: return a ? f->v->inner.hi : apply(f->w, f->v->inner.lo);
+            default: assert(false); std::unreachable();
+        }
+    }
+
     // NOLINTNEXTLINE(performance-unnecessary-value-param) because simplifications may change pointers
     virtual auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr
     {
@@ -408,7 +453,15 @@ class manager
         var2lvl.push_back(x);
         lvl2var.push_back(x);
         vlist.emplace_back(t, lbl.empty() ? "x"s + std::to_string(x) : lbl, cfg.utable_size_hint);
-        vars.push_back(uedge(regw(), unode(x, consts[1], consts[0])));  // Variables always stay alive.
+
+        if (t == expansion::nD)
+        {  // edge needs to be complemented
+            vars.push_back(uedge(agg(regw(), consts[1]->w), unode(x, consts[1], consts[0])));
+        }
+        else
+        {
+            vars.push_back(uedge(regw(), unode(x, consts[1], consts[0])));
+        }
 
         assert(var2lvl.size() == var_count());
         assert(lvl2var.size() == var_count());
@@ -422,6 +475,13 @@ class manager
         assert(x < vars.size());
 
         return vars[x];
+    }
+
+    [[nodiscard]] auto decomposition(var_index const x) const noexcept  // direct access to variables is not allowed
+    {
+        assert(x < var_count());
+
+        return vlist[x].decomposition();
     }
 
     auto constant(EWeight w, NValue c, bool const keep_alive)
@@ -559,31 +619,51 @@ class manager
         edge_ptr hi, lo;
         if (f->v->inner.x == x)
         {
-            hi = mul(f->v->inner.hi, g);
-
             switch (vlist[x].t)
             {
                 case expansion::S:
                 {
+                    hi = mul(f->v->inner.hi, g);
                     lo = mul(f->v->inner.lo, complement(g));
                     break;
                 }
-                case expansion::pD: lo = f->v->inner.lo; break;
+                case expansion::pD:
+                {
+                    hi = mul(f->v->inner.hi, g);
+                    lo = f->v->inner.lo;
+                    break;
+                }
+                case expansion::nD:
+                {
+                    hi = mul(f->v->inner.hi, complement(g));
+                    lo = f->v->inner.lo;
+                    break;
+                }
                 default: assert(false); std::unreachable();
             }
         }
         else
         {
-            hi = mul(vars[f->v->inner.x], compose(f->v->inner.hi, x, g));
-
             switch (vlist[f->v->inner.x].t)
             {
                 case expansion::S:
                 {
+                    hi = mul(vars[f->v->inner.x], compose(f->v->inner.hi, x, g));
                     lo = mul(complement(vars[f->v->inner.x]), compose(f->v->inner.lo, x, g));
                     break;
                 }
-                case expansion::pD: lo = compose(f->v->inner.lo, x, g); break;
+                case expansion::pD:
+                {
+                    hi = mul(vars[f->v->inner.x], compose(f->v->inner.hi, x, g));
+                    lo = compose(f->v->inner.lo, x, g);
+                    break;
+                }
+                case expansion::nD:
+                {
+                    hi = mul(complement(vars[f->v->inner.x]), compose(f->v->inner.hi, x, g));
+                    lo = compose(f->v->inner.lo, x, g);
+                    break;
+                }
                 default: assert(false); std::unreachable();
             }
         }
@@ -601,9 +681,17 @@ class manager
         {
             return f;
         }
+
         if (f->v->inner.x == x)
         {
-            return cof(f, x, a);
+            // Restriction semantics differs from the cofactor for Davio decompositions.
+            switch (vlist[x].t)
+            {
+                case expansion::S: return cof(f, x, a);
+                case expansion::pD: return apply(f->w, a ? plus(f->v->inner.hi, f->v->inner.lo) : f->v->inner.lo);
+                case expansion::nD: return apply(f->w, a ? f->v->inner.lo : plus(f->v->inner.hi, f->v->inner.lo));
+                default: assert(false); std::unreachable();
+            }
         }
 
         detail::restr op{f, x, a};
@@ -630,6 +718,29 @@ class manager
         assert(x < var_count());
 
         return conj(restr(f, x, true), restr(f, x, false));
+    }
+
+    // DTL (Decomposition Type List) sifting: optimizes variable order and decomposition types
+    void dtl_sift(std::vector<edge_ptr> const& fs)
+    {
+        auto comp_largest_layer = [this](var_index const x, var_index const y) {
+            return vlist[x].ntable.size() > vlist[y].ntable.size();
+        };
+
+        gc();
+
+        std::vector<var_index> tmp_vars(var_count());
+        for (var_index x = 0; x < var_count(); ++x)
+        {
+            tmp_vars[x] = x;
+        }
+        gc();
+        std::ranges::sort(tmp_vars, comp_largest_layer);
+        for (var_index i = 0; i < var_count(); ++i)
+        {
+            dtl_sift_single_var(tmp_vars[i], fs);
+        }
+        gc();
     }
 
     auto dump_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& os) const
@@ -687,9 +798,76 @@ class manager
   private:
     using computed_table = boost::unordered_flat_set<std::unique_ptr<operation>, hash, equal>;  // CT
 
+    struct dtl_sift_result
+    {
+        var_index x;
+
+        var_index pos;
+
+        std::size_t size;
+
+        expansion exp;
+    };
+
     [[nodiscard]] auto depth(edge_ptr const& f) const noexcept -> var_index
     {
         return f->is_const() ? 1 : std::max(depth(f->v->inner.hi), depth(f->v->inner.lo)) + 1;
+    }
+
+    auto dtl_find_smallest_level(dtl_sift_result const& curr_best, expansion const exp, std::vector<edge_ptr> const& fs)
+    {
+        auto res = curr_best;
+        auto const x = curr_best.x;
+        sift(var2lvl[x], static_cast<var_index>(var_count() - 1));  // move to the bottom
+        change_decomposition(x, exp);
+        auto const exceeding_size = static_cast<double>(dtl_get_size(fs)) * cfg.max_node_growth;
+        for (auto i = var2lvl[x]; i > 0; --i)
+        {
+            sift(i, i - 1);
+            gc();
+            auto const current_size = dtl_get_size(fs);
+            if (static_cast<double>(current_size) > exceeding_size)
+            {
+                break;
+            }
+            if (current_size < res.size)
+            {
+                res.size = current_size;
+                res.pos = var2lvl[x];
+                res.exp = vlist[x].t;
+            }
+        }
+        return res;
+    }
+
+    [[nodiscard]] auto dtl_get_size(std::vector<edge_ptr> const& fs) const
+    {
+        if (fs.empty())
+        {
+            return node_count();
+        }
+        return size(fs);
+    }
+
+    auto dtl_sift_single_var(var_index const x, std::vector<edge_ptr> const& fs)
+    {
+        dtl_sift_result res{.x = x, .pos = var2lvl[x], .size = dtl_get_size(fs), .exp = vlist[x].t};
+
+        // find smallest level for Shannon
+        res = dtl_find_smallest_level(res, expansion::S, fs);
+
+        // find smallest level for positive Davio
+        res = dtl_find_smallest_level(res, expansion::pD, fs);
+
+        // find smallest level for negative Davio
+        res = dtl_find_smallest_level(res, expansion::nD, fs);
+
+        // move variable to smallest level with smallest expansion type
+        sift(var2lvl[x], static_cast<var_index>(var_count() - 1));
+        change_decomposition(x, res.exp);
+        sift(var2lvl[x], res.pos);
+
+        return res;
     }
 
     auto dump_dot(edge_ptr const& f, boost::unordered_flat_set<node*, hash, equal>& marks, std::ostream& os) const
@@ -737,6 +915,7 @@ class manager
                 break;
             }
             case expansion::pD: res = as[br.x] ? merge(eval(br.hi, as), eval(br.lo, as)) : eval(br.lo, as); break;
+            case expansion::nD: res = as[br.x] ? eval(br.lo, as) : merge(eval(br.hi, as), eval(br.lo, as)); break;
             default: assert(false); std::unreachable();
         }
         return res;
