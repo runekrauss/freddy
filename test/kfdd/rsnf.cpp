@@ -25,7 +25,7 @@ namespace
 // =====================================================================================================================
 
 template <typename DD1, typename DD2>
-[[maybe_unused]] inline auto eval_dds(DD1 const& dd1, DD2 const& dd2, int skip = 1) -> bool
+auto eval_dds(DD1 const& dd1, DD2 const& dd2)
 {
     assert(dd1.manager().var_count() == dd2.manager().var_count());
 
@@ -37,7 +37,7 @@ template <typename DD1, typename DD2>
     // Pre-allocate input vector once to avoid repeated allocations in the loop
     std::vector<bool> input_vars(no_vars);
 
-    for (std::uint64_t i = 0; i < no_combs; i += skip)
+    for (std::uint64_t i = 0; i < no_combs; ++i)
     {
         for (std::uint32_t j = 0; j < no_vars; j++)
         {
@@ -57,7 +57,7 @@ template <typename DD1, typename DD2>
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("kfdd ringsum sift test", "[kfdd][ringsum]")
+TEST_CASE("kfdd ringsum sift test", "[rsnf]")
 {
     kfdd_manager mgr_ctrl{};
     std::vector<kfdd> c(15);
@@ -180,7 +180,7 @@ TEST_CASE("kfdd ringsum sift test", "[kfdd][ringsum]")
     CHECK(eval_dds(result_v, result_c));
 }
 
-TEST_CASE("simple ringsum", "[kfdd][ringsum]")
+TEST_CASE("simple ringsum", "[rsnf]")
 {
     kfdd_manager mgr1{};
     auto const x0 = mgr1.var(expansion::S);
@@ -203,7 +203,7 @@ TEST_CASE("simple ringsum", "[kfdd][ringsum]")
     CHECK(eval_dds(ringsum, ringsum2));
 }
 
-TEST_CASE("wiki example ringsum", "[kfdd][ringsum]")
+TEST_CASE("wiki example ringsum", "[rsnf]")
 {
     kfdd_manager mgr{};
     auto const a1 = mgr.var(expansion::S);

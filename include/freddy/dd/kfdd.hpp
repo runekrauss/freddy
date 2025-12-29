@@ -11,9 +11,9 @@
 #include "freddy/detail/operation/conj.hpp"      // detail::conj
 #include "freddy/detail/operation/ite.hpp"       // detail::ite
 #include "freddy/detail/operation/sharpsat.hpp"  // detail::sharpsat
-#include "freddy/expansion.hpp"                  // expansion
+#include "freddy/expansion.hpp"                  // expansion::nD
 
-#include <algorithm>    // std::ranges::transform, std::ranges::sort
+#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cstdint>      // std::int32_t
@@ -248,10 +248,10 @@ class kfdd_manager final : public detail::manager<bool, bool>
         manager::dtl_sift(transform(fs));
     }
 
-    // Public alias for change_decomposition_type (compatibility with tests)
+    // Public alias for change_decomposition (compatibility with tests)
     void change_expansion_type(var_index const x, expansion const t)
     {
-        change_decomposition_type(x, t);
+        change_decomposition(x, t);
     }
 
   private:

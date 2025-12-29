@@ -4,8 +4,10 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/kfdd.hpp>  // kfdd_manager
-#include <freddy/expansion.hpp>
+#include <freddy/dd/kfdd.hpp>    // kfdd_manager
+#include <freddy/expansion.hpp>  // expansion::nD
+
+#include <vector>  // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -17,7 +19,7 @@ using namespace freddy;
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("kfdd basic consts tests", "[kfdd][basic]")
+TEST_CASE("kfdd basic consts tests", "[basic]")
 {
     kfdd_manager mgr_basics;
     auto const test_one = mgr_basics.one();
@@ -29,7 +31,7 @@ TEST_CASE("kfdd basic consts tests", "[kfdd][basic]")
     CHECK(test_zero.eval({}) == 0);
 }
 
-TEST_CASE("kfdd basic XOR tests [S]", "[kfdd][basic]")
+TEST_CASE("kfdd basic XOR tests [S]", "[basic]")
 {
     kfdd_manager mgr_xor;
 
@@ -38,7 +40,7 @@ TEST_CASE("kfdd basic XOR tests [S]", "[kfdd][basic]")
 
     auto xor_v1_v2 = xor_v1 ^ xor_v2;
 
-    CHECK(xor_v1_v2.eval({true, true}) == 0);
+    CHECK(xor_v1_v2.eval(std::vector{true, true}) == 0);
     CHECK(xor_v1_v2.eval({true, false}) == 1);
     CHECK(xor_v1_v2.eval({false, true}) == 1);
     CHECK(xor_v1_v2.eval({false, false}) == 0);
@@ -57,7 +59,7 @@ TEST_CASE("kfdd basic XOR tests [S]", "[kfdd][basic]")
     CHECK(xor_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic XOR tests [nD]", "[kfdd][basic]")
+TEST_CASE("kfdd basic XOR tests [nD]", "[basic]")
 {
     kfdd_manager mgr_xor;
 
@@ -85,7 +87,7 @@ TEST_CASE("kfdd basic XOR tests [nD]", "[kfdd][basic]")
     CHECK(xor_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic XOR tests [pD]", "[kfdd][basic]")
+TEST_CASE("kfdd basic XOR tests [pD]", "[basic]")
 {
     kfdd_manager mgr_xor;
 
@@ -113,7 +115,7 @@ TEST_CASE("kfdd basic XOR tests [pD]", "[kfdd][basic]")
     CHECK(xor_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic XOR tests [mixed]", "[kfdd][basic]")
+TEST_CASE("kfdd basic XOR tests [mixed]", "[basic]")
 {
     kfdd_manager mgr_xor;
 
@@ -141,7 +143,7 @@ TEST_CASE("kfdd basic XOR tests [mixed]", "[kfdd][basic]")
     CHECK(xor_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic OR tests [nD]", "[kfdd][basic]")
+TEST_CASE("kfdd basic OR tests [nD]", "[basic]")
 {
     kfdd_manager mgr_or;
     auto or_v1 = mgr_or.var(expansion::nD);
@@ -167,7 +169,7 @@ TEST_CASE("kfdd basic OR tests [nD]", "[kfdd][basic]")
     CHECK(or_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic OR tests [mixed]", "[kfdd][basic]")
+TEST_CASE("kfdd basic OR tests [mixed]", "[basic]")
 {
     kfdd_manager mgr_or;
     auto or_v1 = mgr_or.var(expansion::pD);
@@ -193,7 +195,7 @@ TEST_CASE("kfdd basic OR tests [mixed]", "[kfdd][basic]")
     CHECK(or_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic OR tests [pD]", "[kfdd][basic]")
+TEST_CASE("kfdd basic OR tests [pD]", "[basic]")
 {
     kfdd_manager mgr_or;
     auto or_v1 = mgr_or.var(expansion::pD);
@@ -219,7 +221,7 @@ TEST_CASE("kfdd basic OR tests [pD]", "[kfdd][basic]")
     CHECK(or_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic OR tests [S]", "[kfdd][basic]")
+TEST_CASE("kfdd basic OR tests [S]", "[basic]")
 {
     kfdd_manager mgr_or;
     auto or_v1 = mgr_or.var(expansion::S);
@@ -245,7 +247,7 @@ TEST_CASE("kfdd basic OR tests [S]", "[kfdd][basic]")
     CHECK(or_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic AND tests [pD]", "[kfdd][basic]")
+TEST_CASE("kfdd basic AND tests [pD]", "[basic]")
 {
     kfdd_manager mgr_and;
     auto and_v1 = mgr_and.var(expansion::pD);
@@ -271,7 +273,7 @@ TEST_CASE("kfdd basic AND tests [pD]", "[kfdd][basic]")
     CHECK(and_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic AND tests [mixed]", "[kfdd][basic]")
+TEST_CASE("kfdd basic AND tests [mixed]", "[basic]")
 {
     kfdd_manager mgr_and;
     auto and_v1 = mgr_and.var(expansion::S);
@@ -297,7 +299,7 @@ TEST_CASE("kfdd basic AND tests [mixed]", "[kfdd][basic]")
     CHECK(and_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic AND tests [nD]", "[kfdd][basic]")
+TEST_CASE("kfdd basic AND tests [nD]", "[basic]")
 {
     kfdd_manager mgr_and;
     auto and_v1 = mgr_and.var(expansion::nD);
@@ -397,7 +399,7 @@ TEST_CASE("kfdd basic AND tests [nD]", "[kfdd][basic]")
     CHECK(pred3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic AND tests [S]", "[kfdd][basic]")
+TEST_CASE("kfdd basic AND tests [S]", "[basic]")
 {
     kfdd_manager mgr_and;
     auto and_v1 = mgr_and.var(expansion::S);
@@ -423,7 +425,7 @@ TEST_CASE("kfdd basic AND tests [S]", "[kfdd][basic]")
     CHECK(and_v1_v2_v3.eval({true, true, true}) == 1);
 }
 
-TEST_CASE("kfdd basic NEG tests [pD]", "[kfdd][basic]")
+TEST_CASE("kfdd basic NEG tests [pD]", "[basic]")
 {
     kfdd_manager mgr_neg;
     auto const v1 = mgr_neg.var(expansion::pD);
@@ -437,7 +439,7 @@ TEST_CASE("kfdd basic NEG tests [pD]", "[kfdd][basic]")
     CHECK(negated_v1.eval({true}) == 0);
 }
 
-TEST_CASE("kfdd basic NEG tests [nD]", "[kfdd][basic]")
+TEST_CASE("kfdd basic NEG tests [nD]", "[basic]")
 {
     kfdd_manager mgr_neg;
     auto const v1 = mgr_neg.var(expansion::nD);
@@ -451,7 +453,7 @@ TEST_CASE("kfdd basic NEG tests [nD]", "[kfdd][basic]")
     CHECK(negated_v1.eval({true}) == 0);
 }
 
-TEST_CASE("kfdd basic NEG tests [S]", "[kfdd][basic]")
+TEST_CASE("kfdd basic NEG tests [S]", "[basic]")
 {
     kfdd_manager mgr_neg;
     auto const v1 = mgr_neg.var(expansion::S);
@@ -465,7 +467,7 @@ TEST_CASE("kfdd basic NEG tests [S]", "[kfdd][basic]")
     CHECK(negated_v1.eval({true}) == 0);
 }
 
-TEST_CASE("kfdd basic restr test S", "[kfdd][basic]")
+TEST_CASE("kfdd basic restr test S", "[basic]")
 {
     kfdd_manager mgr;
     auto const x0 = mgr.var(expansion::S);
@@ -475,7 +477,7 @@ TEST_CASE("kfdd basic restr test S", "[kfdd][basic]")
     CHECK(res1 == mgr.one());
 }
 
-TEST_CASE("kfdd basic restr test pD", "[kfdd][basic]")
+TEST_CASE("kfdd basic restr test pD", "[basic]")
 {
     kfdd_manager mgr;
     auto const x0 = mgr.var(expansion::pD);
@@ -485,7 +487,7 @@ TEST_CASE("kfdd basic restr test pD", "[kfdd][basic]")
     CHECK(res1 == mgr.one());
 }
 
-TEST_CASE("kfdd basic restr test nD", "[kfdd][basic]")
+TEST_CASE("kfdd basic restr test nD", "[basic]")
 {
     kfdd_manager mgr;
     auto const x0 = mgr.var(expansion::nD);
@@ -495,7 +497,7 @@ TEST_CASE("kfdd basic restr test nD", "[kfdd][basic]")
     CHECK(res1 == mgr.one());
 }
 
-TEST_CASE("kfdd basic compose test S", "[kfdd][basic]")
+TEST_CASE("kfdd basic compose test S", "[basic]")
 {
     kfdd_manager mgr;
     auto const x0 = mgr.var(expansion::S);
@@ -513,7 +515,7 @@ TEST_CASE("kfdd basic compose test S", "[kfdd][basic]")
     CHECK(composed.eval({true, true, true}) == true);
 }
 
-TEST_CASE("kfdd basic compose test pD", "[kfdd][basic]")
+TEST_CASE("kfdd basic compose test pD", "[basic]")
 {
     kfdd_manager mgr;
     auto const x0 = mgr.var(expansion::pD);
@@ -531,7 +533,7 @@ TEST_CASE("kfdd basic compose test pD", "[kfdd][basic]")
     CHECK(composed.eval({true, true, true}) == true);
 }
 
-TEST_CASE("kfdd basic compose test nD", "[kfdd][basic]")
+TEST_CASE("kfdd basic compose test nD", "[basic]")
 {
     kfdd_manager mgr;
     auto const x0 = mgr.var(expansion::nD);
@@ -549,7 +551,7 @@ TEST_CASE("kfdd basic compose test nD", "[kfdd][basic]")
     CHECK(composed.eval({true, true, true}) == true);
 }
 
-TEST_CASE("kfdd basic compose test mixed", "[kfdd][basic]")
+TEST_CASE("kfdd basic compose test mixed", "[basic]")
 {
     kfdd_manager mgr;
     auto const x0 = mgr.var(expansion::pD);
@@ -567,7 +569,7 @@ TEST_CASE("kfdd basic compose test mixed", "[kfdd][basic]")
     CHECK(composed.eval({true, true, true}) == true);
 }
 
-TEST_CASE("restr prints", "[kfdd][basic]")
+TEST_CASE("restr prints", "[basic]")
 {
     kfdd_manager mgr;
     auto x0 = mgr.var(expansion::S);
@@ -583,7 +585,7 @@ TEST_CASE("restr prints", "[kfdd][basic]")
     CHECK(pred3.is_zero());
 }
 
-TEST_CASE("compose prints", "[kfdd][basic]")
+TEST_CASE("compose prints", "[basic]")
 {
     kfdd_manager mgr;
     auto x0 = mgr.var(expansion::S);

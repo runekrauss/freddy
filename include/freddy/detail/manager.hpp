@@ -311,29 +311,6 @@ class manager
             (*ct.insert(std::make_unique<Operation>(std::forward<Operation>(op))).first).get());
     }
 
-    virtual auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr
-    {
-        assert(f);
-        assert(x < var_count());
-
-        if (f->is_const() || f->v->inner.x != x)
-        {
-            if ((vlist[x].t == expansion::pD || vlist[x].t == expansion::nD) &&
-                a)  // dependent on two subtrees: f ^ f = 0
-            {
-                return consts[0];
-            }
-            return f;
-        }
-        switch (vlist[x].t)
-        {
-            case expansion::S: return a ? apply(f->w, f->v->inner.hi) : apply(f->w, f->v->inner.lo);
-            case expansion::pD:
-            case expansion::nD: return a ? f->v->inner.hi : apply(f->w, f->v->inner.lo);
-            default: assert(false); std::unreachable();
-        }
-    }
-
     [[nodiscard]] auto top_var(edge_ptr const& f, edge_ptr const& g) const noexcept
     {
         assert(f);
@@ -392,6 +369,67 @@ class manager
         return uedge(comb(w, f->w), f->v);
     }
 
+    // handling bit-level DDs with edge weight inversion for nD transitions
+    virtual auto change_decomposition(var_index const x, expansion const t) -> void  // at the bottom variable level
+    {
+        assert(x < var_count());
+        assert(var2lvl[x] == var_count() - 1);
+        assert(vlist[x].ntable.size() == 1);
+
+        auto const orig_t = vlist[x].t;
+        if (orig_t == t)
+        {  // variable already has the desired decomposition type
+            return;
+        }
+
+        gc();  // for performance reasons
+
+        // Edge adjustments are only necessary when changing from or to nD.
+        if (t == expansion::nD || orig_t == expansion::nD)
+        {  // invert all edges pointing to the node at this level
+            std::vector<edge_ptr> tmp;
+            tmp.reserve(vlist[x].etable.size());
+
+            for (auto it = vlist[x].etable.begin(); it != vlist[x].etable.end();)
+            {
+                auto const e = *it;
+                it = vlist[x].etable.erase(it);
+
+                e->w = agg(e->w, true);
+                tmp.push_back(std::move(e));
+            }
+
+            vlist[x].etable.insert(tmp.begin(), tmp.end());
+        }
+
+        vlist[x].t = t;
+
+        gc();
+    }
+
+    virtual auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr  // edge weights could be factored
+    {
+        assert(f);
+        assert(x < var_count());
+
+        if (f->is_const() || f->v->inner.x != x)
+        {
+            if ((vlist[x].t == expansion::pD || vlist[x].t == expansion::nD) && a)
+            {
+                return consts[0];
+            }
+            return f;
+        }
+
+        switch (vlist[x].t)
+        {
+            case expansion::S: return a ? apply(f->w, f->v->inner.hi) : apply(f->w, f->v->inner.lo);
+            case expansion::pD:
+            case expansion::nD: return a ? f->v->inner.hi : apply(f->w, f->v->inner.lo);
+            default: assert(false); std::unreachable();
+        }
+    }
+
     // NOLINTNEXTLINE(performance-unnecessary-value-param) because simplifications may change pointers
     virtual auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr
     {
@@ -400,47 +438,6 @@ class manager
         assert(h);
 
         return disj(conj(f, g), conj(complement(f), h));
-    }
-
-    // Changes the decomposition type for a variable at the bottom level.
-    // Default implementation handles bit-level DDs with edge weight inversion for nD transitions.
-    // Word-level DDs should override this with appropriate logic.
-    virtual void change_decomposition_type(var_index const x, expansion const t)
-    {
-        assert(x < var_count());
-        assert(var2lvl[x] == var_count() - 1);  // must be at bottom level
-        assert(vlist[x].ntable.size() == 1);    // only one node at bottom
-
-        gc();
-        auto const org_t = vlist[x].t;
-
-        if (org_t == t)
-        {
-            return;
-        }
-
-        // Only on change from or to negative Davio are edge adjustments needed
-        if (t == expansion::nD || org_t == expansion::nD)
-        {
-            // Invert all edges pointing to the node at this level
-            boost::unordered_flat_set<edge_ptr, detail::hash, detail::equal> et;
-            for (auto it = vlist[x].etable.begin(); it != vlist[x].etable.end();)
-            {
-                auto edge = *it;
-                it = vlist[x].etable.erase(it);
-                edge->w = agg(edge->w, true);
-                et.insert(edge);
-            }
-            for (auto it = et.begin(); it != et.end();)
-            {
-                auto edge = *it;
-                it = et.erase(it);
-                vlist[x].etable.insert(edge);
-            }
-        }
-
-        vlist[x].t = t;
-        gc();
     }
 
     auto var(expansion const t, std::string_view lbl)
@@ -456,10 +453,10 @@ class manager
         var2lvl.push_back(x);
         lvl2var.push_back(x);
         vlist.emplace_back(t, lbl.empty() ? "x"s + std::to_string(x) : lbl, cfg.utable_size_hint);
-        // For nD (negative Davio), the variable edge needs to be complemented
+
         if (t == expansion::nD)
-        {
-            vars.push_back(uedge(agg(regw(), consts[1]->weight()), unode(x, consts[1], consts[0])));
+        {  // edge needs to be complemented
+            vars.push_back(uedge(agg(regw(), consts[1]->w), unode(x, consts[1], consts[0])));
         }
         else
         {
@@ -480,6 +477,13 @@ class manager
         return vars[x];
     }
 
+    [[nodiscard]] auto decomposition(var_index const x) const noexcept  // direct access to variables is not allowed
+    {
+        assert(x < var_count());
+
+        return vlist[x].decomposition();
+    }
+
     auto constant(EWeight w, NValue c, bool const keep_alive)
     {
         if (keep_alive)
@@ -498,13 +502,6 @@ class manager
         assert(i < consts.size());
 
         return consts[i];
-    }
-
-    auto decomposition(var_index const x) const noexcept
-    {
-        assert(x < var_count());
-
-        return vlist[x].decomposition();
     }
 
     template <typename TruthValue>
@@ -684,18 +681,15 @@ class manager
         {
             return f;
         }
+
         if (f->v->inner.x == x)
         {
-            // Restriction semantics differ from cofactor for Davio decompositions
+            // Restriction semantics differs from the cofactor for Davio decompositions.
             switch (vlist[x].t)
             {
                 case expansion::S: return cof(f, x, a);
-                case expansion::pD:
-                    // pD: f = f⁰ ⊕ x·f², so f|_{x=0} = f⁰ = lo, f|_{x=1} = f⁰ ⊕ f² = lo ⊕ hi
-                    return apply(f->w, a ? plus(f->v->inner.hi, f->v->inner.lo) : f->v->inner.lo);
-                case expansion::nD:
-                    // nD: f = f¹ ⊕ x̄·f², so f|_{x=0} = f¹ ⊕ f² = lo ⊕ hi, f|_{x=1} = f¹ = lo
-                    return apply(f->w, a ? f->v->inner.lo : plus(f->v->inner.hi, f->v->inner.lo));
+                case expansion::pD: return apply(f->w, a ? plus(f->v->inner.hi, f->v->inner.lo) : f->v->inner.lo);
+                case expansion::nD: return apply(f->w, a ? f->v->inner.lo : plus(f->v->inner.hi, f->v->inner.lo));
                 default: assert(false); std::unreachable();
             }
         }
@@ -724,6 +718,29 @@ class manager
         assert(x < var_count());
 
         return conj(restr(f, x, true), restr(f, x, false));
+    }
+
+    // DTL (Decomposition Type List) sifting: optimizes variable order and decomposition types
+    void dtl_sift(std::vector<edge_ptr> const& fs)
+    {
+        auto comp_largest_layer = [this](var_index const x, var_index const y) {
+            return vlist[x].ntable.size() > vlist[y].ntable.size();
+        };
+
+        gc();
+
+        std::vector<var_index> tmp_vars(var_count());
+        for (var_index x = 0; x < var_count(); ++x)
+        {
+            tmp_vars[x] = x;
+        }
+        gc();
+        std::ranges::sort(tmp_vars, comp_largest_layer);
+        for (var_index i = 0; i < var_count(); ++i)
+        {
+            dtl_sift_single_var(tmp_vars[i], fs);
+        }
+        gc();
     }
 
     auto dump_dot(std::vector<edge_ptr> const& fs, std::vector<std::string> const& outputs, std::ostream& os) const
@@ -778,61 +795,17 @@ class manager
         os << "}\n";
     }
 
-    auto sift(var_index const lvl_x, var_index const lvl_y)
-    {
-        if (lvl_x == lvl_y)
-        {
-            return;
-        }
-
-        if (lvl_x < lvl_y)
-        {
-            for (auto const lvl : std::views::iota(lvl_x, lvl_y))  // [lvl_x, lvl_y)
-            {
-                exchange(lvl);
-            }
-        }
-        else
-        {
-            for (auto const lvl : std::views::iota(lvl_y, lvl_x) | std::views::reverse)
-            {
-                exchange(lvl);
-            }
-        }
-    }
-
-    // DTL (Decomposition Type List) sifting: optimizes variable order and decomposition types
-    void dtl_sift(std::vector<edge_ptr> const& fs = {})
-    {
-        auto comp_largest_layer = [this](var_index const x, var_index const y) {
-            return vlist[x].ntable.size() > vlist[y].ntable.size();
-        };
-
-        gc();
-
-        std::vector<var_index> tmp_vars(var_count());
-        for (var_index x = 0; x < var_count(); ++x)
-        {
-            tmp_vars[x] = x;
-        }
-        gc();
-        std::ranges::sort(tmp_vars, comp_largest_layer);
-        for (var_index i = 0; i < var_count(); ++i)
-        {
-            dtl_sift_single_var(tmp_vars[i], fs);
-        }
-        gc();
-    }
-
   private:
     using computed_table = boost::unordered_flat_set<std::unique_ptr<operation>, hash, equal>;  // CT
 
-    // Result type for DTL sifting
     struct dtl_sift_result
     {
         var_index x;
+
         var_index pos;
+
         std::size_t size;
+
         expansion exp;
     };
 
@@ -845,8 +818,8 @@ class manager
     {
         auto res = curr_best;
         auto const x = curr_best.x;
-        move_to_bottom(x);
-        change_decomposition_type(x, exp);
+        sift(var2lvl[x], static_cast<var_index>(var_count() - 1));  // move to the bottom
+        change_decomposition(x, exp);
         auto const exceeding_size = static_cast<double>(dtl_get_size(fs)) * cfg.max_node_growth;
         for (auto i = var2lvl[x]; i > 0; --i)
         {
@@ -867,7 +840,7 @@ class manager
         return res;
     }
 
-    [[nodiscard]] auto dtl_get_size(std::vector<edge_ptr> const& fs) const -> std::size_t
+    [[nodiscard]] auto dtl_get_size(std::vector<edge_ptr> const& fs) const
     {
         if (fs.empty())
         {
@@ -876,22 +849,22 @@ class manager
         return size(fs);
     }
 
-    auto dtl_sift_single_var(var_index const x, std::vector<edge_ptr> const& fs) -> dtl_sift_result
+    auto dtl_sift_single_var(var_index const x, std::vector<edge_ptr> const& fs)
     {
         dtl_sift_result res{.x = x, .pos = var2lvl[x], .size = dtl_get_size(fs), .exp = vlist[x].t};
 
         // find smallest level for Shannon
         res = dtl_find_smallest_level(res, expansion::S, fs);
 
-        // find smallest level for Positive Davio
+        // find smallest level for positive Davio
         res = dtl_find_smallest_level(res, expansion::pD, fs);
 
-        // find smallest level for Negative Davio
+        // find smallest level for negative Davio
         res = dtl_find_smallest_level(res, expansion::nD, fs);
 
         // move variable to smallest level with smallest expansion type
-        move_to_bottom(x);
-        change_decomposition_type(x, res.exp);
+        sift(var2lvl[x], static_cast<var_index>(var_count() - 1));
+        change_decomposition(x, res.exp);
         sift(var2lvl[x], res.pos);
 
         return res;
@@ -1088,9 +1061,27 @@ class manager
         return bytes;
     }
 
-    void move_to_bottom(var_index const x)
+    auto sift(var_index const lvl_x, var_index const lvl_y)
     {
-        sift(var2lvl[x], static_cast<var_index>(var_count() - 1));
+        if (lvl_x == lvl_y)
+        {
+            return;
+        }
+
+        if (lvl_x < lvl_y)
+        {
+            for (auto const lvl : std::views::iota(lvl_x, lvl_y))  // [lvl_x, lvl_y)
+            {
+                exchange(lvl);
+            }
+        }
+        else
+        {
+            for (auto const lvl : std::views::iota(lvl_y, lvl_x) | std::views::reverse)
+            {
+                exchange(lvl);
+            }
+        }
     }
 
     auto sift_down(var_index lvl, std::pair<var_index, std::size_t>& min)
