@@ -105,12 +105,8 @@ TEST_CASE("PHDD can be characterized", "[basic]")
 {
     dd::phdd_manager mgr;
     auto const x0 = mgr.var(expansion::PD), x1 = mgr.var(expansion::PD), x2 = mgr.var(expansion::S);
-    auto const f = mgr.constant(8) - mgr.constant(20) * x2 +
-                   mgr.two() * x1 +
-                   mgr.constant(12) * x0 +
-                   mgr.constant(4) * x1 * x2 +
-                   mgr.constant(24) * x0 * x2 +
-                   mgr.constant(15) * x0 * x1;
+    auto const f = mgr.constant(8) - mgr.constant(20) * x2 + mgr.two() * x1 + mgr.constant(12) * x0 +
+                   mgr.constant(4) * x1 * x2 + mgr.constant(24) * x0 * x2 + mgr.constant(15) * x0 * x1;
 
     SECTION("Variables are supported")
     {
@@ -175,40 +171,39 @@ TEST_CASE("PHDD is substituted", "[basic]")
         CHECK(g.high().var() == 2);
         CHECK(g.high().high().var() == 3);
     }
-//
-//    auto f_x0t = mgr.constant(6) * x1 + mgr.constant(-12);
-//    auto f_x0f = mgr.constant(2) * x1 + mgr.constant(  8);
-//    auto f_x1t = mgr.constant(-16) * x0 + mgr.constant(10);
-//    auto f_x1f = mgr.constant(-20) * x0 + mgr.constant( 8);
-//
-//    SECTION("Restrictions")
-//    {
-//
-//        REQUIRE(f.restr(0, true ) == f_x0t);
-//        REQUIRE(f.restr(0, false) == f_x0f);
-//        REQUIRE(f.restr(1, true ) == f_x1t);
-//        REQUIRE(f.restr(1, false) == f_x1f);
-//    }
-//
-//    SECTION("existential quantification")
-//    {
-//        REQUIRE(f.exist(0) == f_x0t + f_x0f); // (f_x0t | f_x0f)
-//        REQUIRE(f.exist(1) == f_x1t + f_x1f); // (f_x1t | f_x1f)
-//    }
-//
-//    SECTION("universal quantification")
-//    {
-//        REQUIRE(f.forall(0) == f_x0t * f_x0f);
-//        REQUIRE(f.forall(1) == f_x1t * f_x1f);
-//    }
+    //
+    //    auto f_x0t = mgr.constant(6) * x1 + mgr.constant(-12);
+    //    auto f_x0f = mgr.constant(2) * x1 + mgr.constant(  8);
+    //    auto f_x1t = mgr.constant(-16) * x0 + mgr.constant(10);
+    //    auto f_x1f = mgr.constant(-20) * x0 + mgr.constant( 8);
+    //
+    //    SECTION("Restrictions")
+    //    {
+    //
+    //        REQUIRE(f.restr(0, true ) == f_x0t);
+    //        REQUIRE(f.restr(0, false) == f_x0f);
+    //        REQUIRE(f.restr(1, true ) == f_x1t);
+    //        REQUIRE(f.restr(1, false) == f_x1f);
+    //    }
+    //
+    //    SECTION("existential quantification")
+    //    {
+    //        REQUIRE(f.exist(0) == f_x0t + f_x0f); // (f_x0t | f_x0f)
+    //        REQUIRE(f.exist(1) == f_x1t + f_x1f); // (f_x1t | f_x1f)
+    //    }
+    //
+    //    SECTION("universal quantification")
+    //    {
+    //        REQUIRE(f.forall(0) == f_x0t * f_x0f);
+    //        REQUIRE(f.forall(1) == f_x1t * f_x1f);
+    //    }
 }
 
 TEST_CASE("PHDD variable order is changeable", "[basic]")
 {
     dd::phdd_manager mgr;
-    auto const x1 = mgr.var(expansion::PD, "x1"), x3 = mgr.var(expansion::S, "x3"),
-               x5 = mgr.var(expansion::PD, "x5"), x0 = mgr.var(expansion::S, "x0"),
-               x2 = mgr.var(expansion::PD, "x2"), x4 = mgr.var(expansion::S, "x4");
+    auto const x1 = mgr.var(expansion::PD, "x1"), x3 = mgr.var(expansion::S, "x3"), x5 = mgr.var(expansion::PD, "x5"),
+               x0 = mgr.var(expansion::S, "x0"), x2 = mgr.var(expansion::PD, "x2"), x4 = mgr.var(expansion::S, "x4");
     auto const f = (x0 & x1) | (x2 & x3) | (x4 & x5);
 
     SECTION("Levels can be swapped")
