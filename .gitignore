@@ -1,13 +1,15 @@
+# Ignore rules
 *
-
 !*/
-build
+build/
 
-!.github/workflows/*.yml
-!include/freddy/**/*.hpp
+# Whitelist
+!.github/**/*.yml
+!include/**/*.hpp
 !test/**/*.cpp
 !/.clang-format
 !/.clang-tidy
 !/.gitignore
 !/CMakeLists.txt
+!/LICENSE
 !/README.md

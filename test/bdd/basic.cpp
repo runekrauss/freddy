@@ -4,11 +4,11 @@
 
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <freddy/dd/bdd.hpp>  // dd::bdd_manager
+#include <freddy/config.hpp>  // config
+#include <freddy/dd/bdd.hpp>  // bdd_manager
 
-#ifndef NDEBUG
-#include <iostream>  // std::cout
-#endif
+#include <sstream>  // std::ostringstream
+#include <vector>   // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -22,22 +22,29 @@ using namespace freddy;
 
 TEST_CASE("BDD is constructed", "[basic]")
 {
-    dd::bdd_manager mgr;
+    bdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation uses complemented edges")
     {
         auto const f = ~x0;
-#ifndef NDEBUG
-        std::cout << mgr << '\n';
-        std::cout << f << '\n';
-        f.print();
-#endif
+
         CHECK(f.is_complemented());
         CHECK(f.high().is_const());
         CHECK(f.low().is_const());
         CHECK(f.fn(true).is_zero());
         CHECK(f.fn(false).is_one());
+    }
+
+    SECTION("Combination by conjunction")
+    {
+        auto const f = x0 & x1;
+
+        CHECK(f == x0.ite(x1, mgr.zero()));
+        CHECK_FALSE(f.eval(std::vector{false, false}));
+        CHECK_FALSE(f.eval(std::vector{false, true}));
+        CHECK_FALSE(f.eval(std::vector{true, false}));
+        CHECK(f.eval(std::vector{true, true}));
     }
 
     SECTION("Combination by disjunction")
@@ -48,17 +55,6 @@ TEST_CASE("BDD is constructed", "[basic]")
         CHECK_FALSE(f.eval({false, false}));
         CHECK(f.eval({false, true}));
         CHECK(f.eval({true, false}));
-        CHECK(f.eval({true, true}));
-    }
-
-    SECTION("Combination by conjunction")
-    {
-        auto const f = x0 & x1;
-
-        CHECK(f == x0.ite(x1, mgr.zero()));
-        CHECK_FALSE(f.eval({false, false}));
-        CHECK_FALSE(f.eval({false, true}));
-        CHECK_FALSE(f.eval({true, false}));
         CHECK(f.eval({true, true}));
     }
 
@@ -77,7 +73,7 @@ TEST_CASE("BDD is constructed", "[basic]")
 
 TEST_CASE("BDD can be characterized", "[basic]")
 {
-    dd::bdd_manager mgr;
+    bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = (x0 & x1) | ~x2;
 
@@ -86,28 +82,27 @@ TEST_CASE("BDD can be characterized", "[basic]")
         CHECK(mgr.var_count() == 3);
     }
 
-    SECTION("Constant is supported")
+    SECTION("Constants are supported")
     {
         CHECK(mgr.const_count() == 1);
-        CHECK(f.has_const(false));
-    }
-
-    SECTION("#Nodes is determined")
-    {
-        CHECK(mgr.node_count() <= 7);
     }
 
     SECTION("#Edges is determined")
     {
-        CHECK(mgr.edge_count() <= 12);
+        CHECK(mgr.edge_count() == 12);
     }
 
-    SECTION("Nodes are counted")
+    SECTION("#Nodes is determined")
+    {
+        CHECK(mgr.node_count() == 7);
+    }
+
+    SECTION("Size is computed")
     {
         CHECK(f.size() == 4);
     }
 
-    SECTION("Longest path is computed")
+    SECTION("Depth is computed")
     {
         CHECK(f.depth() == 3);
     }
@@ -130,7 +125,7 @@ TEST_CASE("BDD can be characterized", "[basic]")
 
 TEST_CASE("BDD is substituted", "[basic]")
 {
-    dd::bdd_manager mgr;
+    bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
     auto const f = ~(x0 | x1) & x2;
 
@@ -152,7 +147,7 @@ TEST_CASE("BDD is substituted", "[basic]")
         CHECK(f.restr(2, false).is_zero());
     }
 
-    SECTION("Variable is removed by existential quantification")
+    SECTION("Variable is eliminated by existential quantification")
     {
         auto const g = f.exist(2);
 
@@ -160,7 +155,7 @@ TEST_CASE("BDD is substituted", "[basic]")
         CHECK(g == ~(mgr.var(0) | mgr.var(1)));
     }
 
-    SECTION("Variable is removed by universal quantification")
+    SECTION("Variable is eliminated by universal quantification")
     {
         CHECK(f.forall(0).is_zero());
     }
@@ -168,9 +163,10 @@ TEST_CASE("BDD is substituted", "[basic]")
 
 TEST_CASE("BDD variable order is changeable", "[basic]")
 {
-    dd::bdd_manager mgr;
+    bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
     auto const f = (x0 & x1) | (x2 & x3);
+    mgr.config().max_node_growth = 2.0f;
 
     SECTION("Levels can be swapped")
     {
@@ -178,23 +174,19 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
 
         CHECK(f.high().var() == 2);
         CHECK(f.high().low().var() == 1);
-        CHECK(f.fn(true).fn(true).is_one());
+        CHECK(f.fn(true, true).is_one());
         CHECK(f.eval({true, false, true, false}));
         CHECK(f.eval({false, true, false, true}));
         CHECK_FALSE(f.eval({true, false, false, true}));
         CHECK_FALSE(f.eval({false, true, true, false}));
     }
 
-    SECTION("Variable reordering finds a minimum")
+    SECTION("Reordering finds a minimum")
     {
-        auto const ncnt_old = mgr.node_count();
-        auto const ecnt_old = mgr.edge_count();
-        auto const size_old = f.size();
+        auto const prev_size = f.size();
         mgr.reorder();
 
-        CHECK(ncnt_old > mgr.node_count());
-        CHECK(ecnt_old > mgr.edge_count());
-        CHECK(size_old > f.size());
+        CHECK(prev_size > f.size());
         CHECK(f.eval({true, false, true, false}));
         CHECK(f.eval({false, true, false, true}));
         CHECK_FALSE(f.eval({true, false, false, true}));
@@ -202,9 +194,27 @@ TEST_CASE("BDD variable order is changeable", "[basic]")
     }
 }
 
+TEST_CASE("BDD can be cleaned up", "[basic]")
+{
+    bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+    auto const f = x0 | x1 | x2;
+    auto const prev_ecount = mgr.edge_count();
+    auto const prev_ncount = mgr.node_count();
+    mgr.gc();
+    std::ostringstream oss;
+    oss << mgr << "\n\n";
+    oss << f << "\n\n";
+    f.dump_dot(oss);
+    // std::cout << oss.str();
+
+    CHECK(prev_ecount > mgr.edge_count());
+    CHECK(prev_ncount > mgr.node_count());
+}
+
 TEST_CASE("BDD solves #SAT", "[basic]")
 {
-    dd::bdd_manager mgr;
+    bdd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
 
     CHECK(((mgr.var() & mgr.var()) | ~mgr.var()).sharpsat() == 5);
 }

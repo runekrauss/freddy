@@ -1,32 +1,16 @@
 ---
-Language: Cpp
-AccessModifierOffset: -2
-AlignAfterOpenBracket: Align
-AlignConsecutiveAssignments: false
-AlignConsecutiveDeclarations: false
-AlignConsecutiveMacros: false
+# based on LLVM
 AlignEscapedNewlines: Left
-AlignOperands: true
-AlignTrailingComments: true
 AllowAllArgumentsOnNextLine: false
-AllowAllConstructorInitializersOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
-AllowShortBlocksOnASingleLine: Never
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortFunctionsOnASingleLine: Empty
-AllowShortIfStatementsOnASingleLine: Never
-AllowShortLambdasOnASingleLine: All
 AllowShortLoopsOnASingleLine: true
-AlwaysBreakAfterDefinitionReturnType: None
-AlwaysBreakAfterReturnType: None
-AlwaysBreakBeforeMultilineStrings: false
-AlwaysBreakTemplateDeclarations: Yes
-BinPackArguments: true
-BinPackParameters: true
+AlwaysBreakTemplateDeclarations: Yes # deprecated
 BraceWrapping:
   AfterCaseLabel: true
   AfterClass: true
-  AfterControlStatement: true
+  AfterControlStatement: Always
   AfterEnum: true
   AfterExternBlock: true
   AfterFunction: true
@@ -35,89 +19,34 @@ BraceWrapping:
   AfterUnion: true
   BeforeCatch: true
   BeforeElse: true
-  IndentBraces: false
   SplitEmptyFunction: false
-  SplitEmptyNamespace: false
   SplitEmptyRecord: false
-BreakBeforeBinaryOperators: None
+  SplitEmptyNamespace: false
 BreakBeforeBraces: Custom
-BreakBeforeInheritanceComma: false
-BreakBeforeTernaryOperators: true
 BreakConstructorInitializers: AfterColon
-BreakConstructorInitializersBeforeComma: false
-BreakInheritanceList: BeforeColon
-BreakStringLiterals: true
 ColumnLimit: 120
-CommentPragmas: '^ IWYU pragma:'
-CompactNamespaces: false
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
 ConstructorInitializerIndentWidth: 8
-ContinuationIndentWidth: 4
-Cpp11BracedListStyle: true
-DeriveLineEnding: true
-DerivePointerAlignment: false
-DisableFormat: false
-ExperimentalAutoDetectBinPacking: false
-FixNamespaceComments: true
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '<(:?catch2)\/[a-zA-Z0-9_]+.+>$'
+  - Regex: '"[a-zA-Z0-9_\.]+.+"$' # own headers to enforce self-contained design
     Priority: 1
-  - Regex: '"[a-zA-Z0-9_\.]+.+"$'
+  - Regex: '<catch2\/[a-zA-Z0-9_]+.+>$'
     Priority: 2
-  - Regex: '<(:?freddy)\/[a-zA-Z0-9_]+.+>$'
+  - Regex: '<freddy\/[a-zA-Z0-9_]+.+>$' # for tests
     Priority: 3
-  - Regex: '<[a-zA-Z0-9_]+>$'
+  - Regex: '<boost\/[a-zA-Z0-9_]+.+>$'
     Priority: 4
-IncludeIsMainRegex: '$'
-IncludeIsMainSourceRegex: ''
+  - Regex: '<[a-zA-Z0-9_]+>$' # system headers
+    Priority: 5
 IndentCaseLabels: true
-IndentGotoLabels: true
-IndentPPDirectives: None
 IndentWidth: 4
-IndentWrappedFunctionNames: false
-KeepEmptyLinesAtTheStartOfBlocks: true
-MacroBlockBegin: ''
-MacroBlockEnd: ''
-MaxEmptyLinesToKeep: 1
-NamespaceIndentation: None
+InsertNewlineAtEOF: true
 PackConstructorInitializers: Never
-PenaltyBreakAssignment: 2
-PenaltyBreakBeforeFirstCallParameter: 19
-PenaltyBreakComment: 300
-PenaltyBreakFirstLessLess: 120
-PenaltyBreakString: 1000
-PenaltyBreakTemplateDeclaration: 10
-PenaltyExcessCharacter: 1000000
-PenaltyReturnTypeOnItsOwnLine: 60
 PointerAlignment: Left
-ReflowComments: true
-SortIncludes: true
-SortUsingDeclarations: true
-SpaceAfterCStyleCast: false
-SpaceAfterLogicalNot: false
-SpaceAfterTemplateKeyword: true
-SpaceBeforeAssignmentOperators: true
-SpaceBeforeCpp11BracedList: false
-SpaceBeforeCtorInitializerColon: true
-SpaceBeforeInheritanceColon: true
-SpaceBeforeParens: ControlStatements
-SpaceBeforeRangeBasedForLoopColon: true
-SpaceBeforeSquareBrackets: false
-SpaceInEmptyBlock: false
-SpaceInEmptyParentheses: false
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterRequiresInClause: true
 SpacesBeforeTrailingComments: 2
-SpacesInAngles: false
-SpacesInConditionalStatement: false
 SpacesInContainerLiterals: false
-SpacesInCStyleCastParentheses: false
-SpacesInLineCommentPrefix:
-  Minimum: 0
-  Maximum: 1
-SpacesInParentheses: false
-SpacesInSquareBrackets: false
-Standard: Latest
 TabWidth: 4
-UseCRLF: false
-UseTab: Never
 ...

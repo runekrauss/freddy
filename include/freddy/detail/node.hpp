@@ -4,15 +4,19 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "edge.hpp"  // edge
+#include "freddy/config.hpp"         // var_index
+#include "freddy/detail/common.hpp"  // hashable
 
-#include <cassert>     // assert
-#include <cstdint>     // std::int32_t
-#include <functional>  // std::hash
-#include <memory>      // std::shared_ptr
-#include <ostream>     // std::ostream
-#include <utility>     // std::move
-#include <variant>     // std::variant
+#include <boost/smart_ptr/intrusive_ptr.hpp>  // intrusive_ptr_add_ref
+
+#include <cassert>      // assert
+#include <cstdint>      // std::uint8_t
+#include <functional>   // std::hash
+#include <limits>       // std::numeric_limits
+#include <stdexcept>    // std::overflow_error
+#include <tuple>        // std::tie
+#include <type_traits>  // std::is_nothrow_destructible_v
+#include <utility>      // std::move
 
 // *********************************************************************************************************************
 // Namespaces
@@ -22,108 +26,179 @@ namespace freddy::detail
 {
 
 // =====================================================================================================================
+// Forwards
+// =====================================================================================================================
+
+template <hashable, hashable>
+class manager;
+
+template <hashable, hashable>
+class edge;
+
+// =====================================================================================================================
+// Aliases
+// =====================================================================================================================
+
+template <hashable EWeight, hashable NValue>
+using edge_ptr = boost::intrusive_ptr<edge<EWeight, NValue>>;  // for referencing an edge in a (shared) DD
+
+using ref_count = std::uint32_t;  // to decide in each case whether a DD is "dead"
+
+// since the same edges are always referenced when making a variable
+static_assert(std::disjunction_v<
+                  std::is_same<ref_count, var_index>,
+                  std::bool_constant<std::numeric_limits<ref_count>::max() >= std::numeric_limits<var_index>::max()>>,
+              "ref_count must cover range of var_index");
+
+// =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename E, typename V>
-class node
+template <hashable EWeight, hashable NValue>
+class node final
 {
   public:
-    using edge_ptr = std::shared_ptr<edge<E, V>>;
+    using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
     struct branch
     {
-        std::int32_t x;  // variable index for decomposition during traversing
+        var_index x;  // for decomposition during traversal
 
-        edge_ptr hi;
+        edge_ptr hi;  // high child
 
-        edge_ptr lo;
+        edge_ptr lo;  // low child
     };
 
-    node(std::int32_t const x, edge_ptr hi, edge_ptr lo) :
-            val{branch{x, std::move(hi), std::move(lo)}}
+    node(var_index const x, edge_ptr&& hi, edge_ptr&& lo) noexcept :
+            tag{type::INODE},
+            inner{x, std::move(hi), std::move(lo)}
     {
-        assert(br().x >= 0);
-        assert(br().hi);
-        assert(br().lo);
+        assert(inner.hi);
+        assert(inner.lo);
     }
 
-    explicit node(V c) :
-            // constant
-            val{std::move(c)}
+    explicit node(NValue&& c) noexcept(std::is_nothrow_move_constructible_v<NValue>) :
+            tag{type::LEAF},
+            outer{std::move(c)}  // constant
     {}
 
-    auto operator()() const
+    node(node const&) = delete;  // node must be unique due to canonicity
+
+    node(node&& other) noexcept(std::is_nothrow_move_constructible_v<NValue>) :
+            tag{other.tag},
+            ref{other.ref}
     {
-        return is_const() ? std::hash<V>()(c())
-                          : std::hash<std::int32_t>()(br().x) ^ std::hash<edge_ptr>()(br().hi) ^
-                                std::hash<edge_ptr>()(br().lo);
+        if (is_const())
+        {
+            new (&outer) auto{std::move(other.outer)};
+        }
+        else
+        {
+            new (&inner) auto{std::move(other.inner)};
+        }
     }
 
-    auto friend operator==(node const& lhs, node const& rhs)
+    auto operator=(node const&) = delete;
+
+    auto operator=(node&&) = delete;  // as a node is intended for a UT
+
+    // multiplicative hash whose primes have a LCM such that few collisions occur
+    auto operator()() const noexcept(std::is_nothrow_invocable_v<std::hash<NValue> const&, NValue const&>)
+    {
+        // x is not part of this function since several UTs are provided.
+        return is_const() ? std::hash<NValue>{}(outer)  // hash can force an overflow to increase entropy
+                          : std::hash<edge_ptr>{}(inner.hi) * P1 + std::hash<edge_ptr>{}(inner.lo) * P2;
+    }
+
+    friend auto operator==(node const& lhs, node const& rhs) noexcept(is_nothrow_comparable<NValue, NValue>)
     {
         if (lhs.is_const() != rhs.is_const())
         {
             return false;
         }
-        if (lhs.is_const())
-        {
-            return lhs.c() == rhs.c();
-        }
-        return lhs.br().x == rhs.br().x && lhs.br().hi == rhs.br().hi && lhs.br().lo == rhs.br().lo;
+        return lhs.is_const() ? lhs.outer == rhs.outer
+                              : std::tie(lhs.inner.x, lhs.inner.hi, lhs.inner.lo) ==
+                                    std::tie(rhs.inner.x, rhs.inner.hi, rhs.inner.lo);  // x for completeness
     }
 
-    auto friend operator<<(std::ostream& s, node const& v) -> std::ostream&
+    [[nodiscard]] auto is_const() const noexcept
     {
-        s << '(';
-        if (v.is_const())
-        {
-            s << v.c();
-        }
-        else
-        {
-            s << v.br().x << ',' << v.br().hi << ',' << v.br().lo;
-        }
-        s << ')';
-
-        return s;
+        return tag == type::LEAF;
     }
 
-    [[nodiscard]] auto is_const() const -> bool
+    [[nodiscard]] auto is_dead() const noexcept
     {
-        return std::get_if<V>(&val);
+        return ref == 1;  // UT is the owner => node is no longer directly reachable from any DD root
     }
 
-    auto br() -> branch&
+    [[nodiscard]] auto br() const noexcept -> branch const&
     {
         assert(!is_const());
 
-        return std::get<branch>(val);
+        return inner;
     }
 
-    [[nodiscard]] auto br() const -> branch const&
-    {
-        assert(!is_const());
-
-        return std::get<branch>(val);
-    }
-
-    auto c() -> V&
+    [[nodiscard]] auto value() const noexcept -> NValue const&
     {
         assert(is_const());
 
-        return std::get<V>(val);
-    }
-
-    [[nodiscard]] auto c() const -> V const&
-    {
-        assert(is_const());
-
-        return std::get<V>(val);
+        return outer;
     }
 
   private:
-    std::variant<branch, V> val;  // inode or leaf
+    enum struct type : std::uint8_t
+    {
+        INODE,  // inner node
+        LEAF
+    } tag;
+
+    friend manager<EWeight, NValue>;  // since it is designed as a monolith (e.g. due to reordering)
+
+    ~node() noexcept(std::is_nothrow_destructible_v<NValue>)
+    {
+        if (is_const())
+        {
+            outer.~NValue();
+        }
+        else
+        {
+            inner.~branch();
+        }
+    }
+
+    friend auto intrusive_ptr_add_ref(node* const v)
+    {
+        if (v->ref == std::numeric_limits<ref_count>::max())
+        {  // even though this case is highly unlikely
+            throw std::overflow_error{"A node has been maximally referenced. Change the variable order."};
+        }
+
+        ++v->ref;
+    }
+
+    // so that a node can be freed, which is triggered by the UT
+    friend auto intrusive_ptr_release(node* const v) noexcept(std::is_nothrow_destructible_v<node>)
+    {
+        assert(v->ref != 0);
+
+        --v->ref;
+
+        if (v->ref == 0)
+        {
+            delete v;  // NOLINT(cppcoreguidelines-owning-memory)
+        }
+    }
+
+    ref_count ref{};  // reference counter that is important for a potential GC
+
+    union
+    {
+        branch inner;  // inode
+
+        NValue outer;  // leaf
+    };
 };
+
+static_assert(sizeof(node<bool, bool>) <= 32, "node size exceeds expected maximum");
 
 }  // namespace freddy::detail

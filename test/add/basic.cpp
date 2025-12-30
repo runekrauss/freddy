@@ -5,10 +5,13 @@
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
 #include <freddy/config.hpp>  // config
-#include <freddy/dd/bmd.hpp>  // bmd_manager
+#include <freddy/dd/add.hpp>  // add_manager
 
+#include <cmath>         // std::nextafter
+#include <cstdint>       // std::int32_t
 #include <limits>        // std::numeric_limits
 #include <sstream>       // std::ostringstream
+#include <stdexcept>     // std::overflow_error
 #include <system_error>  // std::system_error
 #include <vector>        // std::vector
 
@@ -22,16 +25,15 @@ using namespace freddy;
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("BMD is constructed", "[basic]")
+TEST_CASE("ADD is constructed", "[basic]")
 {
-    bmd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
+    add_manager<std::int32_t> mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
     auto const x0 = mgr.var(), x1 = mgr.var();
 
     SECTION("Negation is performed")
     {
         auto const f = -x0;
 
-        CHECK(f.weight() == -1);
         CHECK(f.high().is_const());
         CHECK(f.low().is_const());
         CHECK_FALSE(f.fn(true).is_one());
@@ -42,10 +44,10 @@ TEST_CASE("BMD is constructed", "[basic]")
     {
         auto const f = x0 * x1;
 
-        CHECK(f.eval({false, false}) == 0);
-        CHECK(f.eval({false, true}) == 0);
-        CHECK(f.eval({true, false}) == 0);
-        CHECK(f.eval({true, true}) == 1);
+        CHECK(f.eval(std::vector{false, false}) == 0);
+        CHECK(f.eval(std::vector{false, true}) == 0);
+        CHECK(f.eval(std::vector{true, false}) == 0);
+        CHECK(f.eval(std::vector{true, true}) == 1);
     }
 
     SECTION("Combination by addition")
@@ -96,12 +98,11 @@ TEST_CASE("BMD is constructed", "[basic]")
     }
 }
 
-TEST_CASE("BMD can be characterized", "[basic]")
+TEST_CASE("ADD can be characterized", "[basic]")
 {
-    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    add_manager<std::int32_t> mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
-    auto const f = mgr.constant(8) - mgr.constant(20) * x2 + mgr.two() * x1 + mgr.constant(4) * x1 * x2 +
-                   mgr.constant(12) * x0 + mgr.constant(24) * x0 * x2 + mgr.constant(15) * x0 * x1;
+    auto const f = mgr.constant(4) * x2 + mgr.two() * x1 + x0;
 
     SECTION("Variables are supported")
     {
@@ -110,22 +111,24 @@ TEST_CASE("BMD can be characterized", "[basic]")
 
     SECTION("Constants are supported")
     {
-        CHECK(mgr.const_count() == 1);
+        CHECK(mgr.const_count() == 9);
+        CHECK(f.has_const(0));
+        CHECK(f.has_const(7));
     }
 
     SECTION("#Edges is determined")
     {
-        CHECK(mgr.edge_count() == 55);
+        CHECK(mgr.edge_count() == 20);
     }
 
     SECTION("#Nodes is determined")
     {
-        CHECK(mgr.node_count() == 15);
+        CHECK(mgr.node_count() == 20);
     }
 
     SECTION("Size is computed")
     {
-        CHECK(f.size() == 6);
+        CHECK(f.size() == 15);
     }
 
     SECTION("Depth is computed")
@@ -135,7 +138,7 @@ TEST_CASE("BMD can be characterized", "[basic]")
 
     SECTION("Number of paths is computed")
     {
-        CHECK(f.path_count() == 7);
+        CHECK(f.path_count() == 8);
     }
 
     SECTION("Essential variables are identifiable")
@@ -149,11 +152,11 @@ TEST_CASE("BMD can be characterized", "[basic]")
     }
 }
 
-TEST_CASE("BMD is substituted", "[basic]")
+TEST_CASE("ADD is substituted", "[basic]")
 {
-    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
+    add_manager<float> mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
     auto const x0 = mgr.var(), x1 = mgr.var();
-    auto const f = mgr.constant(8) - mgr.constant(20) * x1 + mgr.two() * x0 + mgr.constant(4) * x0 * x1;
+    auto const f = mgr.constant(8.5f) - mgr.constant(20.0f) * x1 + mgr.two() * x0 + mgr.constant(4.0f) * x0 * x1;
 
     SECTION("Variable is replaced by function")
     {
@@ -177,18 +180,18 @@ TEST_CASE("BMD is substituted", "[basic]")
         auto const g = f.exist(0);
 
         CHECK_FALSE(g.is_essential(0));
-        CHECK(g == mgr.constant(-28) * mgr.var(1) - mgr.constant(62));
+        CHECK(g == -mgr.constant(70.25f) - mgr.constant(10.0f) * x1);
     }
 
     SECTION("Variable is eliminated by universal quantification")
     {
-        CHECK(f.forall(0) == mgr.constant(80) - mgr.constant(8) * mgr.var(1));
+        CHECK(f.forall(1) == mgr.constant(-97.75f) + mgr.constant(40.0f) * x0);
     }
 }
 
-TEST_CASE("BMD variable order is changeable", "[basic]")
+TEST_CASE("ADD variable order is changeable", "[basic]")
 {
-    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 6}};
+    add_manager<std::int32_t> mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 6}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x5 = mgr.var("x5"), x0 = mgr.var("x0"), x2 = mgr.var("x2"),
                x4 = mgr.var("x4");
     auto const f = (x0 & x1) | (x2 & x3) | (x4 & x5);
@@ -217,11 +220,10 @@ TEST_CASE("BMD variable order is changeable", "[basic]")
     }
 }
 
-TEST_CASE("BMD can be cleaned up", "[basic]")
+TEST_CASE("ADD can be cleaned up", "[basic]")
 {
-    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
-    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
-    auto const f = x0 + x1 + x2;
+    add_manager<float> mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const f = mgr.var() - mgr.var() - mgr.var();
     auto const prev_ecount = mgr.edge_count();
     auto const prev_ncount = mgr.node_count();
     mgr.gc();
@@ -235,41 +237,22 @@ TEST_CASE("BMD can be cleaned up", "[basic]")
     CHECK(prev_ncount > mgr.node_count());
 }
 
-TEST_CASE("BMD detects misuse of word-level operations", "[basic]")
+TEST_CASE("ADD detects misuse of word-level operations", "[basic]")
 {
-    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 0}};
-    auto const c = mgr.constant(std::numeric_limits<bmd_int>::max(), true);
+    add_manager<std::int32_t> imgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 0}};
+    auto const ic = imgr.constant(std::numeric_limits<std::int32_t>::max(), true);
+    add_manager<float> fmgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 0}};
+    auto const fc = fmgr.constant(std::numeric_limits<float>::max(), true);
 
     SECTION("Multiplication can overflow")
     {
-        CHECK_THROWS_AS(c * mgr.two(), std::system_error);
+        CHECK_THROWS_AS(ic * imgr.two(), std::system_error);
+        CHECK_THROWS_AS(fc * fmgr.constant(std::nextafter(1.0f, 2.0f)), std::overflow_error);
     }
 
     SECTION("Addition can overflow")
     {
-        CHECK_THROWS_AS(c + mgr.one(), std::system_error);
-    }
-}
-
-TEST_CASE("BMD interprets bits numerically", "[basic]")
-{
-    bmd_manager mgr{{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
-    auto const a = mgr.var("a"), b = mgr.var("b");
-    std::vector const ha{a ^ b, a & b};
-
-    SECTION("Unsigned number is encoded as weighted bit sum")
-    {
-        auto const f = mgr.unsigned_bin(ha);
-
-        CHECK(f == a + b);
-        CHECK(f.eval({false, false}) == 0);
-        CHECK(f.eval({false, true}) == 1);
-        CHECK(f.eval({true, false}) == 1);
-        CHECK(f.eval({true, true}) == 2);
-    }
-
-    SECTION("Two's complement represents integers")
-    {
-        CHECK(mgr.twos_complement(ha) == a + b - mgr.constant(4) * a * b);
+        CHECK_THROWS_AS(ic + imgr.one(), std::system_error);
+        CHECK_THROWS_AS(fc + fmgr.constant(std::ldexp(std::numeric_limits<float>::max(), -1)), std::overflow_error);
     }
 }

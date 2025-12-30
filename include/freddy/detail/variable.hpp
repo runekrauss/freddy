@@ -4,19 +4,19 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "common.hpp"            // comp
-#include "edge.hpp"              // edge
-#include "freddy/config.hpp"     // config::ut_size
-#include "freddy/expansion.hpp"  // expansion
-#include "node.hpp"              // node
+#include "freddy/detail/common.hpp"  // hash
+#include "freddy/detail/edge.hpp"    // edge
+#include "freddy/detail/node.hpp"    // node
+#include "freddy/expansion.hpp"      // expansion
 
-#include <cassert>        // assert
-#include <cstdint>        // std::int32_t
-#include <memory>         // std::shared_ptr
-#include <ostream>        // std::ostream
-#include <string>         // std::string
-#include <string_view>    // std::string_view
-#include <unordered_set>  // std::unordered_set
+#include <boost/smart_ptr/intrusive_ptr.hpp>       // boost::intrusive_ptr
+#include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered_flat_set
+
+#include <cassert>      // assert
+#include <cstddef>      // std::size_t
+#include <string>       // std::string
+#include <string_view>  // std::string_view
+#include <type_traits>  // std::is_fundamental_v
 
 // *********************************************************************************************************************
 // Namespaces
@@ -26,69 +26,82 @@ namespace freddy::detail
 {
 
 // =====================================================================================================================
+// Forwards
+// =====================================================================================================================
+
+template <hashable, hashable>
+class manager;
+
+// =====================================================================================================================
+// Aliases
+// =====================================================================================================================
+
+template <class T>
+    requires (!std::is_fundamental_v<T>)
+using unique_table = boost::unordered_flat_set<boost::intrusive_ptr<T>, hash, equal>;  // UT
+
+// =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-template <typename E, typename V>
-struct variable
+template <hashable EWeight, hashable NValue>
+class variable final
 {
-    variable(expansion const t, std::string_view l) :
+  public:
+    variable(expansion const t, std::string_view lbl, std::size_t const utable_size_hint) :
             t{t},
-            l{l}
+            lbl{lbl}
     {
-        assert(!l.empty());  // for presentation reasons
+        assert(!lbl.empty());  // for presentation reasons
 
-        et.reserve(config::ut_size);
-        nt.reserve(config::ut_size);
+        etable.reserve(utable_size_hint);  // rehash(ceil(utable_size_hint / 0.875))
+        ntable.reserve(utable_size_hint);
     }
 
-    auto friend operator<<(std::ostream& s, variable const& var) -> std::ostream&
+    variable(variable const&) = delete;
+
+    variable(variable&&) = default;
+
+    auto operator=(variable const&) = delete;
+
+    auto operator=(variable&&) = delete;  // as a variable should uniquely belong to a list
+
+    ~variable() = default;
+
+    [[nodiscard]] auto decomposition() const noexcept
     {
-        s << var.l;
-
-        s << "\nDT = ";
-        switch (var.t)
-        {
-            case expansion::PD: s << "pD"; break;
-            case expansion::S: s << 'S'; break;
-            default: assert(false);
-        }
-
-        auto print = [&s](auto const& ut) {
-            for (auto i = 0; i < static_cast<std::int32_t>(ut.bucket_count()); ++i)
-            {
-                if (ut.bucket_size(i) > 0)
-                {
-                    s << "| " << i << " | ";
-                    for (auto it = ut.begin(i); it != ut.end(i); ++it)
-                    {
-                        s << *it << *(*it) << '[' << it->use_count() << "] ";
-                    }
-                    s << "|\n";
-                }
-            }
-        };
-
-        s << "\nET:\n";
-        print(var.et);
-        s << "#Edges = " << var.et.size();
-        s << "\nOccupancy = " << var.et.load_factor();
-
-        s << "\nNT:\n";
-        print(var.nt);
-        s << "#Nodes = " << var.nt.size();
-        s << "\nOccupancy = " << var.nt.load_factor();
-
-        return s;
+        return t;
     }
 
-    expansion t;
+    [[nodiscard]] auto label() const noexcept -> std::string_view
+    {
+        return lbl;
+    }
 
-    std::string l;  // name
+    [[nodiscard]] auto edge_table() const noexcept -> unique_table<edge<EWeight, NValue>> const&
+    {
+        return etable;
+    }
 
-    std::unordered_set<std::shared_ptr<edge<E, V>>, hash, comp> et;
+    [[nodiscard]] auto node_table() const noexcept -> unique_table<node<EWeight, NValue>> const&
+    {
+        return ntable;
+    }
 
-    std::unordered_set<std::shared_ptr<node<E, V>>, hash, comp> nt;
+  private:
+    friend manager<EWeight, NValue>;
+
+    expansion t;  // decomposition type
+
+    std::string lbl;  // (immutable) name
+
+    unique_table<edge<EWeight, NValue>> etable;
+
+    unique_table<node<EWeight, NValue>> ntable;
 };
+
+static_assert(std::is_nothrow_move_constructible_v<variable<bool, bool>>, "variable requires \"nothrow\" movement");
+
+static_assert(std::is_nothrow_destructible_v<variable<bool, bool>>, "variable must be \"nothrow\" destructible");
 
 }  // namespace freddy::detail

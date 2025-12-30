@@ -11,7 +11,7 @@
 #include "freddy/detail/operation/conj.hpp"      // detail::conj
 #include "freddy/detail/operation/ite.hpp"       // detail::ite
 #include "freddy/detail/operation/sharpsat.hpp"  // detail::sharpsat
-#include "freddy/expansion.hpp"                  // expansion::S
+#include "freddy/expansion.hpp"                  // expansion::nD
 
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
@@ -35,66 +35,66 @@ namespace freddy
 // Forwards
 // =====================================================================================================================
 
-class bdd_manager;
+class kfdd_manager;
 
 // =====================================================================================================================
 // Types
 // =====================================================================================================================
 
-class bdd final  // binary decision diagram
+class kfdd final  // Kronecker functional decision diagram
 {
   public:
-    bdd() noexcept = default;  // enable default BDD construction for compatibility with standard containers
+    kfdd() noexcept = default;  // enable default KFDD construction for compatibility with standard containers
 
     auto operator~() const;
 
-    auto operator&=(bdd const&) -> bdd&;
+    auto operator&=(kfdd const&) -> kfdd&;
 
-    auto operator|=(bdd const&) -> bdd&;
+    auto operator|=(kfdd const&) -> kfdd&;
 
-    auto operator^=(bdd const&) -> bdd&;
+    auto operator^=(kfdd const&) -> kfdd&;
 
-    friend auto operator&(bdd lhs, bdd const& rhs)
+    friend auto operator&(kfdd lhs, kfdd const& rhs)
     {
         lhs &= rhs;
         return lhs;
     }
 
-    friend auto operator|(bdd lhs, bdd const& rhs)
+    friend auto operator|(kfdd lhs, kfdd const& rhs)
     {
         lhs |= rhs;
         return lhs;
     }
 
-    friend auto operator^(bdd lhs, bdd const& rhs)
+    friend auto operator^(kfdd lhs, kfdd const& rhs)
     {
         lhs ^= rhs;
         return lhs;
     }
 
-    friend auto operator==(bdd const& lhs, bdd const& rhs) noexcept
+    friend auto operator==(kfdd const& lhs, kfdd const& rhs) noexcept
     {
-        assert(lhs.mgr == rhs.mgr);  // check for the same BDD manager
+        assert(lhs.mgr == rhs.mgr);  // check for the same KFDD manager
 
         return lhs.f == rhs.f;
     }
 
-    friend auto operator!=(bdd const& lhs, bdd const& rhs) noexcept
+    friend auto operator!=(kfdd const& lhs, kfdd const& rhs) noexcept
     {
         return !(lhs == rhs);
     }
 
-    friend auto operator<<(std::ostream& os, bdd const& g) -> std::ostream&
+    friend auto operator<<(std::ostream& os, kfdd const& g) -> std::ostream&
     {
-        os << "BDD handle: " << g.f << '\n';
-        os << "BDD manager: " << g.mgr;
+        os << "KFDD handle: " << g.f << '\n';
+        os << "KFDD manager: " << g.mgr;
         return os;
     }
 
-    [[nodiscard]] auto same_node(bdd const& g) const noexcept
+    [[nodiscard]] auto same_node(kfdd const& g) const noexcept
     {
         assert(f);
-        assert(mgr == g.mgr);  // BDD g is valid in any case
+        assert(mgr == g.mgr);  // KFDD g is valid in any case
 
         return f->ch() == g.f->ch();
     }
@@ -125,7 +125,7 @@ class bdd final  // binary decision diagram
         assert(mgr);
         assert(!is_const());
 
-        return bdd{f->ch()->br().hi, mgr};
+        return kfdd{f->ch()->br().hi, mgr};
     }
 
     [[nodiscard]] auto low() const noexcept
@@ -133,7 +133,7 @@ class bdd final  // binary decision diagram
         assert(mgr);
         assert(!is_const());
 
-        return bdd{f->ch()->br().lo, mgr};
+        return kfdd{f->ch()->br().lo, mgr};
     }
 
     [[nodiscard]] auto is_zero() const noexcept;
@@ -145,7 +145,7 @@ class bdd final  // binary decision diagram
 
     [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
 
-    [[nodiscard]] auto ite(bdd const&, bdd const&) const;
+    [[nodiscard]] auto ite(kfdd const&, kfdd const&) const;
 
     [[nodiscard]] auto size() const;
 
@@ -155,7 +155,7 @@ class bdd final  // binary decision diagram
 
     [[nodiscard]] auto is_essential(var_index) const noexcept;
 
-    [[nodiscard]] auto compose(var_index, bdd const&) const;
+    [[nodiscard]] auto compose(var_index, kfdd const&) const;
 
     [[nodiscard]] auto restr(var_index, bool) const;
 
@@ -165,13 +165,18 @@ class bdd final  // binary decision diagram
 
     [[nodiscard]] auto sharpsat() const;
 
+    [[nodiscard]] auto manager() const noexcept -> kfdd_manager const&
+    {
+        return *mgr;
+    }
+
     auto dump_dot(std::ostream& = std::cout) const;
 
   private:
-    friend bdd_manager;
+    friend kfdd_manager;
 
-    // wrapper is controlled by its BDD manager
-    bdd(detail::edge_ptr<bool, bool> f, bdd_manager* const mgr) :
+    // wrapper is controlled by its KFDD manager
+    kfdd(detail::edge_ptr<bool, bool> f, kfdd_manager* const mgr) :
             f{std::move(f)},
             mgr{mgr}
     {
@@ -179,52 +184,52 @@ class bdd final  // binary decision diagram
         assert(this->mgr);
     }
 
-    detail::edge_ptr<bool, bool> f;  // BDD handle
+    detail::edge_ptr<bool, bool> f;  // KFDD handle
 
-    bdd_manager* mgr{};  // must be destroyed after this BDD wrapper
+    kfdd_manager* mgr{};  // must be destroyed after this KFDD wrapper
 };
 
-class bdd_manager final : public detail::manager<bool, bool>
+class kfdd_manager final : public detail::manager<bool, bool>
 {
   public:
-    explicit bdd_manager(struct config const cfg = {}) :
-            // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) because BDD terminals are intrusive
+    explicit kfdd_manager(struct config const cfg = {}) :
+            // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks) because KFDD terminals are intrusive
             manager{tmls(), cfg}
     {}
 
-    auto var(std::string_view lbl = {})
+    auto var(expansion const t = expansion::S, std::string_view lbl = {})
     {
-        return bdd{manager::var(expansion::S, lbl), this};
+        return kfdd{manager::var(t, lbl), this};
     }
 
     auto var(var_index const x) noexcept
     {
-        return bdd{manager::var(x), this};
+        return kfdd{manager::var(x), this};
     }
 
     auto zero() noexcept
     {
-        return bdd{constant(0), this};
+        return kfdd{constant(0), this};
     }
 
     auto one() noexcept
     {
-        return bdd{constant(1), this};
+        return kfdd{constant(1), this};
     }
 
-    [[nodiscard]] auto size(std::vector<bdd> const& fs) const
+    [[nodiscard]] auto size(std::vector<kfdd> const& fs) const
     {
         return manager::size(transform(fs));
     }
 
-    [[nodiscard]] auto depth(std::vector<bdd> const& fs) const
+    [[nodiscard]] auto depth(std::vector<kfdd> const& fs) const
     {
         assert(!fs.empty());
 
         return manager::depth(transform(fs));
     }
 
-    auto dump_dot(std::vector<bdd> const& fs, std::vector<std::string> const& outputs = {},
+    auto dump_dot(std::vector<kfdd> const& fs, std::vector<std::string> const& outputs = {},
                   std::ostream& os = std::cout) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
@@ -232,8 +237,25 @@ class bdd_manager final : public detail::manager<bool, bool>
         manager::dump_dot(transform(fs), outputs, os);
     }
 
+    // DTL sifting wrapper for KFDD-typed vectors
+    void dtl_sift()
+    {
+        manager::dtl_sift({});
+    }
+
+    void dtl_sift(std::vector<kfdd> const& fs)
+    {
+        manager::dtl_sift(transform(fs));
+    }
+
+    // Public alias for change_decomposition (compatibility with tests)
+    void change_expansion_type(var_index const x, expansion const t)
+    {
+        change_decomposition(x, t);
+    }
+
   private:
-    friend bdd;
+    friend kfdd;
 
     // NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks)
     static auto tmls() -> std::array<edge_ptr, 2>
@@ -243,7 +265,7 @@ class bdd_manager final : public detail::manager<bool, bool>
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
 
-    static auto transform(std::vector<bdd> const& gs) -> std::vector<edge_ptr>
+    static auto transform(std::vector<kfdd> const& gs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> fs(gs.size());
         std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
@@ -399,14 +421,45 @@ class bdd_manager final : public detail::manager<bool, bool>
         assert(hi);
         assert(lo);
 
-        if (hi == lo)  // redundancy rule
-        {
-            return hi;  // without limitation of generality
-        }
+        auto const t = decomposition(x);
+        edge_ptr r;
+        bool w{};
 
-        // normalization
-        auto const w = lo->weight();
-        return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
+        switch (t)
+        {
+            case expansion::S:
+                if (hi == lo)  // redundancy rule
+                {
+                    return hi;  // without limitation of generality
+                }
+
+                w = lo->weight();
+                if (!w)
+                {
+                    return uedge(w, unode(x, std::move(hi), std::move(lo)));
+                }
+                return uedge(w, unode(x, complement(hi), complement(lo)));
+
+            case expansion::pD:
+            case expansion::nD:
+                if (hi == constant(0))
+                {
+                    return lo;
+                }
+                if (lo->weight())
+                {
+                    w = lo->weight();
+                    r = uedge(w, unode(x, std::move(hi), complement(lo)));
+                }
+                else
+                {
+                    r = uedge(false, unode(x, std::move(hi), std::move(lo)));
+                }
+                break;
+
+            default: assert(false); std::unreachable();
+        }
+        return r;
     }
 
     [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
@@ -426,21 +479,18 @@ class bdd_manager final : public detail::manager<bool, bool>
         assert(f);
         assert(g);
 
+        // terminal cases
         if (f == constant(0) || g == constant(0))
-        {  // something conjugated with 0 is 0
+        {
             return constant(0);
         }
         if (f == constant(1))
-        {  // 1g == g
+        {
             return g;
         }
         if (g == constant(1))
-        {  // f1 == f
+        {
             return f;
-        }
-        if (f->ch() == g->ch())
-        {  // check for complement
-            return f->weight() == g->weight() ? f : constant(0);
         }
 
         detail::conj op{f, g};
@@ -450,8 +500,29 @@ class bdd_manager final : public detail::manager<bool, bool>
         }
 
         auto const x = top_var(f, g);
+        auto f_low = cof(f, x, false);
+        auto f_high = cof(f, x, true);
+        auto g_low = cof(g, x, false);
+        auto g_high = cof(g, x, true);
 
-        op.set_result(branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false))));
+        edge_ptr high;
+        edge_ptr low;
+
+        switch (decomposition(x))
+        {
+            case expansion::S:
+                high = conj(f_high, g_high);
+                low = conj(f_low, g_low);
+                break;
+            case expansion::pD:
+            case expansion::nD:
+                high = antiv(conj(f_high, g_high), antiv(conj(f_low, g_high), conj(g_low, f_high)));
+                low = conj(f_low, g_low);
+                break;
+            default: assert(false); std::unreachable();
+        }
+
+        op.set_result(branch(x, std::move(high), std::move(low)));
         return cache(std::move(op))->get_result();
     }
 
@@ -525,14 +596,14 @@ class bdd_manager final : public detail::manager<bool, bool>
     }
 };
 
-inline auto bdd::operator~() const
+inline auto kfdd::operator~() const
 {
     assert(mgr);
 
-    return bdd{mgr->complement(f), mgr};
+    return kfdd{mgr->complement(f), mgr};
 }
 
-inline auto bdd::operator&=(bdd const& rhs) -> bdd&
+inline auto kfdd::operator&=(kfdd const& rhs) -> kfdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -542,7 +613,7 @@ inline auto bdd::operator&=(bdd const& rhs) -> bdd&
     return *this;
 }
 
-inline auto bdd::operator|=(bdd const& rhs) -> bdd&
+inline auto kfdd::operator|=(kfdd const& rhs) -> kfdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -552,7 +623,7 @@ inline auto bdd::operator|=(bdd const& rhs) -> bdd&
     return *this;
 }
 
-inline auto bdd::operator^=(bdd const& rhs) -> bdd&
+inline auto kfdd::operator^=(kfdd const& rhs) -> kfdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
@@ -562,14 +633,14 @@ inline auto bdd::operator^=(bdd const& rhs) -> bdd&
     return *this;
 }
 
-inline auto bdd::is_zero() const noexcept
+inline auto kfdd::is_zero() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->zero();
 }
 
-inline auto bdd::is_one() const noexcept
+inline auto kfdd::is_one() const noexcept
 {
     assert(mgr);
 
@@ -577,94 +648,94 @@ inline auto bdd::is_one() const noexcept
 }
 
 template <typename TruthValue, typename... TruthValues>
-inline auto bdd::fn(TruthValue const a, TruthValues... as) const
+inline auto kfdd::fn(TruthValue const a, TruthValues... as) const
 {
     assert(mgr);
 
-    return bdd{mgr->fn(f, a, std::forward<TruthValues>(as)...), mgr};
+    return kfdd{mgr->fn(f, a, std::forward<TruthValues>(as)...), mgr};
 }
 
-inline auto bdd::eval(std::vector<bool> const& as) const noexcept
+inline auto kfdd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
 
     return mgr->eval(f, as);
 }
 
-inline auto bdd::ite(bdd const& g, bdd const& h) const
+inline auto kfdd::ite(kfdd const& g, kfdd const& h) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
     assert(g.mgr == h.mgr);  // transitive property
 
-    return bdd{mgr->ite(f, g.f, h.f), mgr};
+    return kfdd{mgr->ite(f, g.f, h.f), mgr};
 }
 
-inline auto bdd::size() const
+inline auto kfdd::size() const
 {
     assert(mgr);
 
     return mgr->size({*this});
 }
 
-inline auto bdd::depth() const
+inline auto kfdd::depth() const
 {
     assert(mgr);
 
     return mgr->depth({*this});
 }
 
-inline auto bdd::path_count() const noexcept
+inline auto kfdd::path_count() const noexcept
 {
     assert(mgr);
 
     return mgr->path_count(f);
 }
 
-inline auto bdd::is_essential(var_index const x) const noexcept
+inline auto kfdd::is_essential(var_index const x) const noexcept
 {
     assert(mgr);
 
     return mgr->is_essential(f, x);
 }
 
-inline auto bdd::compose(var_index const x, bdd const& g) const
+inline auto kfdd::compose(var_index const x, kfdd const& g) const
 {
     assert(mgr);
     assert(mgr == g.mgr);
 
-    return bdd{mgr->compose(f, x, g.f), mgr};
+    return kfdd{mgr->compose(f, x, g.f), mgr};
 }
 
-inline auto bdd::restr(var_index const x, bool const a) const
+inline auto kfdd::restr(var_index const x, bool const a) const
 {
     assert(mgr);
 
-    return bdd{mgr->restr(f, x, a), mgr};
+    return kfdd{mgr->restr(f, x, a), mgr};
 }
 
-inline auto bdd::exist(var_index const x) const
+inline auto kfdd::exist(var_index const x) const
 {
     assert(mgr);
 
-    return bdd{mgr->exist(f, x), mgr};
+    return kfdd{mgr->exist(f, x), mgr};
 }
 
-inline auto bdd::forall(var_index const x) const
+inline auto kfdd::forall(var_index const x) const
 {
     assert(mgr);
 
-    return bdd{mgr->forall(f, x), mgr};
+    return kfdd{mgr->forall(f, x), mgr};
 }
 
-inline auto bdd::sharpsat() const
+inline auto kfdd::sharpsat() const
 {
     assert(mgr);
 
     return mgr->sharpsat(f);
 }
 
-inline auto bdd::dump_dot(std::ostream& os) const
+inline auto kfdd::dump_dot(std::ostream& os) const
 {
     assert(mgr);
 

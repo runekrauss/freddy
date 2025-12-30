@@ -1,82 +1,71 @@
 ---
 Checks: |
   clang-diagnostic-*,
+
   clang-analyzer-*,
-  -clang-analyzer-optin.core.EnumCastOutOfRange,
+
+  boost-*,
+
   bugprone-*,
-  -bugprone-easily-swappable-parameters,
-  -bugprone-unchecked-optional-access,
+  -bugprone-easily-swappable-parameters, # plus(edge_ptr, edge_ptr)
+  -bugprone-exception-escape,            # due to the incorrect assumption about swap()
+  -bugprone-tagged-union-member-count,   # because of false positives (node)
+  -bugprone-unchecked-optional-access,   # since even checks by has_value are ignored
+
   cert-*,
+  -cert-dcl58-cpp, # specialization of std::hash
+
+  concurrency-*,
+
   cppcoreguidelines-*,
-  -cppcoreguidelines-avoid-do-while,
-  -cppcoreguidelines-avoid-magic-numbers,
-  -cppcoreguidelines-avoid-non-const-global-variables,
-  -cppcoreguidelines-non-private-member-variables-in-classes,
+  -cppcoreguidelines-avoid-do-while,        # as it is the best choice in some cases
+  -cppcoreguidelines-avoid-magic-numbers,   # sizeof(node<bool, bool>) <= 32
+  -cppcoreguidelines-pro-type-union-access, # because of the node alignment
+
   google-*,
-  -google-build-using-namespace,
+  -google-build-using-namespace, # Sometimes it is useful to make names directly visible.
+
   hicpp-*,
-  -hicpp-named-parameter,
-  -hicpp-uppercase-literal-suffix,
-  misc-*,
-  -misc-no-recursion,
-  -misc-non-private-member-variables-in-classes,
+  -hicpp-named-parameter,          # dump_dot(std::ostream&);
+  -hicpp-uppercase-literal-suffix, # 1u instead of 1U, etc.
+
   modernize-*,
+
   performance-*,
+
   portability-*,
+  -portability-template-virtual-member-function, # since DD types are instantiated
+
   readability-*,
-  -readability-avoid-nested-conditional-operator,
-  -readability-function-cognitive-complexity,
-  -readability-identifier-length,
-  -readability-isolate-declaration,
-  -readability-magic-numbers,
-  -readability-math-missing-parentheses,
-  -readability-named-parameter,
-  -readability-uppercase-literal-suffix
-CheckOptions:
-  - key: readability-identifier-naming.ClassCase
-    value: lower_case
-  - key: readability-identifier-naming.ConstantParameterCase
-    value: lower_case
-  - key: readability-identifier-naming.EnumCase
-    value: lower_case
-  - key: readability-identifier-naming.EnumConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.FunctionCase
-    value: lower_case
-  - key: readability-identifier-naming.GlobalConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.LocalConstantCase
-    value: lower_case
-  - key: readability-identifier-naming.LocalVariableCase
-    value: lower_case
-  - key: readability-identifier-naming.MacroDefinitionCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.MemberCase
-    value: lower_case
-  - key: readability-identifier-naming.MethodCase
-    value: lower_case
-  - key: readability-identifier-naming.NamespaceCase
-    value: lower_case
-  - key: readability-identifier-naming.ParameterCase
-    value: lower_case
-  - key: readability-identifier-naming.ScopedEnumConstantCase
-    value: UPPER_CASE
-  - key: readability-identifier-naming.StaticConstantCase
-    value: lower_case
-  - key: readability-identifier-naming.StaticVariableCase
-    value: lower_case
-  - key: readability-identifier-naming.StructCase
-    value: lower_case
-  - key: readability-identifier-naming.TypeAliasCase
-    value: lower_case
-  - key: readability-identifier-naming.TypedefCase
-    value: lower_case
-  - key: readability-identifier-naming.UnionCase
-    value: lower_case
-  - key: readability-identifier-naming.ValueTemplateParameterCase
-    value: aNy_CasE
-  - key: readability-identifier-naming.VariableCase
-    value: lower_case
-FormatStyle: file
+  -readability-identifier-length,        # f, g
+  -readability-isolate-declaration,      # because grouping variables can be stylistically acceptable
+  -readability-magic-numbers,            # as with cppcoreguidelines-avoid-magic-numbers
+  -readability-math-missing-parentheses, # w*P1 + v*P2
+  -readability-named-parameter,          # similar to hicpp-named-parameter
+  -readability-uppercase-literal-suffix, # see -hicpp-uppercase-literal-suffix
+
+  misc-*,
+  -misc-no-recursion, # eval, ite
 HeaderFilterRegex: '.*'
+FormatStyle: file
+CheckOptions:
+  readability-identifier-naming.ClassCase: lower_case
+  readability-identifier-naming.ConceptCase: lower_case
+  readability-identifier-naming.EnumCase: lower_case
+  readability-identifier-naming.EnumConstantCase: UPPER_CASE
+  readability-identifier-naming.EnumConstantIgnoredRegexp: '^(nD|pD)$'
+  readability-identifier-naming.FunctionCase: lower_case
+  readability-identifier-naming.GlobalConstantCase: UPPER_CASE
+  readability-identifier-naming.GlobalConstantIgnoredRegexp: '^is_.+$'
+  readability-identifier-naming.LocalConstantCase: lower_case
+  readability-identifier-naming.MemberCase: lower_case
+  readability-identifier-naming.MethodCase: lower_case
+  readability-identifier-naming.NamespaceCase: lower_case
+  readability-identifier-naming.ParameterCase: lower_case
+  readability-identifier-naming.StaticConstantCase: lower_case
+  readability-identifier-naming.StructCase: lower_case
+  readability-identifier-naming.TemplateParameterCase: CamelCase
+  readability-identifier-naming.TypeAliasCase: lower_case
+  readability-identifier-naming.UnionCase: lower_case
+  readability-identifier-naming.VariableCase: lower_case
 ...

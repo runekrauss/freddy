@@ -1,34 +1,46 @@
 #pragma once
 
 // *********************************************************************************************************************
+// Includes
+// *********************************************************************************************************************
+
+#include <cstddef>      // std::size_t
+#include <cstdint>      // std::uint32_t
+#include <optional>     // std::nullopt
+#include <type_traits>  // std::is_unsigned_v
+
+// *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-namespace freddy::config
+namespace freddy
 {
 
 // =====================================================================================================================
-// Variables
+// Aliases
 // =====================================================================================================================
 
-// ---------------------------------------------------------------------------------------------------------------------
-// Factors
-// ---------------------------------------------------------------------------------------------------------------------
+using var_index = std::uint32_t;  // variable index used to label internal nodes
 
-auto inline dead_factor = 0.3f;  // percentage of how many nodes/edges must be deleted so that UTs are not resized
+static_assert(std::is_integral_v<var_index> && std::is_unsigned_v<var_index>, "var_index must be unsigned");
 
-auto inline growth_factor = 1.2f;  // permitted growth of nodes during variable reordering
+// =====================================================================================================================
+// Types
+// =====================================================================================================================
 
-auto inline load_factor = 0.7f;  // percentage (UT occupancy) from which dead nodes/edges are deleted
+struct config final
+{
+    std::size_t utable_size_hint{1'679};  // minimum capacity of each UT per DD level
 
-// ---------------------------------------------------------------------------------------------------------------------
-// Sizes
-// ---------------------------------------------------------------------------------------------------------------------
+    std::size_t cache_size_hint{215'039};  // minimum capacity of the operation cache (a.k.a. CT)
 
-auto inline ct_size = 262147;  // initial capacity of the computed table (operation cache)
+    var_index init_var_cap{16};  // initial capacity for variables, which is subsequently doubled on demand
 
-auto inline ut_size = 257;  // initial capacity of a unique table (per DD level)
+    float max_node_growth{1.2f};  // permitted node growth factor during variable reordering
 
-auto inline vl_size = 32;  // initial capacity of the variable list
+    std::optional<std::size_t> heap_mem_limit{std::nullopt};  // heap usage in bytes before GC (auto-estimated if unset)
+};
 
-}  // namespace freddy::config
+static_assert(std::is_trivially_copyable_v<config>, "config must be trivially copyable");
+
+}  // namespace freddy

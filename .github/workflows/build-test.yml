@@ -1,0 +1,151 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    paths:
+      - '.github/workflows/build-test.yml'
+      - 'CMakeLists.txt'
+      - '.clang-format' # changes here may affect string literals or macro expansions -> run CI
+      - '.clang-tidy'
+      - '**/*.cpp'
+      - '**/*.hpp'
+  workflow_dispatch: # enables manual execution of this pipeline
+  workflow_call:     # allow this workflow to be called by others such as CD
+  schedule:
+    - cron: '0 3 * * 0' # weekly due to potential package upgrades
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }} # REF is not available here.
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  REF: ${{ github.head_ref || github.ref_name }} # used as part of the cache keys
+
+jobs:
+  gcc:
+    name: GCC on Linux (${{ matrix.build_type }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc]
+        build_type: [Debug, Release]
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Check source formatting # with pre-installed ClangFormat before fetching dependencies
+        id: clangformat
+        run: find . -iname '*.cpp' -o -iname '*.hpp' | xargs clang-format --dry-run --Werror
+
+      # should come after checkout
+      - name: Set up cache
+        id: cache
+        if: success() || steps.clangformat.outcome == 'failure' # Code formatting is not a reason to cancel the job.
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }} # branch-based
+          job-summary: 'Ccache Statistics'
+
+      - name: Cache dependencies
+        id: dep
+        if: success() || steps.cache.outcome == 'success' # success() may be false due to previous steps
+        uses: actions/cache@v5
+        with:
+          path: build/_deps
+          key: deps-${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }}-
+
+      - name: Configure project # depending on linting, as Clang-Tidy is only pre-installed on Ubuntu
+        id: config
+        if: success() || steps.dep.outcome == 'success'
+        run: >
+          cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
+          -DCLANG_TIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'
+          -DFREDDY_STATS=ON -DFREDDY_TEST=ON
+
+      - name: Lint sources / Build binaries
+        id: linter_build
+        if: success() || steps.config.outcome == 'success'
+        run: cmake --build build -j$(nproc)
+
+      - name: Run tests # on Ubuntu, as the associated VM is one of the fastest runners
+        id: test
+        if: success() || steps.linter_build.outcome == 'success'
+        working-directory: ./build
+        run: ctest --output-on-failure -j$(nproc)
+
+      - name: Measure coverage
+        if: success() || steps.test.outcome == 'success'
+        working-directory: ./build
+        run: |
+          cov_min=80
+          cov=$(ctest -T Coverage | grep -o '[^ ]*%' | sed 's/%//' | cut -d. -f1)
+          if (( cov < cov_min )); then
+            echo -e "\e[31mTest coverage ($cov%) below $cov_min%\e[0m"
+            exit 1
+          fi
+
+  clang:
+    name: Clang on macOS
+    runs-on: macos-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up cache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.job }}-${{ env.REF }}
+          job-summary: 'Ccache Statistics'
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: build/_deps
+          key: deps-${{ github.job }}-${{ env.REF }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ github.job }}-${{ env.REF }}-
+
+      - name: Configure project
+        run: cmake -G Ninja -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DFREDDY_STATS=ON -DFREDDY_TEST=ON
+
+      - name: Build binaries
+        run: cmake --build build
+
+  msvc:
+    name: MSVC on Windows
+    runs-on: windows-2022 # compatible with Ccache
+    defaults:
+      run:
+        shell: bash # since the default shell on Windows runners was changed to PowerShell
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up cache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ github.job }}-${{ env.REF }}
+          job-summary: 'Ccache Statistics'
+
+      - name: Cache dependencies
+        uses: actions/cache@v5
+        with:
+          path: build/_deps
+          key: deps-${{ github.job }}-${{ env.REF }}-${{ hashFiles('CMakeLists.txt') }}
+          restore-keys: deps-${{ github.job }}-${{ env.REF }}-
+
+      - name: Configure project
+        run: cmake -B build -DCMAKE_COMPILE_WARNING_AS_ERROR=ON -DFREDDY_STATS=ON -DFREDDY_TEST=ON
+
+      - name: Build binaries
+        # Windows has a multi-config generator, "Release" enables caching
+        run: cmake --build build --config Release -j$NUMBER_OF_PROCESSORS
