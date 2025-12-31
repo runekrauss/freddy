@@ -300,8 +300,9 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         {
             throw std::invalid_argument("double value escaped supported range");
         }
-        return phdd{
-            manager::constant({std::get<0>(d), std::get<1>(d)}, static_cast<double>(std::get<2>(d)), keep_alive), this};
+        return phdd{manager::constant({std::get<0>(d), static_cast<std::int32_t>(std::get<1>(d))},
+                                      static_cast<double>(std::get<2>(d)), keep_alive),
+                    this};
     }
 
     [[nodiscard]] auto size(std::vector<phdd> const& fs) const
@@ -353,7 +354,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
 
     static auto factorize_pow2(std::uint64_t const w) -> std::pair<std::uint64_t, std::uint64_t>
     {
-        auto const exp = static_cast<unsigned>(std::bit_width(w & (-w)) - 1);
+        auto const exp = std::countr_zero(w);
         return {exp, w >> exp};
     }
 
@@ -624,8 +625,8 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
             {
                 throw std::invalid_argument("too big constants, addition of constants leads to underflow");
             }
-            return manager::constant({sign, factors.first + f->weight().second}, static_cast<double>(factors.second),
-                                     false);
+            return manager::constant({sign, static_cast<std::int32_t>(factors.first + f->weight().second)},
+                                     static_cast<double>(factors.second), false);
         }
 
         if (std::abs(f->weight().second) <= std::abs(g->weight().second))
