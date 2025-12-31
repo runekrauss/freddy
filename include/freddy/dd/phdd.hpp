@@ -322,7 +322,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         auto res = manager::constant(0);
         for (auto i = 0uz; i < fs.size(); ++i)
         {  // LSB...MSB
-            res = plus(res, mul(manager::constant({false, i}, 1.0, false), fs[i].f));
+            res = plus(res, mul(manager::constant({false, static_cast<std::int32_t>(i)}, 1.0, false), fs[i].f));
         }
         return phdd{res, this};
     }

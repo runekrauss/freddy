@@ -109,7 +109,7 @@ TEST_CASE("evaluate mini float (representation and operations + - *)", "[example
     auto const prod = x * y;
 
     // make a table with all possible mini-floats (bit representation and float value)
-    std::vector<std::pair<std::vector<bool>, float>> minifloat_table;
+    std::vector<std::pair<std::vector<bool>, double>> minifloat_table;
     for (int const s : {0, 1})
     {
         for (int e = 0; e < 16; e++)
