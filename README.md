@@ -223,7 +223,8 @@ While operations are provided by the derived manager class `<type>_manager`, an 
 ultimately enhances usability. It's implemented by simply forwarding a DD member, which corresponds to an
 [intrusive pointer](https://boost.org/library/latest/smart_ptr), as a parameter to the operations being invoked.
 Complete examples can be found in [bdd.hpp](include/freddy/dd/bdd.hpp), [bmd.hpp](include/freddy/dd/bmd.hpp),
-[bhd.hpp](include/freddy/dd/bhd.hpp), [add.hpp](include/freddy/dd/add.hpp), and [kfdd.hpp](include/freddy/dd/kfdd.hpp).
+[bhd.hpp](include/freddy/dd/bhd.hpp), [add.hpp](include/freddy/dd/add.hpp), [kfdd.hpp](include/freddy/dd/kfdd.hpp), and
+[phdd.hpp](include/freddy/dd/phdd.hpp).
 
 To check functionality, I use [Catch2](https://github.com/catchorg/Catch2). Existing **tests** are located in the
 [test directory](test) and serve as a reference for your own DD types. When

@@ -10,4 +10,5 @@
 #include "freddy/dd/bhd.hpp"     // binary hybrid diagram
 #include "freddy/dd/bmd.hpp"     // binary moment diagram
 #include "freddy/dd/kfdd.hpp"    // Kronecker functional decision diagram
+#include "freddy/dd/phdd.hpp"    // power hybrid decision diagram
 #include "freddy/expansion.hpp"  // expansion types

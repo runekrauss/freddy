@@ -395,7 +395,7 @@ class manager
                 auto const e = *it;
                 it = vlist[x].etable.erase(it);
 
-                e->w = agg(e->w, true);
+                e->w = !e->w;
                 tmp.push_back(std::move(e));
             }
 
@@ -456,7 +456,7 @@ class manager
 
         if (t == expansion::nD)
         {  // edge needs to be complemented
-            vars.push_back(uedge(agg(regw(), consts[1]->w), unode(x, consts[1], consts[0])));
+            vars.push_back(uedge(!regw(), unode(x, consts[1], consts[0])));
         }
         else
         {
