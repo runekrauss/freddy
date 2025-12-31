@@ -2,11 +2,14 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/dd/phdd.hpp"  // *phdd_manager
-
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
-#include <array>  // std::array
+#include <freddy/dd/phdd.hpp>    // phdd_manager
+#include <freddy/expansion.hpp>  // expansion::pD
+
+#include <cmath>    // std::pow
+#include <utility>  // std::pair
+#include <vector>   // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -14,84 +17,96 @@
 
 using namespace freddy;
 
-// *********************************************************************************************************************
-// Functions
-// *********************************************************************************************************************
-
-static auto int_to_bool_vec(int n, int size) -> std::vector<bool>
+namespace
 {
-    std::vector<bool> result;
-    for (int bit_mask = 1; bit_mask < (1 << size); bit_mask <<= 1)
+
+// =====================================================================================================================
+// Functions
+// =====================================================================================================================
+
+auto int_to_bool_vec(int const n, int const size)
+{
+    std::vector<bool> res;
+    for (auto bit_mask = 1u; bit_mask < (1u << static_cast<unsigned>(size)); bit_mask <<= 1u)
     {
-        result.push_back((n & bit_mask) != 0);
+        res.push_back((static_cast<unsigned>(n) & bit_mask) != 0);
     }
-    return result;
+    return res;
 }
 
-auto pow2(const int exp, dd::phdd_manager& mgr) -> dd::phdd
+auto pow2(int const exp, phdd_manager& mgr)
 {
     auto r = mgr.one();
-    auto t = mgr.two();
-    auto h = mgr.constant(0.5);
+    auto const t = mgr.two();
+    auto const h = mgr.constant(0.5);
     if (exp >= 0)
     {
-        for (int i = 0; i < exp; i++) r *= t;
+        for (int i = 0; i < exp; i++)
+        {
+            r *= t;
+        }
     }
     else
     {
-        for (int i = 0; i > exp; i--) r *= h;
+        for (int i = 0; i > exp; i--)
+        {
+            r *= h;
+        }
     }
     return r;
 }
+
+}  // namespace
 
 // *********************************************************************************************************************
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("evaluate mini float (representation and operations + - *)", "[phdd, mini-float]")
+// NOLINTBEGIN(readability-function-cognitive-complexity)
+TEST_CASE("evaluate mini float (representation and operations + - *)", "[example]")
 {
     // representing a 8bit mini float:
     // 1 sign bit, 4 exponent bits (bias = 7), 3 significant bits + hidden bit
 
-    dd::phdd_manager mgr;
-    auto x_sg = mgr.var(expansion::S, "x_sg");
-    auto y_sg = mgr.var(expansion::S, "y_sg");
-    auto x_e0 = mgr.var(expansion::S, "x_e0");
-    auto y_e0 = mgr.var(expansion::S, "y_e0");
-    auto x_e1 = mgr.var(expansion::S, "x_e1");
-    auto y_e1 = mgr.var(expansion::S, "y_e1");
-    auto x_e2 = mgr.var(expansion::S, "x_e2");
-    auto y_e2 = mgr.var(expansion::S, "y_e2");
-    auto x_e3 = mgr.var(expansion::S, "x_e3");
-    auto y_e3 = mgr.var(expansion::S, "y_e3");
-    auto x_m0 = mgr.var(expansion::PD, "x_m0");
-    auto y_m0 = mgr.var(expansion::PD, "y_m0");
-    auto x_m1 = mgr.var(expansion::PD, "x_m1");
-    auto y_m1 = mgr.var(expansion::PD, "y_m1");
-    auto x_m2 = mgr.var(expansion::PD, "x_m2");
-    auto y_m2 = mgr.var(expansion::PD, "y_m2");
+    phdd_manager mgr;
+    auto const x_sg = mgr.var(expansion::S, "x_sg");
+    auto const y_sg = mgr.var(expansion::S, "y_sg");
+    auto const x_e0 = mgr.var(expansion::S, "x_e0");
+    auto const y_e0 = mgr.var(expansion::S, "y_e0");
+    auto const x_e1 = mgr.var(expansion::S, "x_e1");
+    auto const y_e1 = mgr.var(expansion::S, "y_e1");
+    auto const x_e2 = mgr.var(expansion::S, "x_e2");
+    auto const y_e2 = mgr.var(expansion::S, "y_e2");
+    auto const x_e3 = mgr.var(expansion::S, "x_e3");
+    auto const y_e3 = mgr.var(expansion::S, "y_e3");
+    auto const x_m0 = mgr.var(expansion::pD, "x_m0");
+    auto const y_m0 = mgr.var(expansion::pD, "y_m0");
+    auto const x_m1 = mgr.var(expansion::pD, "x_m1");
+    auto const y_m1 = mgr.var(expansion::pD, "y_m1");
+    auto const x_m2 = mgr.var(expansion::pD, "x_m2");
+    auto const y_m2 = mgr.var(expansion::pD, "y_m2");
 
-    auto x_is_sbn = (~x_e0 & ~x_e1 & ~x_e2 & ~x_e3);
-    auto x_s = x_sg.ite(-mgr.one(), mgr.one());
-    auto x_m =
+    auto const x_is_sbn = (~x_e0 & ~x_e1 & ~x_e2 & ~x_e3);
+    auto const x_s = x_sg.ite(-mgr.one(), mgr.one());
+    auto const x_m =
         (pow2(2, mgr) * x_m2) + (pow2(1, mgr) * x_m1) + (pow2(0, mgr) * x_m0) + x_is_sbn.ite(mgr.zero(), pow2(3, mgr));
-    auto x_e = (pow2(1 << 3, mgr) * x_e3 | ~x_e3) * (pow2(1 << 2, mgr) * x_e2 | ~x_e2) *
-               (pow2(1 << 1, mgr) * x_e1 | ~x_e1) * (pow2(1 << 0, mgr) * x_e0 | ~x_e0) * (pow2(-7, mgr)) *
-               x_is_sbn.ite(mgr.two(), mgr.one());
-    auto x = x_s * x_m * x_e;
+    auto const x_e = (pow2(1u << 3u, mgr) * x_e3 | ~x_e3) * (pow2(1u << 2u, mgr) * x_e2 | ~x_e2) *
+                     (pow2(1u << 1u, mgr) * x_e1 | ~x_e1) * (pow2(1u << 0u, mgr) * x_e0 | ~x_e0) * (pow2(-7, mgr)) *
+                     x_is_sbn.ite(mgr.two(), mgr.one());
+    auto const x = x_s * x_m * x_e;
 
-    auto y_is_sbn = (~y_e0 & ~y_e1 & ~y_e2 & ~y_e3);
-    auto y_s = y_sg.ite(-mgr.one(), mgr.one());
-    auto y_m =
+    auto const y_is_sbn = (~y_e0 & ~y_e1 & ~y_e2 & ~y_e3);
+    auto const y_s = y_sg.ite(-mgr.one(), mgr.one());
+    auto const y_m =
         (pow2(2, mgr) * y_m2) + (pow2(1, mgr) * y_m1) + (pow2(0, mgr) * y_m0) + y_is_sbn.ite(mgr.zero(), pow2(3, mgr));
-    auto y_e = (pow2(1 << 3, mgr) * y_e3 | ~y_e3) * (pow2(1 << 2, mgr) * y_e2 | ~y_e2) *
-               (pow2(1 << 1, mgr) * y_e1 | ~y_e1) * (pow2(1 << 0, mgr) * y_e0 | ~y_e0) * (pow2(-7, mgr)) *
-               y_is_sbn.ite(mgr.two(), mgr.one());
-    auto y = y_s * y_m * y_e;
+    auto const y_e = (pow2(1u << 3u, mgr) * y_e3 | ~y_e3) * (pow2(1u << 2u, mgr) * y_e2 | ~y_e2) *
+                     (pow2(1u << 1u, mgr) * y_e1 | ~y_e1) * (pow2(1u << 0u, mgr) * y_e0 | ~y_e0) * (pow2(-7, mgr)) *
+                     y_is_sbn.ite(mgr.two(), mgr.one());
+    auto const y = y_s * y_m * y_e;
 
-    auto sum = x + y;
-    auto diff = x - y;
-    auto prod = x * y;
+    auto const sum = x + y;
+    auto const diff = x - y;
+    auto const prod = x * y;
 
     // make a table with all possible mini-floats (bit representation and float value)
     std::vector<std::pair<std::vector<bool>, float>> minifloat_table;
@@ -106,13 +121,14 @@ TEST_CASE("evaluate mini float (representation and operations + - *)", "[phdd, m
                 auto m_assignment = int_to_bool_vec(m, 3);
                 assignment.insert(assignment.end(), e_assignment.begin(), e_assignment.end());
                 assignment.insert(assignment.end(), m_assignment.begin(), m_assignment.end());
-                auto spec = pow(-1, s) * (e == 0 ? m << 1 : m + 8) * pow(2, e - 7);
+                auto spec = std::pow(-1, s) * (e == 0 ? static_cast<unsigned>(m) << 1u : static_cast<unsigned>(m) + 8) *
+                            std::pow(2, e - 7);
                 minifloat_table.emplace_back(assignment, spec);
             }
         }
     }
 
-    for (const auto& x_entry : minifloat_table)
+    for (auto const& x_entry : minifloat_table)
     {
         for (const auto& y_entry : minifloat_table)
         {
@@ -122,11 +138,12 @@ TEST_CASE("evaluate mini float (representation and operations + - *)", "[phdd, m
                 assignment.push_back(x_entry.first[i]);
                 assignment.push_back(y_entry.first[i]);
             }
-            REQUIRE(x.eval(assignment) == x_entry.second);
-            REQUIRE(y.eval(assignment) == y_entry.second);
-            REQUIRE(sum.eval(assignment) == x_entry.second + y_entry.second);
-            REQUIRE(diff.eval(assignment) == x_entry.second - y_entry.second);
-            REQUIRE(prod.eval(assignment) == x_entry.second * y_entry.second);
+            CHECK(x.eval(assignment) == x_entry.second);
+            CHECK(y.eval(assignment) == y_entry.second);
+            CHECK(sum.eval(assignment) == x_entry.second + y_entry.second);
+            CHECK(diff.eval(assignment) == x_entry.second - y_entry.second);
+            CHECK(prod.eval(assignment) == x_entry.second * y_entry.second);
         }
     }
 }
+// NOLINTEND(readability-function-cognitive-complexity)

@@ -57,7 +57,7 @@ auto eval_dds(DD1 const& dd1, DD2 const& dd2)
 // Macros
 // *********************************************************************************************************************
 
-TEST_CASE("kfdd ringsum sift test", "[rsnf]")
+TEST_CASE("kfdd ringsum sift test", "[example]")
 {
     kfdd_manager mgr_ctrl{};
     std::vector<kfdd> c(15);
@@ -180,7 +180,7 @@ TEST_CASE("kfdd ringsum sift test", "[rsnf]")
     CHECK(eval_dds(result_v, result_c));
 }
 
-TEST_CASE("simple ringsum", "[rsnf]")
+TEST_CASE("simple ringsum", "[example]")
 {
     kfdd_manager mgr1{};
     auto const x0 = mgr1.var(expansion::S);
@@ -203,7 +203,7 @@ TEST_CASE("simple ringsum", "[rsnf]")
     CHECK(eval_dds(ringsum, ringsum2));
 }
 
-TEST_CASE("wiki example ringsum", "[rsnf]")
+TEST_CASE("wiki example ringsum", "[example]")
 {
     kfdd_manager mgr{};
     auto const a1 = mgr.var(expansion::S);
