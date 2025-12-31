@@ -354,7 +354,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
 
     static auto factorize_pow2(std::uint64_t const w) -> std::pair<std::uint64_t, std::uint64_t>
     {
-        auto const exp = std::countr_zero(w);
+        auto const exp = static_cast<std::uint64_t>(std::countr_zero(w));
         return {exp, w >> exp};
     }
 
