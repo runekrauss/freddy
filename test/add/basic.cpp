@@ -256,3 +256,24 @@ TEST_CASE("ADD detects misuse of word-level operations", "[basic]")
         CHECK_THROWS_AS(fc + fmgr.constant(std::ldexp(std::numeric_limits<float>::max(), -1)), std::overflow_error);
     }
 }
+
+TEST_CASE("test", "[test]"){
+    add_manager<std::int32_t> mgr;
+    auto const x0 = mgr.var(), x1 = mgr.var();
+
+    std::string path = "NEWPATHTEST";
+
+    SECTION("TT"){
+        auto f = x0 & x1;
+        f.dump_dot();
+
+        f.write_binary_file(path);
+
+        auto fs = mgr.read_binary_file(path);
+
+        for (auto g : fs){
+            g.dump_dot();
+            CHECK(g.eval({false, false}) == 0);
+        }
+    }
+}

@@ -205,6 +205,10 @@ class add final  // algebraic decision diagram (multi-terminal binary decision d
 
     auto dump_dot(std::ostream& = std::cout) const;
 
+    auto write_binary_file(std::string& file_path) const;
+
+    auto read_binary_file(std::string& file_path) const;
+
   private:
     friend add_manager<NValue>;
 
@@ -278,6 +282,23 @@ class add_manager final : public detail::manager<bool, NValue>
 
         return manager::depth(transform(fs));
     }
+
+    auto write_binary_file(std::vector<add<NValue>> const& fs, std::string& file_path) const {
+        manager::write_binary_file(transform(fs), file_path);
+    }
+
+    auto read_binary_file(std::string& file_path) {
+
+        auto roots = manager::read_binary_file(file_path);
+
+        std::vector<add<NValue>> adds;
+        for (auto root : roots){
+            adds.push_back(add{root, this});
+        }
+        return adds;
+    }
+
+
 
     auto dump_dot(std::vector<add<NValue>> const& fs, std::vector<std::string> const& outputs = {},
                   std::ostream& os = std::cout) const
@@ -704,6 +725,23 @@ inline auto add<NValue>::dump_dot(std::ostream& os) const
     assert(mgr);
 
     mgr->dump_dot({*this}, {}, os);
+}
+
+
+template <detail::hashable NValue>
+inline auto add<NValue>::write_binary_file(std::string& file_path) const
+{
+    assert(mgr);
+
+    mgr->write_binary_file({*this}, file_path);
+}
+
+template <detail::hashable NValue>
+inline auto add<NValue>::read_binary_file(std::string& file_path) const
+{
+    assert(mgr);
+
+    return mgr->read_binary_file(file_path);
 }
 
 }  // namespace freddy
