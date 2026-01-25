@@ -634,7 +634,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         return false;
     }
 
-    auto reduce(var_index x, edge_ptr const& high, edge_ptr const& low, expansion const t) -> edge_ptr override
+    auto reduce(var_index const x, edge_ptr const& high, edge_ptr const& low, expansion const t) -> edge_ptr override
     {
         if (t == expansion::S && high == low)
         {
@@ -656,7 +656,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         std::unreachable();
     }
 
-    auto needs_normalization(edge_ptr const&, edge_ptr const& low, expansion) -> bool override
+    auto needs_normalization(edge_ptr const&, edge_ptr const&, expansion) -> bool override
     {
         return true;
     }
