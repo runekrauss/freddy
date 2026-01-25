@@ -547,11 +547,9 @@ class kfdd_manager final : public detail::manager<bool, bool>
     {
         switch (t)
         {
-            case expansion::S:
-                return high == low;
+            case expansion::S: return high == low;
             case expansion::pD:
-            case expansion::nD:
-                return high == constant(0);
+            case expansion::nD: return high == constant(0);
             default: assert(false); std::unreachable();
         }
     }
@@ -575,11 +573,9 @@ class kfdd_manager final : public detail::manager<bool, bool>
     {
         switch (t)
         {
-            case expansion::S:
-                return complement(high);
+            case expansion::S: return complement(high);
             case expansion::pD:
-            case expansion::nD:
-                return high;
+            case expansion::nD: return high;
             default: assert(false); std::unreachable();
         }
     }
@@ -607,14 +603,10 @@ class kfdd_manager final : public detail::manager<bool, bool>
     {
         switch (t)
         {
-            case expansion::S:
-                return apply(f->weight(), f->ch()->br().hi);
+            case expansion::S: return apply(f->weight(), f->ch()->br().hi);
             case expansion::pD:
-            case expansion::nD:
-                return f->ch()->br().hi;
-            default:
-                assert(false);
-                std::unreachable();
+            case expansion::nD: return f->ch()->br().hi;
+            default: assert(false); std::unreachable();
         }
     }
 

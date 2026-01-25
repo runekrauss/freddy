@@ -540,7 +540,7 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
 
     auto needs_normalization(edge_ptr const& high, edge_ptr const& low, expansion) -> bool override
     {
-        return normw(high,low) != 1;
+        return normw(high, low) != 1;
     }
 
     auto normalized_weight(edge_ptr const& high, edge_ptr const& low, expansion) -> bmd_int override

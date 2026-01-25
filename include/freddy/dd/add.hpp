@@ -426,7 +426,7 @@ class add_manager final : public detail::manager<bool, NValue>
         auto const x = this->top_var(f, g);
 
         op.set_result(this->branch(x, mul(this->cof(f, x, true), this->cof(g, x, true)),
-                             mul(this->cof(f, x, false), this->cof(g, x, false))));
+                                    mul(this->cof(f, x, false), this->cof(g, x, false))));
         return this->cache(std::move(op))->get_result();
     }
 
@@ -473,7 +473,7 @@ class add_manager final : public detail::manager<bool, NValue>
         auto const x = this->top_var(f, g);
 
         op.set_result(this->branch(x, plus(this->cof(f, x, true), this->cof(g, x, true)),
-                             plus(this->cof(f, x, false), this->cof(g, x, false))));
+                                    plus(this->cof(f, x, false), this->cof(g, x, false))));
         return this->cache(std::move(op))->get_result();
     }
 

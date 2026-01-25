@@ -357,8 +357,7 @@ class manager
 
     virtual auto plus(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs additively
 
-    //non-generalizable methods for branch
-    virtual auto is_reducible(edge_ptr const&, edge_ptr const&, expansion) -> bool = 0;
+    virtual auto is_reducible(edge_ptr const&, edge_ptr const&, expansion) -> bool = 0;  //non-generalizable methods for branch
 
     virtual auto reduce(var_index, edge_ptr const&, edge_ptr const&, expansion) -> edge_ptr = 0;
 
@@ -370,14 +369,13 @@ class manager
 
     virtual auto normalize_low(edge_ptr const&, expansion, EWeight) -> edge_ptr = 0;
 
-    // non-generalizable methods for cof
-    virtual auto needs_expansion(edge_ptr const&, expansion, var_index, bool) -> bool = 0;
+    virtual auto needs_expansion(edge_ptr const&, expansion, var_index, bool) -> bool = 0;  // non-generalizable methods for cof
 
     virtual auto expand(edge_ptr const&, expansion, var_index, bool) -> edge_ptr = 0;
 
     virtual auto denormalize_high(edge_ptr const&, expansion, var_index, bool) -> edge_ptr = 0;
 
-    virtual auto denormalize_low(edge_ptr const&, expansion, var_index,  bool) -> edge_ptr = 0;
+    virtual auto denormalize_low(edge_ptr const&, expansion, var_index, bool) -> edge_ptr = 0;
 
     [[nodiscard]] virtual auto regw() const -> EWeight = 0;  // returns the regular weight of an edge
 
