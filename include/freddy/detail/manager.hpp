@@ -341,9 +341,6 @@ class manager
     // aggregates an edge weight and a node value
     [[nodiscard]] virtual auto agg(EWeight const&, NValue const&) const -> NValue = 0;
 
-    // creates/reuses a node and an incoming edge
-    virtual auto branch(var_index, edge_ptr&&, edge_ptr&&) -> edge_ptr = 0;
-
     // adjusts a weight pair based on the DD type
     [[nodiscard]] virtual auto comb(EWeight const&, EWeight const&) const -> EWeight = 0;
 
@@ -360,13 +357,27 @@ class manager
 
     virtual auto plus(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs additively
 
-    virtual auto needs_expansion(edge_ptr const&, [[maybe_unused]] expansion, [[maybe_unused]] var_index, [[maybe_unused]] bool) -> bool = 0;
+    //non-generalizable methods for branch
+    virtual auto is_reducible(edge_ptr const&, edge_ptr const&, expansion) -> bool = 0;
 
-    virtual auto expand(edge_ptr const&, [[maybe_unused]] expansion, [[maybe_unused]] var_index, [[maybe_unused]] bool) -> edge_ptr = 0;
+    virtual auto reduce(var_index, edge_ptr const&, edge_ptr const&, expansion) -> edge_ptr = 0;
 
-    virtual auto denormalize_high(edge_ptr const&, [[maybe_unused]] expansion, [[maybe_unused]] var_index, [[maybe_unused]] bool) -> edge_ptr = 0;
+    virtual auto needs_normalization(edge_ptr const&, edge_ptr const&, expansion) -> bool = 0;
 
-    virtual auto denormalize_low(edge_ptr const&, [[maybe_unused]] expansion, [[maybe_unused]] var_index, [[maybe_unused]] bool) -> edge_ptr = 0;
+    virtual auto normalized_weight(edge_ptr const&, edge_ptr const&, expansion) -> EWeight = 0;
+
+    virtual auto normalize_high(edge_ptr const&, expansion, EWeight) -> edge_ptr = 0;
+
+    virtual auto normalize_low(edge_ptr const&, expansion, EWeight) -> edge_ptr = 0;
+
+    // non-generalizable methods for cof
+    virtual auto needs_expansion(edge_ptr const&, expansion, var_index, bool) -> bool = 0;
+
+    virtual auto expand(edge_ptr const&, expansion, var_index, bool) -> edge_ptr = 0;
+
+    virtual auto denormalize_high(edge_ptr const&, expansion, var_index, bool) -> edge_ptr = 0;
+
+    virtual auto denormalize_low(edge_ptr const&, expansion, var_index,  bool) -> edge_ptr = 0;
 
     [[nodiscard]] virtual auto regw() const -> EWeight = 0;  // returns the regular weight of an edge
 
@@ -413,6 +424,29 @@ class manager
         vlist[x].t = t;
 
         gc();
+    }
+
+    // creates/reuses a node and an incoming edge
+    virtual auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr
+    {
+        assert(x < var_count());
+        assert(hi);
+        assert(lo);
+
+        auto const t = decomposition(x);
+
+        if (is_reducible(hi, lo, t))
+        {
+            return reduce(x, hi, lo, t);
+        }
+
+        auto const w = normalized_weight(hi, lo, t);
+        if (needs_normalization(hi, lo, t))
+        {
+            return uedge(w, unode(x, normalize_high(hi, t, w), normalize_low(lo, t, w)));
+        }
+
+        return uedge(w, unode(x, std::move(hi), std::move(lo)));
     }
 
     virtual auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr  // edge weights could be factored

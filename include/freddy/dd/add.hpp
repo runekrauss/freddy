@@ -340,15 +340,6 @@ class add_manager final : public detail::manager<bool, NValue>
         return w + val;
     }
 
-    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
-    {
-        assert(x < this->var_count());
-        assert(hi);
-        assert(lo);
-
-        return hi == lo ? hi : this->uedge(false, this->unode(x, std::move(hi), std::move(lo)));
-    }
-
     [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
     {
         assert(!w1);
@@ -434,7 +425,7 @@ class add_manager final : public detail::manager<bool, NValue>
 
         auto const x = this->top_var(f, g);
 
-        op.set_result(branch(x, mul(this->cof(f, x, true), this->cof(g, x, true)),
+        op.set_result(this->branch(x, mul(this->cof(f, x, true), this->cof(g, x, true)),
                              mul(this->cof(f, x, false), this->cof(g, x, false))));
         return this->cache(std::move(op))->get_result();
     }
@@ -481,9 +472,39 @@ class add_manager final : public detail::manager<bool, NValue>
 
         auto const x = this->top_var(f, g);
 
-        op.set_result(branch(x, plus(this->cof(f, x, true), this->cof(g, x, true)),
+        op.set_result(this->branch(x, plus(this->cof(f, x, true), this->cof(g, x, true)),
                              plus(this->cof(f, x, false), this->cof(g, x, false))));
         return this->cache(std::move(op))->get_result();
+    }
+
+    auto is_reducible(edge_ptr const& high, edge_ptr const& low, expansion) -> bool override
+    {
+        return high == low;
+    }
+
+    auto reduce(var_index, edge_ptr const& high, edge_ptr const&, expansion) -> edge_ptr override
+    {
+        return high;
+    }
+
+    auto needs_normalization(edge_ptr const&, edge_ptr const&, expansion) -> bool override
+    {
+        return false;
+    }
+
+    auto normalized_weight(edge_ptr const&, edge_ptr const& low, expansion) -> bool override
+    {
+        return low->weight();
+    }
+
+    auto normalize_high(edge_ptr const& high, expansion, bool const w) -> edge_ptr override
+    {
+        return this->apply(w, high);
+    }
+
+    auto normalize_low(edge_ptr const& low, expansion, bool const w) -> edge_ptr override
+    {
+        return this->apply(w, low);
     }
 
     auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override

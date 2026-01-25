@@ -415,53 +415,6 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return w != val;  // XOR
     }
 
-    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
-    {
-        assert(x < var_count());
-        assert(hi);
-        assert(lo);
-
-        auto const t = decomposition(x);
-        edge_ptr r;
-        bool w{};
-
-        switch (t)
-        {
-            case expansion::S:
-                if (hi == lo)  // redundancy rule
-                {
-                    return hi;  // without limitation of generality
-                }
-
-                w = lo->weight();
-                if (!w)
-                {
-                    return uedge(w, unode(x, std::move(hi), std::move(lo)));
-                }
-                return uedge(w, unode(x, complement(hi), complement(lo)));
-
-            case expansion::pD:
-            case expansion::nD:
-                if (hi == constant(0))
-                {
-                    return lo;
-                }
-                if (lo->weight())
-                {
-                    w = lo->weight();
-                    r = uedge(w, unode(x, std::move(hi), complement(lo)));
-                }
-                else
-                {
-                    r = uedge(false, unode(x, std::move(hi), std::move(lo)));
-                }
-                break;
-
-            default: assert(false); std::unreachable();
-        }
-        return r;
-    }
-
     [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
     {
         return w1 != w2;
@@ -588,6 +541,52 @@ class kfdd_manager final : public detail::manager<bool, bool>
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         return antiv(f, g);
+    }
+
+    auto is_reducible(edge_ptr const& high, edge_ptr const& low, expansion const t) -> bool override
+    {
+        switch (t)
+        {
+            case expansion::S:
+                return high == low;
+            case expansion::pD:
+            case expansion::nD:
+                return high == constant(0);
+            default: assert(false); std::unreachable();
+        }
+    }
+
+    auto reduce(var_index, edge_ptr const&, edge_ptr const& low, expansion) -> edge_ptr override
+    {
+        return low;
+    }
+
+    auto needs_normalization(edge_ptr const&, edge_ptr const& low, expansion) -> bool override
+    {
+        return low->weight();
+    }
+
+    auto normalized_weight(edge_ptr const&, edge_ptr const& low, expansion) -> bool override
+    {
+        return low->weight();
+    }
+
+    auto normalize_high(edge_ptr const& high, expansion const t, bool) -> edge_ptr override
+    {
+        switch (t)
+        {
+            case expansion::S:
+                return complement(high);
+            case expansion::pD:
+            case expansion::nD:
+                return high;
+            default: assert(false); std::unreachable();
+        }
+    }
+
+    auto normalize_low(edge_ptr const& low, expansion, bool) -> edge_ptr override
+    {
+        return complement(low);
     }
 
     auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override

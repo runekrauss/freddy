@@ -428,34 +428,6 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         return f == manager::constant(0) || (!w.first && w.second == 0) ? f : uedge(comb(w, f->weight()), f->ch());
     }
 
-    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
-    {
-        assert(x < var_count());
-        assert(hi);
-        assert(lo);
-
-        if (decomposition(x) == expansion::S && hi == lo)
-        {
-            return hi;
-        }
-        if (decomposition(x) == expansion::S && hi == manager::constant(0))
-        {
-            return uedge(lo->weight(), unode(x, std::move(hi), uedge({false, 0}, lo->ch())));
-        }
-        if (decomposition(x) == expansion::pD && hi == manager::constant(0))
-        {
-            return lo;
-        }
-        if (lo == manager::constant(0))
-        {
-            return uedge(hi->weight(), unode(x, uedge({false, 0}, hi->ch()), std::move(lo)));
-        }
-
-        auto const w = normw(hi, lo);
-        return uedge(w, unode(x, uedge({hi->weight().first ^ w.first, hi->weight().second - w.second}, hi->ch()),
-                              uedge({lo->weight().first ^ w.first, lo->weight().second - w.second}, lo->ch())));
-    }
-
     [[nodiscard]] auto comb(phdd_weight const& w1, phdd_weight const& w2) const noexcept -> phdd_weight override
     {
         return {w1.first ^ w2.first, w1.second + w2.second};
@@ -638,6 +610,70 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         cache(std::move(op));
 
         return apply(w, res);
+    }
+
+    auto is_reducible(edge_ptr const& high, edge_ptr const& low, expansion const t) -> bool override
+    {
+        if (t == expansion::S && high == low)
+        {
+            return true;
+        }
+        if (t == expansion::S && high == manager::constant(0))
+        {
+            return true;
+        }
+        if (t == expansion::pD && high == manager::constant(0))
+        {
+            return true;
+        }
+        if (low == manager::constant(0))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    auto reduce(var_index x, edge_ptr const& high, edge_ptr const& low, expansion const t) -> edge_ptr override
+    {
+        if (t == expansion::S && high == low)
+        {
+            return high;
+        }
+        if (t == expansion::S && high == manager::constant(0))
+        {
+            return uedge(low->weight(), unode(x, high, uedge({false, 0}, low->ch())));
+        }
+        if (decomposition(x) == expansion::pD && high == manager::constant(0))
+        {
+            return low;
+        }
+        if (low == manager::constant(0))
+        {
+            return uedge(high->weight(), unode(x, uedge({false, 0}, high->ch()), low));
+        }
+        assert(false);
+        std::unreachable();
+    }
+
+    auto needs_normalization(edge_ptr const&, edge_ptr const& low, expansion) -> bool override
+    {
+        return true;
+    }
+
+    auto normalized_weight(edge_ptr const& high, edge_ptr const& low, expansion) -> phdd_weight override
+    {
+        return normw(high, low);
+    }
+
+    auto normalize_high(edge_ptr const& high, expansion, phdd_weight const w) -> edge_ptr override
+    {
+        return uedge({high->weight().first ^ w.first, high->weight().second - w.second}, high->ch());
+    }
+
+    auto normalize_low(edge_ptr const& low, expansion, phdd_weight const w) -> edge_ptr override
+    {
+        return uedge({low->weight().first ^ w.first, low->weight().second - w.second}, low->ch());
     }
 
     auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override

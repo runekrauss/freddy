@@ -393,22 +393,6 @@ class bdd_manager final : public detail::manager<bool, bool>
         return w != val;  // XOR
     }
 
-    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
-    {
-        assert(x < var_count());
-        assert(hi);
-        assert(lo);
-
-        if (hi == lo)  // redundancy rule
-        {
-            return hi;  // without limitation of generality
-        }
-
-        // normalization
-        auto const w = lo->weight();
-        return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
-    }
-
     [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
     {
         return w1 != w2;
@@ -517,6 +501,36 @@ class bdd_manager final : public detail::manager<bool, bool>
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         return antiv(f, g);
+    }
+
+    auto is_reducible(edge_ptr const& high, edge_ptr const& low, expansion) -> bool override
+    {
+        return high == low;
+    }
+
+    auto reduce(var_index, edge_ptr const& high, edge_ptr const&, expansion) -> edge_ptr override
+    {
+        return high;
+    }
+
+    auto needs_normalization(edge_ptr const&, edge_ptr const& low, expansion) -> bool override
+    {
+        return low->weight();
+    }
+
+    auto normalized_weight(edge_ptr const&, edge_ptr const& low, expansion) -> bool override
+    {
+        return low->weight();
+    }
+
+    auto normalize_high(edge_ptr const& high, expansion, bool const w) -> edge_ptr override
+    {
+        return apply(w, high);
+    }
+
+    auto normalize_low(edge_ptr const& low, expansion, bool const w) -> edge_ptr override
+    {
+        return apply(w, low);
     }
 
     auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override

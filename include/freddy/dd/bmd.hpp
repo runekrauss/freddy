@@ -399,26 +399,6 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return uedge(comb(w, f->weight()), f->ch());
     }
 
-    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
-    {
-        assert(x < var_count());
-        assert(hi);
-        assert(lo);
-
-        if (hi == manager::constant(0))  // redundancy rule
-        {
-            return lo;
-        }
-
-        // normalization
-        auto const w = normw(hi, lo);
-
-        assert(w != 0);
-
-        return w != 1 ? uedge(w, unode(x, uedge(hi->weight() / w, hi->ch()), uedge(lo->weight() / w, lo->ch())))
-                      : uedge(w, unode(x, std::move(hi), std::move(lo)));
-    }
-
     [[nodiscard]] auto comb(bmd_int const& w1, bmd_int const& w2) const -> bmd_int override
     {
         return w1 * w2;
@@ -546,6 +526,36 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         cache(std::move(op));
 
         return apply(w, res);
+    }
+
+    auto is_reducible(edge_ptr const& high, edge_ptr const&, expansion) -> bool override
+    {
+        return high == manager::constant(0);
+    }
+
+    auto reduce(var_index, edge_ptr const&, edge_ptr const& low, expansion) -> edge_ptr override
+    {
+        return low;
+    }
+
+    auto needs_normalization(edge_ptr const& high, edge_ptr const& low, expansion) -> bool override
+    {
+        return normw(high,low) != 1;
+    }
+
+    auto normalized_weight(edge_ptr const& high, edge_ptr const& low, expansion) -> bmd_int override
+    {
+        return normw(high, low);
+    }
+
+    auto normalize_high(edge_ptr const& high, expansion, bmd_int const w) -> edge_ptr override
+    {
+        return uedge(high->weight() / w, high->ch());
+    }
+
+    auto normalize_low(edge_ptr const& low, expansion, bmd_int const w) -> edge_ptr override
+    {
+        return uedge(low->weight() / w, low->ch());
     }
 
     auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
