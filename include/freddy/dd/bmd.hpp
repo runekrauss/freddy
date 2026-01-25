@@ -419,18 +419,6 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
                       : uedge(w, unode(x, std::move(hi), std::move(lo)));
     }
 
-    auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr override
-    {
-        assert(f);
-        assert(x < var_count());
-
-        if (f->is_const() || f->ch()->br().x != x)
-        {
-            return a ? manager::constant(0) : f;  // dependent on two subtrees: f ^ f = 0
-        }
-        return a ? apply(f->weight(), f->ch()->br().hi) : apply(f->weight(), f->ch()->br().lo);
-    }
-
     [[nodiscard]] auto comb(bmd_int const& w1, bmd_int const& w2) const -> bmd_int override
     {
         return w1 * w2;
@@ -558,6 +546,26 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         cache(std::move(op));
 
         return apply(w, res);
+    }
+
+    auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
+    {
+        return f->is_const() || f->ch()->br().x != x;
+    }
+
+    auto expand(edge_ptr const& f, expansion const, var_index, bool const a) -> edge_ptr override
+    {
+        return a ? manager::constant(0) : f;
+    }
+
+    auto denormalize_high(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().hi);
+    }
+
+    auto denormalize_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
     }
 
     [[nodiscard]] auto regw() const noexcept -> bmd_int override

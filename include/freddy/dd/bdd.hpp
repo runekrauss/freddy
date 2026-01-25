@@ -519,6 +519,26 @@ class bdd_manager final : public detail::manager<bool, bool>
         return antiv(f, g);
     }
 
+    auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
+    {
+        return f->is_const() || f->ch()->br().x != x;
+    }
+
+    auto expand(edge_ptr const& f, expansion const, var_index, bool) -> edge_ptr override
+    {
+        return f;
+    }
+
+    auto denormalize_high(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().hi);
+    }
+
+    auto denormalize_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
+    }
+
     [[nodiscard]] auto regw() const noexcept -> bool override
     {
         return false;  // means a regular (non-complemented) edge

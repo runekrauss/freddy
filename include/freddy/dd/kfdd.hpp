@@ -590,6 +590,40 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return antiv(f, g);
     }
 
+    auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
+    {
+        return f->is_const() || f->ch()->br().x != x;
+    }
+
+    auto expand(edge_ptr const& f, expansion const t, var_index, bool const a) -> edge_ptr override
+    {
+        if ((t == expansion::pD || t == expansion::nD) && a)  // dependent on two subtrees: f ^ f = 0
+        {
+            return constant(0);
+        }
+        return f;
+    }
+
+    auto denormalize_high(edge_ptr const& f, expansion const t, var_index, bool) -> edge_ptr override
+    {
+        switch (t)
+        {
+            case expansion::S:
+                return apply(f->weight(), f->ch()->br().hi);
+            case expansion::pD:
+            case expansion::nD:
+                return f->ch()->br().hi;
+            default:
+                assert(false);
+                std::unreachable();
+        }
+    }
+
+    auto denormalize_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
+    }
+
     [[nodiscard]] auto regw() const noexcept -> bool override
     {
         return false;  // means a regular (non-complemented) edge

@@ -360,6 +360,14 @@ class manager
 
     virtual auto plus(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs additively
 
+    virtual auto needs_expansion(edge_ptr const&, [[maybe_unused]] expansion, [[maybe_unused]] var_index, [[maybe_unused]] bool) -> bool = 0;
+
+    virtual auto expand(edge_ptr const&, [[maybe_unused]] expansion, [[maybe_unused]] var_index, [[maybe_unused]] bool) -> edge_ptr = 0;
+
+    virtual auto denormalize_high(edge_ptr const&, [[maybe_unused]] expansion, [[maybe_unused]] var_index, [[maybe_unused]] bool) -> edge_ptr = 0;
+
+    virtual auto denormalize_low(edge_ptr const&, [[maybe_unused]] expansion, [[maybe_unused]] var_index, [[maybe_unused]] bool) -> edge_ptr = 0;
+
     [[nodiscard]] virtual auto regw() const -> EWeight = 0;  // returns the regular weight of an edge
 
     virtual auto apply(EWeight const& w, edge_ptr const& f) -> edge_ptr  // optimizations vary depending on the DD type
@@ -412,22 +420,14 @@ class manager
         assert(f);
         assert(x < var_count());
 
-        if (f->is_const() || f->v->inner.x != x)
+        auto const t = vlist[x].t;
+
+        if (needs_expansion(f, t, x, a))
         {
-            if ((vlist[x].t == expansion::pD || vlist[x].t == expansion::nD) && a)
-            {
-                return consts[0];
-            }
-            return f;
+            return expand(f, t, x, a);
         }
 
-        switch (vlist[x].t)
-        {
-            case expansion::S: return a ? apply(f->w, f->v->inner.hi) : apply(f->w, f->v->inner.lo);
-            case expansion::pD:
-            case expansion::nD: return a ? f->v->inner.hi : apply(f->w, f->v->inner.lo);
-            default: assert(false); std::unreachable();
-        }
+        return a ? denormalize_high(f, t, x, a) : denormalize_low(f, t, x, a);
     }
 
     // NOLINTNEXTLINE(performance-unnecessary-value-param) because simplifications may change pointers

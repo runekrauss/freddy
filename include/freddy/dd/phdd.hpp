@@ -456,18 +456,6 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
                               uedge({lo->weight().first ^ w.first, lo->weight().second - w.second}, lo->ch())));
     }
 
-    auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr override
-    {
-        assert(f);
-        assert(x < var_count());
-
-        if (f->is_const() || f->ch()->br().x != x)
-        {
-            return decomposition(x) == expansion::pD && a ? manager::constant(0) : f;
-        }
-        return a ? apply(f->weight(), f->ch()->br().hi) : apply(f->weight(), f->ch()->br().lo);
-    }
-
     [[nodiscard]] auto comb(phdd_weight const& w1, phdd_weight const& w2) const noexcept -> phdd_weight override
     {
         return {w1.first ^ w2.first, w1.second + w2.second};
@@ -650,6 +638,26 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         cache(std::move(op));
 
         return apply(w, res);
+    }
+
+    auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
+    {
+        return f->is_const() || f->ch()->br().x != x;
+    }
+
+    auto expand(edge_ptr const& f, expansion const, var_index const x, bool const a) -> edge_ptr override
+    {
+        return decomposition(x) == expansion::pD && a ? manager::constant(0) : f;
+    }
+
+    auto denormalize_high(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().hi);
+    }
+
+    auto denormalize_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
     }
 
     [[nodiscard]] auto regw() const noexcept -> phdd_weight override
