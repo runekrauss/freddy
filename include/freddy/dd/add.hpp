@@ -477,54 +477,49 @@ class add_manager final : public detail::manager<bool, NValue>
         return this->cache(std::move(op))->get_result();
     }
 
-    auto reducible(edge_ptr const& high, edge_ptr const& low, expansion) -> bool override
-    {
-        return high == low;
-    }
-
-    auto reduced(var_index, edge_ptr const& high, edge_ptr const&, expansion) -> edge_ptr override
-    {
-        return high;
-    }
-
-    auto normalization_is_needed(edge_ptr const&, edge_ptr const&, expansion) -> bool override
-    {
-        return false;
-    }
-
-    auto normalized_weight(edge_ptr const&, edge_ptr const& low, expansion) -> bool override
-    {
-        return low->weight();
-    }
-
-    auto normalized_high(edge_ptr const& high, expansion, bool const w) -> edge_ptr override
-    {
-        return this->apply(w, high);
-    }
-
-    auto normalized_low(edge_ptr const& low, expansion, bool const w) -> edge_ptr override
-    {
-        return this->apply(w, low);
-    }
-
-    auto expansion_is_needed(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
-    {
-        return f->is_const() || f->ch()->br().x != x;
-    }
-
-    auto expanded(edge_ptr const& f, expansion const, var_index, bool) -> edge_ptr override
-    {
-        return f;
-    }
-
-    auto denormalized_high(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    auto denorm_high(edge_ptr const& f) -> edge_ptr override
     {
         return this->apply(f->weight(), f->ch()->br().hi);
     }
 
-    auto denormalized_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    auto denorm_low(edge_ptr const& f) -> edge_ptr override
     {
         return this->apply(f->weight(), f->ch()->br().lo);
+    }
+
+    auto expanded(edge_ptr const& f, bool, expansion) const noexcept -> edge_ptr override
+    {
+        return f;
+    }
+
+    auto norm_high(edge_ptr const& hi, bool const w, expansion) -> edge_ptr override
+    {
+        return this->apply(w, hi);
+    }
+
+    auto norm_is_needed(edge_ptr const&, edge_ptr const&) const noexcept -> bool override
+    {
+        return false;
+    }
+
+    auto norm_low(edge_ptr const& lo, bool const w, expansion) -> edge_ptr override
+    {
+        return this->apply(w, lo);
+    }
+
+    auto norm_weight(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
+    {
+        return lo->weight();
+    }
+
+    auto reduced(edge_ptr const& hi, edge_ptr const&, expansion) noexcept -> edge_ptr override
+    {
+        return hi;
+    }
+
+    auto reducible(edge_ptr const& hi, edge_ptr const& lo, expansion) const noexcept -> bool override
+    {
+        return hi == lo;
     }
 
     [[nodiscard]] auto regw() const noexcept -> bool override

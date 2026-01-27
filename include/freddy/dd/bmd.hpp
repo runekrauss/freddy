@@ -354,14 +354,6 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return fs;
     }
 
-    static auto normw(edge_ptr const& f, edge_ptr const& g) noexcept -> bmd_int
-    {
-        // as there is no risk of overflow in this operation
-        auto const fw = static_cast<raw_int>(f->weight());
-        auto const gw = static_cast<raw_int>(g->weight());
-        return gw < 0 || (fw < 0 && gw == 0) ? -std::gcd(fw, gw) : std::gcd(fw, gw);
-    }
-
     auto neg(edge_ptr const& f)
     {
         assert(f);
@@ -504,11 +496,11 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         if (std::abs(static_cast<raw_int>(f->weight())) <= std::abs(static_cast<raw_int>(g->weight())))
         {
             std::swap(f, g);
-            w = normw(f, g);
+            w = norm_weight(f, g);
         }
         else
         {
-            w = normw(g, f);
+            w = norm_weight(g, f);
         }
         f = uedge(f->weight() / w, f->ch());
         g = uedge(g->weight() / w, g->ch());
@@ -528,54 +520,52 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return apply(w, res);
     }
 
-    auto reducible(edge_ptr const& high, edge_ptr const&, expansion) -> bool override
-    {
-        return high == manager::constant(0);
-    }
-
-    auto reduced(var_index, edge_ptr const&, edge_ptr const& low, expansion) -> edge_ptr override
-    {
-        return low;
-    }
-
-    auto normalization_is_needed(edge_ptr const& high, edge_ptr const& low, expansion) -> bool override
-    {
-        return normw(high, low) != 1;
-    }
-
-    auto normalized_weight(edge_ptr const& high, edge_ptr const& low, expansion) -> bmd_int override
-    {
-        return normw(high, low);
-    }
-
-    auto normalized_high(edge_ptr const& high, expansion, bmd_int const w) -> edge_ptr override
-    {
-        return uedge(high->weight() / w, high->ch());
-    }
-
-    auto normalized_low(edge_ptr const& low, expansion, bmd_int const w) -> edge_ptr override
-    {
-        return uedge(low->weight() / w, low->ch());
-    }
-
-    auto expansion_is_needed(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
-    {
-        return f->is_const() || f->ch()->br().x != x;
-    }
-
-    auto expanded(edge_ptr const& f, expansion const, var_index, bool const a) -> edge_ptr override
-    {
-        return a ? manager::constant(0) : f;
-    }
-
-    auto denormalized_high(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    auto denorm_high(edge_ptr const& f) -> edge_ptr override
     {
         return apply(f->weight(), f->ch()->br().hi);
     }
 
-    auto denormalized_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    auto denorm_low(edge_ptr const& f) -> edge_ptr override
     {
         return apply(f->weight(), f->ch()->br().lo);
+    }
+
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const noexcept -> edge_ptr override
+    {
+        return a ? manager::constant(0) : f;
+    }
+
+    [[nodiscard]] auto norm_high(edge_ptr const& hi, bmd_int const w, expansion) -> edge_ptr override
+    {
+        return uedge(hi->weight() / w, hi->ch());
+    }
+
+    [[nodiscard]] auto norm_is_needed(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bool override
+    {
+        return norm_weight(hi, lo) != 1;
+    }
+
+    [[nodiscard]] auto norm_low(edge_ptr const& lo, bmd_int const w, expansion) -> edge_ptr override
+    {
+        return uedge(lo->weight() / w, lo->ch());
+    }
+
+    [[nodiscard]] auto norm_weight(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bmd_int override
+    {
+        // as there is no risk of overflow in this operation
+        auto const hiw = static_cast<raw_int>(hi->weight());
+        auto const low = static_cast<raw_int>(lo->weight());
+        return low < 0 || (hiw < 0 && low == 0) ? -std::gcd(hiw, low) : std::gcd(hiw, low);
+    }
+
+    [[nodiscard]] auto reduced(edge_ptr const&, edge_ptr const& lo, expansion) noexcept -> edge_ptr override
+    {
+        return lo;
+    }
+
+    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const&, expansion) const noexcept -> bool override
+    {
+        return hi == manager::constant(0);
     }
 
     [[nodiscard]] auto regw() const noexcept -> bmd_int override
