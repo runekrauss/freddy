@@ -528,17 +528,17 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return apply(w, res);
     }
 
-    auto is_reducible(edge_ptr const& high, edge_ptr const&, expansion) -> bool override
+    auto reducible(edge_ptr const& high, edge_ptr const&, expansion) -> bool override
     {
         return high == manager::constant(0);
     }
 
-    auto reduce(var_index, edge_ptr const&, edge_ptr const& low, expansion) -> edge_ptr override
+    auto reduced(var_index, edge_ptr const&, edge_ptr const& low, expansion) -> edge_ptr override
     {
         return low;
     }
 
-    auto needs_normalization(edge_ptr const& high, edge_ptr const& low, expansion) -> bool override
+    auto normalization_is_needed(edge_ptr const& high, edge_ptr const& low, expansion) -> bool override
     {
         return normw(high, low) != 1;
     }
@@ -548,32 +548,32 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return normw(high, low);
     }
 
-    auto normalize_high(edge_ptr const& high, expansion, bmd_int const w) -> edge_ptr override
+    auto normalized_high(edge_ptr const& high, expansion, bmd_int const w) -> edge_ptr override
     {
         return uedge(high->weight() / w, high->ch());
     }
 
-    auto normalize_low(edge_ptr const& low, expansion, bmd_int const w) -> edge_ptr override
+    auto normalized_low(edge_ptr const& low, expansion, bmd_int const w) -> edge_ptr override
     {
         return uedge(low->weight() / w, low->ch());
     }
 
-    auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
+    auto expansion_is_needed(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
     {
         return f->is_const() || f->ch()->br().x != x;
     }
 
-    auto expand(edge_ptr const& f, expansion const, var_index, bool const a) -> edge_ptr override
+    auto expanded(edge_ptr const& f, expansion const, var_index, bool const a) -> edge_ptr override
     {
         return a ? manager::constant(0) : f;
     }
 
-    auto denormalize_high(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    auto denormalized_high(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
     {
         return apply(f->weight(), f->ch()->br().hi);
     }
 
-    auto denormalize_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    auto denormalized_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
     {
         return apply(f->weight(), f->ch()->br().lo);
     }

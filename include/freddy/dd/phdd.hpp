@@ -612,7 +612,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         return apply(w, res);
     }
 
-    auto is_reducible(edge_ptr const& high, edge_ptr const& low, expansion const t) -> bool override
+    auto reducible(edge_ptr const& high, edge_ptr const& low, expansion const t) -> bool override
     {
         if (t == expansion::S && high == low)
         {
@@ -634,7 +634,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         return false;
     }
 
-    auto reduce(var_index const x, edge_ptr const& high, edge_ptr const& low, expansion const t) -> edge_ptr override
+    auto reduced(var_index const x, edge_ptr const& high, edge_ptr const& low, expansion const t) -> edge_ptr override
     {
         if (t == expansion::S && high == low)
         {
@@ -656,7 +656,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         std::unreachable();
     }
 
-    auto needs_normalization(edge_ptr const&, edge_ptr const&, expansion) -> bool override
+    auto normalization_is_needed(edge_ptr const&, edge_ptr const&, expansion) -> bool override
     {
         return true;
     }
@@ -666,32 +666,32 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         return normw(high, low);
     }
 
-    auto normalize_high(edge_ptr const& high, expansion, phdd_weight const w) -> edge_ptr override
+    auto normalized_high(edge_ptr const& high, expansion, phdd_weight const w) -> edge_ptr override
     {
         return uedge({high->weight().first ^ w.first, high->weight().second - w.second}, high->ch());
     }
 
-    auto normalize_low(edge_ptr const& low, expansion, phdd_weight const w) -> edge_ptr override
+    auto normalized_low(edge_ptr const& low, expansion, phdd_weight const w) -> edge_ptr override
     {
         return uedge({low->weight().first ^ w.first, low->weight().second - w.second}, low->ch());
     }
 
-    auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
+    auto expansion_is_needed(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
     {
         return f->is_const() || f->ch()->br().x != x;
     }
 
-    auto expand(edge_ptr const& f, expansion const, var_index const x, bool const a) -> edge_ptr override
+    auto expanded(edge_ptr const& f, expansion const, var_index const x, bool const a) -> edge_ptr override
     {
         return decomposition(x) == expansion::pD && a ? manager::constant(0) : f;
     }
 
-    auto denormalize_high(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    auto denormalized_high(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
     {
         return apply(f->weight(), f->ch()->br().hi);
     }
 
-    auto denormalize_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    auto denormalized_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
     {
         return apply(f->weight(), f->ch()->br().lo);
     }

@@ -543,7 +543,7 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return antiv(f, g);
     }
 
-    auto is_reducible(edge_ptr const& high, edge_ptr const& low, expansion const t) -> bool override
+    auto reducible(edge_ptr const& high, edge_ptr const& low, expansion const t) -> bool override
     {
         switch (t)
         {
@@ -554,12 +554,12 @@ class kfdd_manager final : public detail::manager<bool, bool>
         }
     }
 
-    auto reduce(var_index, edge_ptr const&, edge_ptr const& low, expansion) -> edge_ptr override
+    auto reduced(var_index, edge_ptr const&, edge_ptr const& low, expansion) -> edge_ptr override
     {
         return low;
     }
 
-    auto needs_normalization(edge_ptr const&, edge_ptr const& low, expansion) -> bool override
+    auto normalization_is_needed(edge_ptr const&, edge_ptr const& low, expansion) -> bool override
     {
         return low->weight();
     }
@@ -569,7 +569,7 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return low->weight();
     }
 
-    auto normalize_high(edge_ptr const& high, expansion const t, bool) -> edge_ptr override
+    auto normalized_high(edge_ptr const& high, expansion const t, bool) -> edge_ptr override
     {
         switch (t)
         {
@@ -580,17 +580,17 @@ class kfdd_manager final : public detail::manager<bool, bool>
         }
     }
 
-    auto normalize_low(edge_ptr const& low, expansion, bool) -> edge_ptr override
+    auto normalized_low(edge_ptr const& low, expansion, bool) -> edge_ptr override
     {
         return complement(low);
     }
 
-    auto needs_expansion(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
+    auto expansion_is_needed(edge_ptr const& f, expansion, var_index const x, bool) -> bool override
     {
         return f->is_const() || f->ch()->br().x != x;
     }
 
-    auto expand(edge_ptr const& f, expansion const t, var_index, bool const a) -> edge_ptr override
+    auto expanded(edge_ptr const& f, expansion const t, var_index, bool const a) -> edge_ptr override
     {
         if ((t == expansion::pD || t == expansion::nD) && a)  // dependent on two subtrees: f ^ f = 0
         {
@@ -599,7 +599,7 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return f;
     }
 
-    auto denormalize_high(edge_ptr const& f, expansion const t, var_index, bool) -> edge_ptr override
+    auto denormalized_high(edge_ptr const& f, expansion const t, var_index, bool) -> edge_ptr override
     {
         switch (t)
         {
@@ -610,7 +610,7 @@ class kfdd_manager final : public detail::manager<bool, bool>
         }
     }
 
-    auto denormalize_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
+    auto denormalized_low(edge_ptr const& f, expansion, var_index, bool) -> edge_ptr override
     {
         return apply(f->weight(), f->ch()->br().lo);
     }
