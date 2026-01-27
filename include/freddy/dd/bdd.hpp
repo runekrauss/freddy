@@ -439,9 +439,24 @@ class bdd_manager final : public detail::manager<bool, bool>
         return cache(std::move(op))->get_result();
     }
 
+    auto denorm_high(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().hi);
+    }
+
+    auto denorm_low(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
+    }
+
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         return complement(conj(complement(f), complement(g)));
+    }
+
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool, expansion) const noexcept -> edge_ptr override
+    {
+        return f;
     }
 
     auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr override
@@ -498,26 +513,6 @@ class bdd_manager final : public detail::manager<bool, bool>
         return conj(f, g);
     }
 
-    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
-    {
-        return antiv(f, g);
-    }
-
-    auto denorm_high(edge_ptr const& f) -> edge_ptr override
-    {
-        return apply(f->weight(), f->ch()->br().hi);
-    }
-
-    auto denorm_low(edge_ptr const& f) -> edge_ptr override
-    {
-        return apply(f->weight(), f->ch()->br().lo);
-    }
-
-    [[nodiscard]] auto expanded(edge_ptr const& f, bool, expansion) const noexcept -> edge_ptr override
-    {
-        return f;
-    }
-
     [[nodiscard]] auto norm_high(edge_ptr const& hi, bool const w, expansion) -> edge_ptr override
     {
         return apply(w, hi);
@@ -536,6 +531,11 @@ class bdd_manager final : public detail::manager<bool, bool>
     [[nodiscard]] auto norm_weight(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
     {
         return lo->weight();
+    }
+
+    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
+    {
+        return antiv(f, g);
     }
 
     [[nodiscard]] auto reduced(edge_ptr const& hi, edge_ptr const&, expansion) noexcept -> edge_ptr override

@@ -479,9 +479,34 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return cache(std::move(op))->get_result();
     }
 
+    [[nodiscard]] auto denorm_high(edge_ptr const& f) -> edge_ptr override
+    {
+        switch (decomposition(f->ch()->br().x))
+        {
+            case expansion::S: return apply(f->weight(), f->ch()->br().hi);
+            case expansion::pD:
+            case expansion::nD: return f->ch()->br().hi;
+            default: assert(false); std::unreachable();
+        }
+    }
+
+    [[nodiscard]] auto denorm_low(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
+    }
+
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         return complement(conj(complement(f), complement(g)));
+    }
+
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion const t) const noexcept -> edge_ptr override
+    {
+        if ((t == expansion::pD || t == expansion::nD) && a)  // dependent on two subtrees: f ^ f = 0
+        {
+            return constant(0);
+        }
+        return f;
     }
 
     auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr override
@@ -538,36 +563,6 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return conj(f, g);
     }
 
-    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
-    {
-        return antiv(f, g);
-    }
-
-    [[nodiscard]] auto denorm_high(edge_ptr const& f) -> edge_ptr override
-    {
-        switch (decomposition(f->ch()->br().x))
-        {
-            case expansion::S: return apply(f->weight(), f->ch()->br().hi);
-            case expansion::pD:
-            case expansion::nD: return f->ch()->br().hi;
-            default: assert(false); std::unreachable();
-        }
-    }
-
-    [[nodiscard]] auto denorm_low(edge_ptr const& f) -> edge_ptr override
-    {
-        return apply(f->weight(), f->ch()->br().lo);
-    }
-
-    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion const t) const noexcept -> edge_ptr override
-    {
-        if ((t == expansion::pD || t == expansion::nD) && a)  // dependent on two subtrees: f ^ f = 0
-        {
-            return constant(0);
-        }
-        return f;
-    }
-
     [[nodiscard]] auto norm_high(edge_ptr const& hi, bool, expansion const t) -> edge_ptr override
     {
         switch (t)
@@ -592,6 +587,11 @@ class kfdd_manager final : public detail::manager<bool, bool>
     [[nodiscard]] auto norm_weight(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
     {
         return lo->weight();
+    }
+
+    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
+    {
+        return antiv(f, g);
     }
 
     [[nodiscard]] auto reduced(edge_ptr const&, edge_ptr const& lo, expansion) noexcept -> edge_ptr override

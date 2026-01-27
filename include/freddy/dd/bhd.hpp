@@ -577,26 +577,6 @@ class bhd_manager final : public detail::manager<bool, bool>
         return cache(std::move(op))->get_result();
     }
 
-    auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
-    {
-        return complement(conj(complement(f), complement(g)));
-    }
-
-    [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
-    {
-        return val1 != val2;
-    }
-
-    auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
-    {
-        return conj(f, g);
-    }
-
-    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
-    {
-        return disj(conj(complement(f), g), conj(f, complement(g)));  // stands for XOR
-    }
-
     auto denorm_high(edge_ptr const& f) -> edge_ptr override
     {
         return apply(f->weight(), f->ch()->br().hi);
@@ -607,9 +587,24 @@ class bhd_manager final : public detail::manager<bool, bool>
         return apply(f->weight(), f->ch()->br().lo);
     }
 
+    auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
+    {
+        return complement(conj(complement(f), complement(g)));
+    }
+
     [[nodiscard]] auto expanded(edge_ptr const& f, bool, expansion) const noexcept -> edge_ptr override
     {
         return f;
+    }
+
+    [[nodiscard]] auto merge(bool const& val1, bool const& val2) const noexcept -> bool override
+    {
+        return val1 != val2;
+    }
+
+    auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
+    {
+        return conj(f, g);
     }
 
     [[nodiscard]] auto norm_high(edge_ptr const& hi, bool const w, expansion) -> edge_ptr override
@@ -630,6 +625,11 @@ class bhd_manager final : public detail::manager<bool, bool>
     [[nodiscard]] auto norm_weight(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
     {
         return lo->weight();
+    }
+
+    auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
+    {
+        return disj(conj(complement(f), g), conj(f, complement(g)));  // stands for XOR
     }
 
     [[nodiscard]] auto reduced(edge_ptr const& hi, edge_ptr const&, expansion) noexcept -> edge_ptr override

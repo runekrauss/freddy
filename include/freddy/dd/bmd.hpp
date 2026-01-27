@@ -406,6 +406,16 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return mul(f, g);
     }
 
+    auto denorm_high(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().hi);
+    }
+
+    auto denorm_low(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
+    }
+
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
@@ -420,6 +430,11 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
             return f;
         }
         return sub(plus(f, g), mul(f, g));
+    }
+
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const noexcept -> edge_ptr override
+    {
+        return a ? manager::constant(0) : f;
     }
 
     [[nodiscard]] auto merge(bmd_int const& val1, bmd_int const& val2) const -> bmd_int override
@@ -472,6 +487,29 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return apply(w, res);
     }
 
+    [[nodiscard]] auto norm_high(edge_ptr const& hi, bmd_int const w, expansion) -> edge_ptr override
+    {
+        return uedge(hi->weight() / w, hi->ch());
+    }
+
+    [[nodiscard]] auto norm_is_needed(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bool override
+    {
+        return norm_weight(hi, lo) != 1;
+    }
+
+    [[nodiscard]] auto norm_low(edge_ptr const& lo, bmd_int const w, expansion) -> edge_ptr override
+    {
+        return uedge(lo->weight() / w, lo->ch());
+    }
+
+    [[nodiscard]] auto norm_weight(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bmd_int override
+    {
+        // as there is no risk of overflow in this operation
+        auto const hiw = static_cast<raw_int>(hi->weight());
+        auto const low = static_cast<raw_int>(lo->weight());
+        return low < 0 || (hiw < 0 && low == 0) ? -std::gcd(hiw, low) : std::gcd(hiw, low);
+    }
+
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override  // word-level addition
     {
         assert(f);
@@ -518,44 +556,6 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         cache(std::move(op));
 
         return apply(w, res);
-    }
-
-    auto denorm_high(edge_ptr const& f) -> edge_ptr override
-    {
-        return apply(f->weight(), f->ch()->br().hi);
-    }
-
-    auto denorm_low(edge_ptr const& f) -> edge_ptr override
-    {
-        return apply(f->weight(), f->ch()->br().lo);
-    }
-
-    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const noexcept -> edge_ptr override
-    {
-        return a ? manager::constant(0) : f;
-    }
-
-    [[nodiscard]] auto norm_high(edge_ptr const& hi, bmd_int const w, expansion) -> edge_ptr override
-    {
-        return uedge(hi->weight() / w, hi->ch());
-    }
-
-    [[nodiscard]] auto norm_is_needed(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bool override
-    {
-        return norm_weight(hi, lo) != 1;
-    }
-
-    [[nodiscard]] auto norm_low(edge_ptr const& lo, bmd_int const w, expansion) -> edge_ptr override
-    {
-        return uedge(lo->weight() / w, lo->ch());
-    }
-
-    [[nodiscard]] auto norm_weight(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bmd_int override
-    {
-        // as there is no risk of overflow in this operation
-        auto const hiw = static_cast<raw_int>(hi->weight());
-        auto const low = static_cast<raw_int>(lo->weight());
-        return low < 0 || (hiw < 0 && low == 0) ? -std::gcd(hiw, low) : std::gcd(hiw, low);
     }
 
     [[nodiscard]] auto reduced(edge_ptr const&, edge_ptr const& lo, expansion) noexcept -> edge_ptr override

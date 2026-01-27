@@ -463,6 +463,16 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         return mul(f, g);
     }
 
+    auto denorm_high(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().hi);
+    }
+
+    auto denorm_low(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
+    }
+
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
@@ -477,6 +487,11 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
             return f;
         }
         return sub(plus(f, g), mul(f, g));
+    }
+
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion const t) const noexcept -> edge_ptr override
+    {
+        return t == expansion::pD && a ? manager::constant(0) : f;
     }
 
     [[nodiscard]] auto merge(double const& val1, double const& val2) const -> double override
@@ -544,6 +559,34 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         cache(std::move(op));
 
         return apply(w, res);
+    }
+
+    [[nodiscard]] auto norm_high(edge_ptr const&, phdd_weight const, expansion) noexcept -> edge_ptr override
+    {
+        return manager::constant(0);
+    }
+
+    [[nodiscard]] auto norm_is_needed(edge_ptr const&, edge_ptr const&) const noexcept -> bool override
+    {
+        return true;
+    }
+
+    [[nodiscard]] auto norm_low(edge_ptr const&, phdd_weight const, expansion) noexcept -> edge_ptr override
+    {
+        return manager::constant(0);
+    }
+
+    [[nodiscard]] auto norm_weight(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> phdd_weight override
+    {
+        if (hi == manager::constant(0))
+        {
+            return lo->weight();
+        }
+        if (lo == manager::constant(0))
+        {
+            return hi->weight();
+        }
+        return {hi->weight().first, std::min(hi->weight().second, lo->weight().second)};
     }
 
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -625,49 +668,6 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         cache(std::move(op));
 
         return apply(w, res);
-    }
-
-    auto denorm_high(edge_ptr const& f) -> edge_ptr override
-    {
-        return apply(f->weight(), f->ch()->br().hi);
-    }
-
-    auto denorm_low(edge_ptr const& f) -> edge_ptr override
-    {
-        return apply(f->weight(), f->ch()->br().lo);
-    }
-
-    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion const t) const noexcept -> edge_ptr override
-    {
-        return t == expansion::pD && a ? manager::constant(0) : f;
-    }
-
-    [[nodiscard]] auto norm_high(edge_ptr const&, phdd_weight const, expansion) noexcept -> edge_ptr override
-    {
-        return manager::constant(0);
-    }
-
-    [[nodiscard]] auto norm_is_needed(edge_ptr const&, edge_ptr const&) const noexcept -> bool override
-    {
-        return true;
-    }
-
-    [[nodiscard]] auto norm_low(edge_ptr const&, phdd_weight const, expansion) noexcept -> edge_ptr override
-    {
-        return manager::constant(0);
-    }
-
-    [[nodiscard]] auto norm_weight(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> phdd_weight override
-    {
-        if (hi == manager::constant(0))
-        {
-            return lo->weight();
-        }
-        if (lo == manager::constant(0))
-        {
-            return hi->weight();
-        }
-        return {hi->weight().first, std::min(hi->weight().second, lo->weight().second)};
     }
 
     [[nodiscard]] auto reduced(edge_ptr const&, edge_ptr const&, expansion) noexcept -> edge_ptr override

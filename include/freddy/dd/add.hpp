@@ -358,6 +358,16 @@ class add_manager final : public detail::manager<bool, NValue>
         return mul(f, g);
     }
 
+    auto denorm_high(edge_ptr const& f) -> edge_ptr override
+    {
+        return this->apply(f->weight(), f->ch()->br().hi);
+    }
+
+    auto denorm_low(edge_ptr const& f) -> edge_ptr override
+    {
+        return this->apply(f->weight(), f->ch()->br().lo);
+    }
+
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
@@ -372,6 +382,11 @@ class add_manager final : public detail::manager<bool, NValue>
             return f;
         }
         return sub(plus(f, g), mul(f, g));
+    }
+
+    auto expanded(edge_ptr const& f, bool, expansion) const noexcept -> edge_ptr override
+    {
+        return f;
     }
 
     [[nodiscard]] auto merge(NValue const& val1, [[maybe_unused]] NValue const& val2) const noexcept -> NValue override
@@ -430,6 +445,26 @@ class add_manager final : public detail::manager<bool, NValue>
         return this->cache(std::move(op))->get_result();
     }
 
+    auto norm_high(edge_ptr const& hi, bool const w, expansion) -> edge_ptr override
+    {
+        return this->apply(w, hi);
+    }
+
+    auto norm_is_needed(edge_ptr const&, edge_ptr const&) const noexcept -> bool override
+    {
+        return false;
+    }
+
+    auto norm_low(edge_ptr const& lo, bool const w, expansion) -> edge_ptr override
+    {
+        return this->apply(w, lo);
+    }
+
+    auto norm_weight(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
+    {
+        return lo->weight();
+    }
+
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         assert(f);
@@ -475,41 +510,6 @@ class add_manager final : public detail::manager<bool, NValue>
         op.set_result(this->branch(x, plus(this->cof(f, x, true), this->cof(g, x, true)),
                                    plus(this->cof(f, x, false), this->cof(g, x, false))));
         return this->cache(std::move(op))->get_result();
-    }
-
-    auto denorm_high(edge_ptr const& f) -> edge_ptr override
-    {
-        return this->apply(f->weight(), f->ch()->br().hi);
-    }
-
-    auto denorm_low(edge_ptr const& f) -> edge_ptr override
-    {
-        return this->apply(f->weight(), f->ch()->br().lo);
-    }
-
-    auto expanded(edge_ptr const& f, bool, expansion) const noexcept -> edge_ptr override
-    {
-        return f;
-    }
-
-    auto norm_high(edge_ptr const& hi, bool const w, expansion) -> edge_ptr override
-    {
-        return this->apply(w, hi);
-    }
-
-    auto norm_is_needed(edge_ptr const&, edge_ptr const&) const noexcept -> bool override
-    {
-        return false;
-    }
-
-    auto norm_low(edge_ptr const& lo, bool const w, expansion) -> edge_ptr override
-    {
-        return this->apply(w, lo);
-    }
-
-    auto norm_weight(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
-    {
-        return lo->weight();
     }
 
     auto reduced(edge_ptr const& hi, edge_ptr const&, expansion) noexcept -> edge_ptr override
