@@ -311,6 +311,20 @@ class manager
             (*ct.insert(std::make_unique<Operation>(std::forward<Operation>(op))).first).get());
     }
 
+    [[nodiscard]] auto cof(edge_ptr const& f, var_index const x, bool const a)
+    {
+        assert(f);
+        assert(x < var_count());
+
+        auto const t = vlist[x].t;
+
+        if (f->is_const() || f->ch()->br().x != x)
+        {  // variable not contained in the function
+            return expanded(f, a, t);
+        }
+        return a ? denorm_high(f) : denorm_low(f);
+    }
+
     [[nodiscard]] auto top_var(edge_ptr const& f, edge_ptr const& g) const noexcept
     {
         assert(f);
@@ -341,9 +355,6 @@ class manager
     // aggregates an edge weight and a node value
     [[nodiscard]] virtual auto agg(EWeight const&, NValue const&) const -> NValue = 0;
 
-    // creates/reuses a node and an incoming edge
-    virtual auto branch(var_index, edge_ptr&&, edge_ptr&&) -> edge_ptr = 0;
-
     // adjusts a weight pair based on the DD type
     [[nodiscard]] virtual auto comb(EWeight const&, EWeight const&) const -> EWeight = 0;
 
@@ -351,14 +362,39 @@ class manager
 
     virtual auto conj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects conjuncts (AND)
 
+    [[nodiscard]] virtual auto denorm_high(edge_ptr const&) -> edge_ptr = 0;  // represents the high cofactor
+
+    [[nodiscard]] virtual auto denorm_low(edge_ptr const&) -> edge_ptr = 0;  // represents the low cofactor
+
     virtual auto disj(edge_ptr const&, edge_ptr const&) -> edge_ptr = 0;  // connects disjuncts (OR)
+
+    // finds a cofactor if a variable is not contained in the function
+    [[nodiscard]] virtual auto expanded(edge_ptr const&, bool, expansion) const -> edge_ptr = 0;
 
     // evaluates aggregates (subtrees)
     [[nodiscard]] virtual auto merge(NValue const&, NValue const&) const -> NValue = 0;
 
     virtual auto mul(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs multiplicatively
 
+    // normalizes the high child of a node
+    [[nodiscard]] virtual auto norm_high(edge_ptr const&, EWeight, expansion) -> edge_ptr = 0;
+
+    // checks for graph normalization
+    [[nodiscard]] virtual auto norm_is_needed(edge_ptr const&, edge_ptr const&) const -> bool = 0;
+
+    // normalizes the low child of a node
+    [[nodiscard]] virtual auto norm_low(edge_ptr const&, EWeight, expansion) -> edge_ptr = 0;
+
+    // provides a scheme for a canonical form
+    [[nodiscard]] virtual auto norm_weight(edge_ptr const&, edge_ptr const&) const -> EWeight = 0;
+
     virtual auto plus(edge_ptr, edge_ptr) -> edge_ptr = 0;  // combines DDs additively
+
+    // applies the DD-dependent reduction rule
+    [[nodiscard]] virtual auto reduced(edge_ptr const&, edge_ptr const&, expansion) -> edge_ptr = 0;
+
+    // tests DD reduction except for isomorphism
+    [[nodiscard]] virtual auto reducible(edge_ptr const&, edge_ptr const&, expansion) const -> bool = 0;
 
     [[nodiscard]] virtual auto regw() const -> EWeight = 0;  // returns the regular weight of an edge
 
@@ -367,6 +403,29 @@ class manager
         assert(f);
 
         return uedge(comb(w, f->w), f->v);
+    }
+
+    // create/reuse a node and an incoming edge
+    virtual auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr
+    {
+        assert(x < var_count());
+        assert(hi);
+        assert(lo);
+
+        auto const t = decomposition(x);
+
+        if (reducible(hi, lo, t))
+        {
+            return reduced(hi, lo, t);
+        }
+
+        auto const w = norm_weight(hi, lo);
+
+        if (norm_is_needed(hi, lo))
+        {
+            return uedge(w, unode(x, norm_high(std::move(hi), w, t), norm_low(std::move(lo), w, t)));
+        }
+        return uedge(w, unode(x, std::move(hi), std::move(lo)));
     }
 
     // handling bit-level DDs with edge weight inversion for nD transitions
@@ -405,29 +464,6 @@ class manager
         vlist[x].t = t;
 
         gc();
-    }
-
-    virtual auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr  // edge weights could be factored
-    {
-        assert(f);
-        assert(x < var_count());
-
-        if (f->is_const() || f->v->inner.x != x)
-        {
-            if ((vlist[x].t == expansion::pD || vlist[x].t == expansion::nD) && a)
-            {
-                return consts[0];
-            }
-            return f;
-        }
-
-        switch (vlist[x].t)
-        {
-            case expansion::S: return a ? apply(f->w, f->v->inner.hi) : apply(f->w, f->v->inner.lo);
-            case expansion::pD:
-            case expansion::nD: return a ? f->v->inner.hi : apply(f->w, f->v->inner.lo);
-            default: assert(false); std::unreachable();
-        }
     }
 
     // NOLINTNEXTLINE(performance-unnecessary-value-param) because simplifications may change pointers

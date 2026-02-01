@@ -340,15 +340,6 @@ class add_manager final : public detail::manager<bool, NValue>
         return w + val;
     }
 
-    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
-    {
-        assert(x < this->var_count());
-        assert(hi);
-        assert(lo);
-
-        return hi == lo ? hi : this->uedge(false, this->unode(x, std::move(hi), std::move(lo)));
-    }
-
     [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
     {
         assert(!w1);
@@ -367,6 +358,16 @@ class add_manager final : public detail::manager<bool, NValue>
         return mul(f, g);
     }
 
+    auto denorm_high(edge_ptr const& f) -> edge_ptr override
+    {
+        return this->apply(f->weight(), f->ch()->br().hi);
+    }
+
+    auto denorm_low(edge_ptr const& f) -> edge_ptr override
+    {
+        return this->apply(f->weight(), f->ch()->br().lo);
+    }
+
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
@@ -381,6 +382,11 @@ class add_manager final : public detail::manager<bool, NValue>
             return f;
         }
         return sub(plus(f, g), mul(f, g));
+    }
+
+    auto expanded(edge_ptr const& f, bool, expansion) const noexcept -> edge_ptr override
+    {
+        return f;
     }
 
     [[nodiscard]] auto merge(NValue const& val1, [[maybe_unused]] NValue const& val2) const noexcept -> NValue override
@@ -434,9 +440,29 @@ class add_manager final : public detail::manager<bool, NValue>
 
         auto const x = this->top_var(f, g);
 
-        op.set_result(branch(x, mul(this->cof(f, x, true), this->cof(g, x, true)),
-                             mul(this->cof(f, x, false), this->cof(g, x, false))));
+        op.set_result(this->branch(x, mul(this->cof(f, x, true), this->cof(g, x, true)),
+                                   mul(this->cof(f, x, false), this->cof(g, x, false))));
         return this->cache(std::move(op))->get_result();
+    }
+
+    auto norm_high(edge_ptr const& hi, bool const w, expansion) -> edge_ptr override
+    {
+        return this->apply(w, hi);
+    }
+
+    auto norm_is_needed(edge_ptr const&, edge_ptr const&) const noexcept -> bool override
+    {
+        return false;
+    }
+
+    auto norm_low(edge_ptr const& lo, bool const w, expansion) -> edge_ptr override
+    {
+        return this->apply(w, lo);
+    }
+
+    auto norm_weight(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
+    {
+        return lo->weight();
     }
 
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -481,9 +507,19 @@ class add_manager final : public detail::manager<bool, NValue>
 
         auto const x = this->top_var(f, g);
 
-        op.set_result(branch(x, plus(this->cof(f, x, true), this->cof(g, x, true)),
-                             plus(this->cof(f, x, false), this->cof(g, x, false))));
+        op.set_result(this->branch(x, plus(this->cof(f, x, true), this->cof(g, x, true)),
+                                   plus(this->cof(f, x, false), this->cof(g, x, false))));
         return this->cache(std::move(op))->get_result();
+    }
+
+    auto reduced(edge_ptr const& hi, edge_ptr const&, expansion) noexcept -> edge_ptr override
+    {
+        return hi;
+    }
+
+    auto reducible(edge_ptr const& hi, edge_ptr const& lo, expansion) const noexcept -> bool override
+    {
+        return hi == lo;
     }
 
     [[nodiscard]] auto regw() const noexcept -> bool override

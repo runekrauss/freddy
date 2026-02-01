@@ -354,14 +354,6 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return fs;
     }
 
-    static auto normw(edge_ptr const& f, edge_ptr const& g) noexcept -> bmd_int
-    {
-        // as there is no risk of overflow in this operation
-        auto const fw = static_cast<raw_int>(f->weight());
-        auto const gw = static_cast<raw_int>(g->weight());
-        return gw < 0 || (fw < 0 && gw == 0) ? -std::gcd(fw, gw) : std::gcd(fw, gw);
-    }
-
     auto neg(edge_ptr const& f)
     {
         assert(f);
@@ -399,38 +391,6 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return uedge(comb(w, f->weight()), f->ch());
     }
 
-    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
-    {
-        assert(x < var_count());
-        assert(hi);
-        assert(lo);
-
-        if (hi == manager::constant(0))  // redundancy rule
-        {
-            return lo;
-        }
-
-        // normalization
-        auto const w = normw(hi, lo);
-
-        assert(w != 0);
-
-        return w != 1 ? uedge(w, unode(x, uedge(hi->weight() / w, hi->ch()), uedge(lo->weight() / w, lo->ch())))
-                      : uedge(w, unode(x, std::move(hi), std::move(lo)));
-    }
-
-    auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr override
-    {
-        assert(f);
-        assert(x < var_count());
-
-        if (f->is_const() || f->ch()->br().x != x)
-        {
-            return a ? manager::constant(0) : f;  // dependent on two subtrees: f ^ f = 0
-        }
-        return a ? apply(f->weight(), f->ch()->br().hi) : apply(f->weight(), f->ch()->br().lo);
-    }
-
     [[nodiscard]] auto comb(bmd_int const& w1, bmd_int const& w2) const -> bmd_int override
     {
         return w1 * w2;
@@ -444,6 +404,16 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         return mul(f, g);
+    }
+
+    auto denorm_high(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().hi);
+    }
+
+    auto denorm_low(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
     }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
@@ -460,6 +430,11 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
             return f;
         }
         return sub(plus(f, g), mul(f, g));
+    }
+
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const noexcept -> edge_ptr override
+    {
+        return a ? manager::constant(0) : f;
     }
 
     [[nodiscard]] auto merge(bmd_int const& val1, bmd_int const& val2) const -> bmd_int override
@@ -512,6 +487,29 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return apply(w, res);
     }
 
+    [[nodiscard]] auto norm_high(edge_ptr const& hi, bmd_int const w, expansion) -> edge_ptr override
+    {
+        return uedge(hi->weight() / w, hi->ch());
+    }
+
+    [[nodiscard]] auto norm_is_needed(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bool override
+    {
+        return norm_weight(hi, lo) != 1;
+    }
+
+    [[nodiscard]] auto norm_low(edge_ptr const& lo, bmd_int const w, expansion) -> edge_ptr override
+    {
+        return uedge(lo->weight() / w, lo->ch());
+    }
+
+    [[nodiscard]] auto norm_weight(edge_ptr const& hi, edge_ptr const& lo) const noexcept -> bmd_int override
+    {
+        // as there is no risk of overflow in this operation
+        auto const hiw = static_cast<raw_int>(hi->weight());
+        auto const low = static_cast<raw_int>(lo->weight());
+        return low < 0 || (hiw < 0 && low == 0) ? -std::gcd(hiw, low) : std::gcd(hiw, low);
+    }
+
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override  // word-level addition
     {
         assert(f);
@@ -536,11 +534,11 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         if (std::abs(static_cast<raw_int>(f->weight())) <= std::abs(static_cast<raw_int>(g->weight())))
         {
             std::swap(f, g);
-            w = normw(f, g);
+            w = norm_weight(f, g);
         }
         else
         {
-            w = normw(g, f);
+            w = norm_weight(g, f);
         }
         f = uedge(f->weight() / w, f->ch());
         g = uedge(g->weight() / w, g->ch());
@@ -558,6 +556,16 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         cache(std::move(op));
 
         return apply(w, res);
+    }
+
+    [[nodiscard]] auto reduced(edge_ptr const&, edge_ptr const& lo, expansion) noexcept -> edge_ptr override
+    {
+        return lo;
+    }
+
+    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const&, expansion) const noexcept -> bool override
+    {
+        return hi == manager::constant(0);
     }
 
     [[nodiscard]] auto regw() const noexcept -> bmd_int override

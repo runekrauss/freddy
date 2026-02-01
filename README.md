@@ -179,18 +179,26 @@ Do you want to contribute to FrEDDY? In particular, contributions towards the de
 welcome. Since the [base manager](include/freddy/detail/manager.hpp) is **abstract**, the following pure virtual methods
 must be implemented within the `freddy` namespace in the [dd directory](include/freddy/dd) for basic operations to work:
 
-| Method        | Description                                    |
-| ------------- | ---------------------------------------------- |
-| `agg`         | Aggregation of an edge weight and a node value |
-| `branch`      | Creation or reuse of a node and incoming edge  |
-| `comb`        | Adjustment of a weight pair                    |
-| `complement`  | Computation of NOT                             |
-| `conj`        | Connection of two conjuncts (AND)              |
-| `disj`        | Connection of two disjuncts (OR)               |
-| `merge`       | Evaluation of aggregates (subtrees)            |
-| `mul`         | Multiplicative combination of DDs              |
-| `plus`        | Additive combination of DDs                    |
-| `regw`        | Regular weight of an edge                      |
+| Method           | Description                                        |
+| ---------------- |----------------------------------------------------|
+| `agg`            | Aggregation of an edge weight and a node value     |
+| `comb`           | Adjustment of a weight pair                        |
+| `complement`     | Computation of NOT                                 |
+| `conj`           | Connection of two conjuncts (AND)                  |
+| `denorm_high`    | Representation of the high cofactor                |
+| `denorm_low`     | Representation of the low cofactor                 |
+| `disj`           | Connection of two disjuncts (OR)                   |
+| `expanded`       | Cofactor of a function on a variable not contained |
+| `merge`          | Evaluation of aggregates (subtrees)                |
+| `mul`            | Multiplicative combination of DDs                  |
+| `norm_high`      | Normalization of a node's high child               |
+| `norm_is_needed` | Graph normalization check                          |
+| `norm_low`       | Normalization of a node's low child                |
+| `norm_weight`    | Scheme for providing a canonical form              |
+| `plus`           | Additive combination of DDs                        |
+| `reduced`        | Application of the DD-dependent reduction rule     |
+| `reducible`      | Test for DD reduction excluding isomorphism        |
+| `regw`           | Regular weight of an edge                          |
 
 While virtual methods such as `ite` (if-then-else) can be overridden if specialized behavior is needed, both the
 **contradiction** and **tautology** must be defined using a DD edge weight (`EWeight` template parameter) and node
