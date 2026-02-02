@@ -7,6 +7,7 @@
 #include "freddy/detail/manager.hpp"  // detail::manager
 #include "freddy/detail/node.hpp"     // detail::edge_ptr
 #include "freddy/expansion.hpp"       // expansion::S
+#include <stdexcept>
 
 #include <algorithm>
 #include <array>
@@ -37,6 +38,7 @@ class zdd final
 
     auto operator&=(zdd const&) -> zdd&; // copied structure from bdd.hpp
     auto operator|=(zdd const&) -> zdd&; // copied structure from bdd.hpp
+    auto operator-=(zdd const&) -> zdd&;
 
     friend auto operator&(zdd lhs, zdd const& rhs)
     {
@@ -50,6 +52,12 @@ class zdd final
         return lhs;
     }
 
+    friend auto operator-(zdd lhs, zdd const& rhs)
+    {
+        lhs -= rhs;
+        return lhs;
+    }
+
     friend auto operator==(zdd const& lhs, zdd const& rhs) noexcept
     {
         // copied from bdd.hpp
@@ -60,13 +68,6 @@ class zdd final
     friend auto operator!=(zdd const& lhs, zdd const& rhs) noexcept
     {
         return !(lhs == rhs);
-    }
-
-    auto operator-=(zdd const&) -> zdd&; // difference
-    friend auto operator-(zdd lhs, zdd const& rhs)
-    {
-        lhs -= rhs;
-        return lhs;
     }
 
     [[nodiscard]] auto is_const() const noexcept
@@ -106,7 +107,6 @@ class zdd final
     [[nodiscard]] auto depth() const;
 
     auto dump_dot(std::ostream& = std::cout) const;
-
 
   private:
     friend zdd_manager;
@@ -160,6 +160,12 @@ class zdd_manager final : public detail::manager<bool, bool>
         return zdd{constant(1), this};
     }
 
+    // Public wrappers (because mul/plus are protected in detail::manager)
+    auto apply_and(edge_ptr a, edge_ptr b) -> edge_ptr { return mul(std::move(a), std::move(b)); }
+    auto apply_or(edge_ptr a, edge_ptr b) -> edge_ptr { return plus(std::move(a), std::move(b)); }
+    auto apply_diff(edge_ptr const& a, edge_ptr const& b) -> edge_ptr { return diff_set(a, b); }
+
+
     [[nodiscard]] auto size(std::vector<zdd> const& fs) const
     {
         // copied from bdd.hpp
@@ -173,32 +179,26 @@ class zdd_manager final : public detail::manager<bool, bool>
         return manager::depth(transform(fs));
     }
 
-    auto diff(edge_ptr const& f, edge_ptr const& g) -> edge_ptr
-    {
-        return diff_set(f, g);
-    }
-
     auto dump_dot(std::vector<zdd> const& fs,
-                  std::vector<std::string> const& outputs = {},
-                  std::ostream& os = std::cout) const
+              std::vector<std::string> const& outputs = {},
+              std::ostream& os = std::cout) const
     {
-        // copied from bdd.hpp
         assert(outputs.empty() ? true : outputs.size() == fs.size());
         manager::dump_dot(transform(fs), outputs, os);
     }
 
-    // Build singleton family {{x}}
+    // Optional helpers for examples/tests
     auto singleton(var_index x) -> zdd
     {
-        return zdd{ branch(x, constant(1), constant(0)), this };
+        return zdd{branch(x, constant(1), constant(0)), this};
     }
 
-    // Build node "x ? hi : lo" in ZDD sense (uses ZDD reduction rule via branch())
     auto node(var_index x, zdd const& hi, zdd const& lo) -> zdd
     {
-        assert(hi.mgr == this);
-        assert(lo.mgr == this);
-        return zdd{ branch(x, edge_ptr{hi.f}, edge_ptr{lo.f}), this };
+        assert(hi.mgr == this && lo.mgr == this);
+        auto hi_e = hi.f;
+        auto lo_e = lo.f;
+        return zdd{branch(x, std::move(hi_e), std::move(lo_e)), this};
     }
 
 
@@ -226,6 +226,7 @@ class zdd_manager final : public detail::manager<bool, bool>
     }
 
 
+    // Required virtuals for detail::manager<bool,bool>
     auto complement(edge_ptr const& /*f*/) -> edge_ptr override
     {
         throw std::logic_error{"ZDD complement is not supported in this implementation."};
@@ -282,23 +283,44 @@ class zdd_manager final : public detail::manager<bool, bool>
         return false;
     }
 
-    // zdd helper funcs
-    // it returns all subsets of S which doesnt contain x
-    // S  = { {a,b}, {b}, {c} } -> subset0(S,b) → { {c} }
-    [[nodiscard]] auto subset0(edge_ptr const& S, var_index x) -> edge_ptr
+    // ZDD-specific cofactor:
+    // cof0(f,x): all sets not containing x (if x not present at top -> f)
+    // cof1(f,x): all sets containing x (if x not present at top -> {})
+    auto cof(edge_ptr const& f, var_index const x, bool const a) -> edge_ptr override
     {
-        if (S->is_const()) return S; // for {} or {{}}  low = S
-        if (S->ch()->br().x != x) return S; // if there is no x, then subsets without x = S
-        return S->ch()->br().lo;
+        assert(f);
+        assert(x < var_count());
+
+        // terminals: do not contain x
+        if (f->is_const())
+        {
+            // cof0(const) = const, cof1(const) = {}
+            return a ? constant(0) : f;
+        }
+
+        // use public accessors (no direct f->v / ->inner access)
+        auto const& br = f->ch()->br(); // branch (x, hi, lo)
+
+        // if top var != x, x does not occur at the top
+        if (br.x != x)
+        {
+            return a ? constant(0) : f;
+        }
+
+        // top var is x: take corresponding branch
+        return a ? br.hi : br.lo;
     }
 
-    // it returns all subsets of S which contain x
-    // S  = { {a,b}, {b}, {c} } -> Subset1(S,b) → { {a,b}, {b} }
+
+
+    [[nodiscard]] auto subset0(edge_ptr const& S, var_index x) -> edge_ptr
+    {
+        return cof(S, x, false);
+    }
+
     [[nodiscard]] auto subset1(edge_ptr const& S, var_index x) -> edge_ptr
     {
-        if (S->is_const()) return constant(0); // there is no subset,that contains x
-        if (S->ch()->br().x != x) return constant(0); // if there is no x then subset1 is empty
-        return S->ch()->br().hi;
+        return cof(S, x, true);
     }
 
     // {{}}
@@ -307,19 +329,19 @@ class zdd_manager final : public detail::manager<bool, bool>
         return constant(1);
     }
 
-    // {}
-    [[nodiscard]] auto empty() const noexcept -> edge_ptr
-    {
-        return constant(0);
-    }
-
-    // {{x}} = node x with hi = {{}} and lo = {}
-    [[nodiscard]] auto single(var_index x) -> edge_ptr
-    {
-        auto hi = epsilon();
-        auto lo = empty();
-        return branch(x, std::move(hi), std::move(lo));
-    }
+    // // {}
+    // [[nodiscard]] auto empty() const noexcept -> edge_ptr
+    // {
+    //     return constant(0);
+    // }
+    //
+    // // {{x}} = node x with hi = {{}} and lo = {}
+    // [[nodiscard]] auto single(var_index x) -> edge_ptr
+    // {
+    //     auto hi = epsilon();
+    //     auto lo = empty();
+    //     return branch(x, std::move(hi), std::move(lo));
+    // }
 
     // ZDD reduction rule:
     // If the high child is the zero node, then no subset
@@ -345,78 +367,52 @@ class zdd_manager final : public detail::manager<bool, bool>
 
     auto union_set(edge_ptr const& P, edge_ptr const& Q) -> edge_ptr
     {
-        assert(P);
-        assert(Q);
+        assert(P && Q);
 
-        // trivial cases
-        // Union({}, Q) = Q   and  Union(P, {}) = P
-        if (P == constant(0)) return Q;
-        if (Q == constant(0)) return P;
-        // Union(P, P) = P
-        if (P == Q) return P;
-
-        // Union({}, {})   = {}
-        // Union({{}}, {}) = {{}}
-        // Union({}, {{}}) = {{}}
-        // Union({{}}, {{}}) = {{}}
+        // const-const: only {} (0) or {{}} (1)
         if (P->is_const() && Q->is_const())
         {
             return (P == constant(1) || Q == constant(1)) ? constant(1) : constant(0);
         }
 
+        // trivial cases
+        if (P == constant(0)) return Q;
+        if (Q == constant(0)) return P;
+        if (P == Q) return P;
+
         auto const x = top_var(P, Q);
 
-        // P0: subsets in P that don't contain x
-        // P1: subsets in P that contain x
-        auto P0 = subset0(P, x);
-        auto P1 = subset1(P, x);
-        auto Q0 = subset0(Q, x);
-        auto Q1 = subset1(Q, x);
+        auto R0 = union_set(subset0(P, x), subset0(Q, x));
+        auto R1 = union_set(subset1(P, x), subset1(Q, x));
 
-        auto R0 = union_set(P0, Q0);
-        auto R1 = union_set(P1, Q1);
-
-        // all subsets wit x and without x
-        //zdd reduction with branch
         return branch(x, std::move(R1), std::move(R0));
     }
 
     auto inter_set(edge_ptr const& P, edge_ptr const& Q) -> edge_ptr
     {
-        assert(P);
-        assert(Q);
+        assert(P && Q);
 
-        // Inter({}, Q) = {} and Inter(P, {}) = {}
-        if (P == constant(0) || Q == constant(0)) return constant(0);
-        // Inter(P, P) = P
-        if (P == Q) return P;
-
-        // Inter({}, anything) = {}
-        // Inter({{}}, {{} })  = {{}}
-        // Inter({{}}, non-const) => depends, so handle only const-const here
+        // const-const
         if (P->is_const() && Q->is_const())
         {
             return (P == constant(1) && Q == constant(1)) ? constant(1) : constant(0);
         }
 
-        //same logic with union
+        // trivial cases
+        if (P == constant(0) || Q == constant(0)) return constant(0);
+        if (P == Q) return P;
+
         auto const x = top_var(P, Q);
 
-        auto P0 = subset0(P, x);
-        auto P1 = subset1(P, x);
-        auto Q0 = subset0(Q, x);
-        auto Q1 = subset1(Q, x);
-        auto R0 = inter_set(P0, Q0);
-        auto R1 = inter_set(P1, Q1);
+        auto R0 = inter_set(subset0(P, x), subset0(Q, x));
+        auto R1 = inter_set(subset1(P, x), subset1(Q, x));
 
         return branch(x, std::move(R1), std::move(R0));
     }
 
     auto diff_set(edge_ptr const& P, edge_ptr const& Q) -> edge_ptr
     {
-        assert(P);
-        assert(Q);
-
+        assert(P && Q);
 
         // {} \ Q = {}
         if (P == constant(0)) return constant(0);
@@ -427,27 +423,18 @@ class zdd_manager final : public detail::manager<bool, bool>
         // P \ P = {}
         if (P == Q) return constant(0);
 
-        // Both constants only {} or {{}} exist
+        // const-const
         if (P->is_const() && Q->is_const())
         {
-            // {{}} \ {{}} = {}
-            // {{}} \ {}   = {{}}
-            // {}   \ {{}} = {}
-            // {}   \ {}   = {}
+            // {{}} \ {} = {{}}, everything else => {}
             return (P == constant(1) && Q == constant(0)) ? constant(1) : constant(0);
         }
 
         auto const x = top_var(P, Q);
 
-        auto const P0 = subset0(P, x);
-        auto const P1 = subset1(P, x);
-        auto const Q0 = subset0(Q, x);
-        auto const Q1 = subset1(Q, x);
+        auto R0 = diff_set(subset0(P, x), subset0(Q, x));
+        auto R1 = diff_set(subset1(P, x), subset1(Q, x));
 
-        auto R0 = diff_set(P0, Q0);
-        auto R1 = diff_set(P1, Q1);
-
-        // Build node with reduction rule
         return branch(x, std::move(R1), std::move(R0));
     }
 
@@ -460,7 +447,7 @@ inline auto zdd::operator&=(zdd const& rhs) -> zdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
-    f = mgr->mul(f, rhs.f);
+    f = mgr->apply_and(f, rhs.f);
     return *this;
 }
 
@@ -468,7 +455,7 @@ inline auto zdd::operator|=(zdd const& rhs) -> zdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
-    f = mgr->plus(f, rhs.f);
+    f = mgr->apply_or(f, rhs.f);
     return *this;
 }
 
@@ -476,10 +463,9 @@ inline auto zdd::operator-=(zdd const& rhs) -> zdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
-    f = mgr->diff(f, rhs.f);
+    f = mgr->apply_diff(f, rhs.f);
     return *this;
 }
-
 
 inline auto zdd::is_zero() const noexcept
 {
