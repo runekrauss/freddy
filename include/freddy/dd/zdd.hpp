@@ -6,9 +6,6 @@
 #include "freddy/config.hpp"          // config, var_index
 #include "freddy/detail/manager.hpp"  // detail::manager
 #include "freddy/detail/node.hpp"     // detail::edge_ptr
-#include "freddy/detail/operation/zdd_union.hpp"  // detail::zdd_union
-#include "freddy/detail/operation/zdd_inter.hpp"  // detail::zdd_inter
-#include "freddy/detail/operation/zdd_diff.hpp"   // detail::zdd_diff
 #include "freddy/expansion.hpp"       // expansion::S
 
 #include <algorithm>
@@ -23,6 +20,7 @@
 
 namespace freddy
 {
+
 // =====================================================================================================================
 // Forwards
 // =====================================================================================================================
@@ -41,6 +39,9 @@ class zdd final
     auto operator&=(zdd const&) -> zdd&;
     auto operator|=(zdd const&) -> zdd&;
     auto operator-=(zdd const&) -> zdd&;
+
+    //negation (Complement)
+    auto operator~() const -> zdd;
 
     friend auto operator&(zdd lhs, zdd const& rhs)
     {
@@ -169,24 +170,14 @@ class zdd_manager final : public detail::manager<bool, bool>
         manager::dump_dot(transform(fs), outputs, os);
     }
 
-    // ---- ZDD-specific public operations ----
-
-    // Complement with explicit universe: universe \ f
-    auto complement(zdd const& f, zdd const& universe)
-    {
-        assert(f.mgr == this);
-        assert(universe.mgr == this);
-        return zdd{diff_set(universe.f, f.f), this};
-    }
-
   private:
     friend zdd;
 
-    // Terminal nodes: {}  and {{}}
+    // Terminal nodes: {} (empty family) and {{}} (family containing empty set)
     static auto tmls() -> std::array<edge_ptr, 2>
     {
-        node_ptr const leaf0{new detail::node<bool, bool>{false}};  // {} (empty family)
-        node_ptr const leaf1{new detail::node<bool, bool>{true}};   // {{}} (family with empty set)
+        node_ptr const leaf0{new detail::node<bool, bool>{false}};  // {} (empty family) -> 0
+        node_ptr const leaf1{new detail::node<bool, bool>{true}};   // {{}} (unit family) -> 1
 
         return {
             edge_ptr{new detail::edge<bool, bool>{false, leaf0}},  // constant(0)
@@ -201,280 +192,174 @@ class zdd_manager final : public detail::manager<bool, bool>
         return fs;
     }
 
-    // Complement without universe - throws since ZDD complement requires explicit universe
-    auto complement(edge_ptr const& /*f*/) -> edge_ptr override
-    {
-        throw std::logic_error{
-            "ZDD complement requires an explicit universe. "
-            "Use zdd_manager::complement(f, universe) instead."
-        };
-    }
-
-    // Conjunction = set intersection (for ZDD, AND semantics maps to intersection)
+    // P ∩ Q = (P0 ∩ Q0) + x(P1 ∩ Q1)
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
-        return inter_set(f, g);
+        assert(f);
+        assert(g);
+
+        // Base cases
+        if (f == constant(0) || g == constant(0)) return constant(0);
+        if (f == g) return f;
+
+        auto const x = top_var(f, g);
+
+        auto f0 = subset0(f, x);
+        auto f1 = subset1(f, x);
+        auto g0 = subset0(g, x);
+        auto g1 = subset1(g, x);
+
+        // r0 = f0 ∩ g0
+        // r1 = f1 ∩ g1
+        auto r0 = conj(f0, g0);
+        auto r1 = conj(f1, g1);
+
+        return manager::branch(x, std::move(r1), std::move(r0));
     }
 
-    // Disjunction = set union (for ZDD, OR semantics maps to union)
+
+    // P U Q = (P0 U Q0) + x(P1 U Q1)
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
-        return union_set(f, g);
+        assert(f);
+        assert(g);
+
+        // Base cases
+        if (f == constant(0)) return g;
+        if (g == constant(0)) return f;
+        if (f == g) return f;
+        if (f == constant(1) && g == constant(1)) return constant(1);
+
+        auto const x = top_var(f, g);
+
+        auto r0 = disj(subset0(f, x), subset0(g, x));
+        auto r1 = disj(subset1(f, x), subset1(g, x));
+
+        return manager::branch(x, std::move(r1), std::move(r0));
     }
 
-    // Multiplication = set intersection
+    auto complement(edge_ptr const& f) -> edge_ptr override
+    {
+        return complement_rec(f, 0);
+    }
+
+    // Recursive helper
+    auto complement_rec(edge_ptr const& f, var_index level) -> edge_ptr
+    {
+        if (level >= static_cast<var_index>(var_count()))
+        {
+            return (f == constant(0)) ? constant(1) : constant(0);
+        }
+
+        // Cofactors
+        auto f0 = subset0(f, level);
+        auto f1 = subset1(f, level);
+
+        auto c0 = complement_rec(f0, level + 1);
+        auto c1 = complement_rec(f1, level + 1);
+
+        return manager::branch(level, std::move(c1), std::move(c0));
+    }
+
+    //  recursive difference function: P \ Q
+    // P \ Q = (P0 \ Q0) + x(P1 \ Q1)
+    auto diff_recursive(edge_ptr const& P, edge_ptr const& Q) -> edge_ptr
+    {
+        if (P == constant(0)) return constant(0);
+        if (Q == constant(0)) return P;
+        if (P == Q) return constant(0);
+
+        // If P=1 ({{}}), result is 1 if Q doesn't contain {{}}, else 0
+        auto const x = top_var(P, Q);
+
+        auto r0 = diff_recursive(subset0(P, x), subset0(Q, x));
+        auto r1 = diff_recursive(subset1(P, x), subset1(Q, x));
+
+        return manager::branch(x, std::move(r1), std::move(r0));
+    }
+
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
-        return inter_set(std::move(f), std::move(g));
+        return conj(f, g);
     }
 
-    // Addition = set union
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
-        return union_set(std::move(f), std::move(g));
+        return disj(f, g);
     }
 
-    // Aggregate: edge weight is unused in ZDD, return node value
-    [[nodiscard]] auto agg(bool const& /*w*/, bool const& val) const -> bool override
+    // Rest of standard overrides
+    [[nodiscard]] auto agg(bool const&, bool const& val) const -> bool override
     {
         return val;
     }
-
-    // Combine edge weights using XOR
     [[nodiscard]] auto comb(bool const& w1, bool const& w2) const -> bool override
     {
         return w1 != w2;
     }
-
-    // Merge node values (OR for boolean)
     [[nodiscard]] auto merge(bool const& v1, bool const& v2) const -> bool override
     {
         return v1 || v2;
     }
-
-    // Regular weight: ZDD does not use complemented edges
     [[nodiscard]] auto regw() const -> bool override
     {
         return false;
     }
-
-    // Normalization methods (not used in ZDD)
-
-    [[nodiscard]] auto norm_weight(edge_ptr const& /*hi*/, edge_ptr const& /*lo*/) const -> bool override
+    [[nodiscard]] auto norm_weight(edge_ptr const&, edge_ptr const&) const -> bool override
     {
         return false;
     }
-
-    [[nodiscard]] auto norm_is_needed(edge_ptr const& /*hi*/, edge_ptr const& /*lo*/) const -> bool override
+    [[nodiscard]] auto norm_is_needed(edge_ptr const&, edge_ptr const&) const -> bool override
     {
         return false;
     }
-
-    auto norm_high(edge_ptr const& hi, bool /*w*/, expansion /*t*/) -> edge_ptr override
+    auto norm_high(edge_ptr const& hi, bool, expansion) -> edge_ptr override
     {
         return hi;
     }
-
-    auto norm_low(edge_ptr const& lo, bool /*w*/, expansion /*t*/) -> edge_ptr override
+    auto norm_low(edge_ptr const& lo, bool, expansion) -> edge_ptr override
     {
         return lo;
     }
-
-    // Denormalization methods
 
     [[nodiscard]] auto denorm_high(edge_ptr const& f) -> edge_ptr override
     {
-        assert(f);
-        assert(!f->is_const());
-        return f->ch()->br().hi;
+        assert(f); assert(!f->is_const()); return f->ch()->br().hi;
     }
-
     [[nodiscard]] auto denorm_low(edge_ptr const& f) -> edge_ptr override
     {
-        assert(f);
-        assert(!f->is_const());
-        return f->ch()->br().lo;
+        assert(f); assert(!f->is_const()); return f->ch()->br().lo;
     }
 
-    // ZDD reduction rule
-
-    // A ZDD node is reducible if its high child is the zero terminal
-    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const& /*lo*/, expansion /*t*/) const -> bool override
+    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const&, expansion) const -> bool override
     {
         return hi == constant(0);
     }
-
-    // When reducible, the reduced form is the low child (skip the node)
-    [[nodiscard]] auto reduced(edge_ptr const& /*hi*/, edge_ptr const& lo, expansion /*t*/) -> edge_ptr override
+    [[nodiscard]] auto reduced(edge_ptr const&, edge_ptr const& lo, expansion) -> edge_ptr override
     {
         return lo;
     }
-
-    // When variable x is not in function f:
-    // - cof0(f, x) = f  (all subsets not containing x = entire f)
-    // - cof1(f, x) = {} (no subsets contain x)
-    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion /*t*/) const -> edge_ptr override
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const -> edge_ptr override
     {
         return a ? constant(0) : f;
     }
 
-    // ite(f, g, h) = (f ∩ g) ∪ (f̄ ∩ h)
-    // Since we don't have complement, we implement using:
-    // ite(f, g, h) = (f ∩ g) ∪ (h \ (f ∩ h))
-    // For ZDD semantics: choose g if in f, otherwise choose h
-    auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr override
-    {
-        assert(f);
-        assert(g);
-        assert(h);
-
-        // Terminal cases
-        if (f == constant(0))
-        {
-            return h;
-        }
-        if (f == constant(1))
-        {
-            return g;
-        }
-        if (g == h)
-        {
-            return g;
-        }
-        if (g == constant(1) && h == constant(0))
-        {
-            return f;
-        }
-        if (g == constant(0) && h == constant(1))
-        {
-            // This would need complement: return diff_set(one, f)
-            // But we don't have universe, so use recursive approach
-        }
-
-        // Recursive case using ZDD operations
-        // ite(f, g, h) = union(inter(f, g), diff(h, inter(f, h)))
-        // Simplified: ite(f, g, h) = union(inter(f, g), diff(h, f))
-        // This is an approximation that works for most ZDD use cases
-        auto fg = inter_set(f, g);
-        auto hf = diff_set(h, f);
-        return union_set(fg, hf);
-    }
-
-    // Helper: get subsets not containing variable x
+    // get subsets not containing variable x
     [[nodiscard]] auto subset0(edge_ptr const& S, var_index const x) -> edge_ptr
     {
         return this->cof(S, x, false);
     }
 
-    // Helper: get subsets containing variable x
+    // get subsets containing variable x
     [[nodiscard]] auto subset1(edge_ptr const& S, var_index const x) -> edge_ptr
     {
         return this->cof(S, x, true);
     }
 
-    // Set union: P ∪ Q (with caching)
-    auto union_set(edge_ptr const& P, edge_ptr const& Q) -> edge_ptr
-    {
-        assert(P);
-        assert(Q);
-
-        // Base cases
-        if (P == constant(0)) return Q;
-        if (Q == constant(0)) return P;
-        if (P == Q) return P;
-
-        // Both are constants
-        if (P->is_const() && Q->is_const())
-        {
-            return (P == constant(1) || Q == constant(1)) ? constant(1) : constant(0);
-        }
-
-        // Check cache
-        detail::zdd_union<bool, bool> op{P, Q};
-        if (auto const* const entry = cached(op))
-        {
-            return entry->get_result();
-        }
-
-        auto const x = top_var(P, Q);
-
-        auto R0 = union_set(subset0(P, x), subset0(Q, x));
-        auto R1 = union_set(subset1(P, x), subset1(Q, x));
-
-        // Use manager::branch to apply ZDD reduction rule
-        op.set_result(manager::branch(x, std::move(R1), std::move(R0)));
-        return cache(std::move(op))->get_result();
-    }
-
-    // Set intersection: P ∩ Q (with caching)
-    auto inter_set(edge_ptr const& P, edge_ptr const& Q) -> edge_ptr
-    {
-        assert(P);
-        assert(Q);
-
-        // Base cases
-        if (P == constant(0) || Q == constant(0)) return constant(0);
-        if (P == Q) return P;
-
-        // Both are constants
-        if (P->is_const() && Q->is_const())
-        {
-            return (P == constant(1) && Q == constant(1)) ? constant(1) : constant(0);
-        }
-
-        // Check cache
-        detail::zdd_inter<bool, bool> op{P, Q};
-        if (auto const* const entry = cached(op))
-        {
-            return entry->get_result();
-        }
-
-        auto const x = top_var(P, Q);
-
-        auto R0 = inter_set(subset0(P, x), subset0(Q, x));
-        auto R1 = inter_set(subset1(P, x), subset1(Q, x));
-
-        op.set_result(manager::branch(x, std::move(R1), std::move(R0)));
-        return cache(std::move(op))->get_result();
-    }
-
-    // Set difference: P \ Q (with caching)
-    auto diff_set(edge_ptr const& P, edge_ptr const& Q) -> edge_ptr
-    {
-        assert(P);
-        assert(Q);
-
-        // Base cases
-        if (P == constant(0)) return constant(0);
-        if (Q == constant(0)) return P;
-        if (P == Q) return constant(0);
-
-        // Both are constants
-        if (P->is_const() && Q->is_const())
-        {
-            return (P == constant(1) && Q == constant(0)) ? constant(1) : constant(0);
-        }
-
-        // Check cache
-        detail::zdd_diff<bool, bool> op{P, Q};
-        if (auto const* const entry = cached(op))
-        {
-            return entry->get_result();
-        }
-
-        auto const x = top_var(P, Q);
-
-        auto R0 = diff_set(subset0(P, x), subset0(Q, x));
-        auto R1 = diff_set(subset1(P, x), subset1(Q, x));
-
-        op.set_result(manager::branch(x, std::move(R1), std::move(R0)));
-        return cache(std::move(op))->get_result();
-    }
-
-    // Wrapper for zdd::operator-=
+    // Difference wrapper for operator-=
     auto diff(edge_ptr const& a, edge_ptr const& b) -> edge_ptr
     {
-        return diff_set(a, b);
+        return diff_recursive(a, b);
     }
 };
 
@@ -486,7 +371,7 @@ inline auto zdd::operator&=(zdd const& rhs) -> zdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
-    f = mgr->mul(f, rhs.f);
+    f = mgr->conj(f, rhs.f);
     return *this;
 }
 
@@ -494,7 +379,7 @@ inline auto zdd::operator|=(zdd const& rhs) -> zdd&
 {
     assert(mgr);
     assert(mgr == rhs.mgr);
-    f = mgr->plus(f, rhs.f);
+    f = mgr->disj(f, rhs.f);
     return *this;
 }
 
@@ -504,6 +389,12 @@ inline auto zdd::operator-=(zdd const& rhs) -> zdd&
     assert(mgr == rhs.mgr);
     f = mgr->diff(f, rhs.f);
     return *this;
+}
+
+inline auto zdd::operator~() const -> zdd
+{
+    assert(mgr);
+    return zdd{mgr->complement(f), mgr};
 }
 
 inline auto zdd::is_zero() const noexcept
@@ -536,4 +427,4 @@ inline auto zdd::dump_dot(std::ostream& os) const
     mgr->dump_dot({*this}, {}, os);
 }
 
-}  // namespace freddy
+} // namespace freddy
