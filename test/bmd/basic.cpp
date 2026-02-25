@@ -273,3 +273,23 @@ TEST_CASE("BMD interprets bits numerically", "[basic]")
         CHECK(mgr.twos_complement(ha) == a + b - mgr.constant(4) * a * b);
     }
 }
+
+TEST_CASE("bmd-test", "[test]"){
+    bmd_manager mgr;
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+
+    std::string path = "NEWPATHTEST";
+
+    SECTION("bmd"){
+        auto f = x0 | x1;
+
+        f.write_binary_file(path);
+
+        auto g = mgr.read_binary_file(path);
+
+        g.dump_dot();
+
+        CHECK(g == f);
+    }
+}
+

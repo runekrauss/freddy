@@ -179,6 +179,8 @@ class bhd final  // binary hybrid diagram between BDD and SAT
 
     auto dump_dot(std::ostream& = std::cout) const;
 
+    auto write_binary_file(std::string& file_path) const;
+
   private:
     friend bhd_manager;
 
@@ -278,6 +280,10 @@ class bhd_manager final : public detail::manager<bool, bool>
         boost::replace_all(dot, "[shape=box,style=filled,color=chocolate,fontcolor=white,label=\"1\"]",
                            "[shape=triangle,style=filled,color=darkviolet,fontcolor=white,label=\"EXP\"]");
         os << dot;
+    }
+
+    auto read_binary_file(std::string& file_path){
+        return bhd{manager::read_binary_file(file_path), this};
     }
 
   private:
@@ -795,6 +801,13 @@ inline auto bhd::dump_dot(std::ostream& os) const
     assert(mgr);
 
     mgr->dump_dot({*this}, {}, os);
+}
+
+inline auto bhd::write_binary_file(std::string& file_path) const
+{
+    assert(mgr);
+
+    return mgr->write_binary_file(f, file_path);
 }
 
 }  // namespace freddy

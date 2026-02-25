@@ -234,3 +234,22 @@ TEST_CASE("PHDD interprets bits numerically", "[basic]")
         CHECK(f.eval({true, true}) == 2);
     }
 }
+
+TEST_CASE("phdd-test", "[test]"){
+    phdd_manager mgr;
+    auto const x0 = mgr.var(expansion::pD, "x0"), x1 = mgr.var(expansion::S, "x1");
+
+    std::string path = "NEWPATHTEST";
+
+    SECTION("phdd"){
+        auto f = x0 | x1;
+
+        f.write_binary_file(path);
+
+        auto g = mgr.read_binary_file(path);
+
+        g.dump_dot();
+
+        CHECK(g == f);
+    }
+}

@@ -235,6 +235,8 @@ class phdd  // (multiplicative) power hybrid decision diagram
 
     auto dump_dot(std::ostream& = std::cout) const;
 
+    auto write_binary_file(std::string& file_path) const;
+
   private:
     friend phdd_manager;
 
@@ -333,6 +335,10 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
         manager::dump_dot(transform(fs), outputs, os);
+    }
+
+    auto read_binary_file(std::string& file_path){
+        return phdd{manager::read_binary_file(file_path), this};
     }
 
   private:
@@ -846,6 +852,13 @@ inline auto phdd::dump_dot(std::ostream& os) const
     assert(mgr);
 
     mgr->dump_dot({*this}, {}, os);
+}
+
+inline auto phdd::write_binary_file(std::string& file_path) const
+{
+    assert(mgr);
+
+    return mgr->write_binary_file(f, file_path);
 }
 
 }  // namespace freddy

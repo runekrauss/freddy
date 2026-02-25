@@ -257,23 +257,21 @@ TEST_CASE("ADD detects misuse of word-level operations", "[basic]")
     }
 }
 
-TEST_CASE("test", "[test]"){
+TEST_CASE("add-test", "[test]"){
     add_manager<std::int32_t> mgr;
-    auto const x0 = mgr.var(), x1 = mgr.var();
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
 
     std::string path = "NEWPATHTEST";
 
-    SECTION("TT"){
-        auto f = x0 & x1;
-        f.dump_dot();
+    SECTION("add"){
+        auto f = mgr.constant(8) * x0 | x1 & x2;
 
         f.write_binary_file(path);
 
-        auto fs = mgr.read_binary_file(path);
+        auto g = mgr.read_binary_file(path);
 
-        for (auto g : fs){
-            g.dump_dot();
-            CHECK(g.eval({false, false}) == 0);
-        }
+        g.dump_dot();
+
+        CHECK(g == f);
     }
 }

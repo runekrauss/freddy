@@ -167,6 +167,8 @@ class bdd final  // binary decision diagram
 
     auto dump_dot(std::ostream& = std::cout) const;
 
+    auto write_binary_file(std::string& file_path) const;
+
   private:
     friend bdd_manager;
 
@@ -230,6 +232,10 @@ class bdd_manager final : public detail::manager<bool, bool>
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
         manager::dump_dot(transform(fs), outputs, os);
+    }
+
+    auto read_binary_file(std::string& file_path){
+        return bdd{manager::read_binary_file(file_path), this};
     }
 
   private:
@@ -669,6 +675,13 @@ inline auto bdd::dump_dot(std::ostream& os) const
     assert(mgr);
 
     mgr->dump_dot({*this}, {}, os);
+}
+
+inline auto bdd::write_binary_file(std::string& file_path) const
+{
+    assert(mgr);
+
+    return mgr->write_binary_file(f, file_path);
 }
 
 }  // namespace freddy

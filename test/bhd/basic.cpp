@@ -280,3 +280,22 @@ TEST_CASE("BHD heuristics restrict solution spaces", "[basic]")
         CHECK_FALSE(f.eval(std::vector(mgr.var_count(), true)).has_value());
     }
 }
+
+TEST_CASE("bhd-test", "[test]"){
+    bhd_manager mgr;
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+
+    std::string path = "NEWPATHTEST";
+
+    SECTION("bhd"){
+        auto f = x0 & mgr.exp() | x1 & x2 ;
+
+        f.write_binary_file(path);
+
+        auto g = mgr.read_binary_file(path);
+
+        g.dump_dot();
+
+        CHECK(g == f);
+    }
+}

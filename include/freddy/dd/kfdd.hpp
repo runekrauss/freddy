@@ -172,6 +172,8 @@ class kfdd final  // Kronecker functional decision diagram
 
     auto dump_dot(std::ostream& = std::cout) const;
 
+    auto write_binary_file(std::string& file_path) const;
+
   private:
     friend kfdd_manager;
 
@@ -235,6 +237,10 @@ class kfdd_manager final : public detail::manager<bool, bool>
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
         manager::dump_dot(transform(fs), outputs, os);
+    }
+
+    auto read_binary_file(std::string& file_path){
+        return kfdd{manager::read_binary_file(file_path), this};
     }
 
     // DTL sifting wrapper for KFDD-typed vectors
@@ -740,6 +746,13 @@ inline auto kfdd::dump_dot(std::ostream& os) const
     assert(mgr);
 
     mgr->dump_dot({*this}, {}, os);
+}
+
+inline auto kfdd::write_binary_file(std::string& file_path) const
+{
+    assert(mgr);
+
+    return mgr->write_binary_file(f, file_path);
 }
 
 }  // namespace freddy
