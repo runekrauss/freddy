@@ -3,9 +3,10 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/config.hpp"          // config, var_index
-#include "freddy/detail/manager.hpp"  // detail::manager
-#include "freddy/detail/node.hpp"     // detail::edge_ptr
+#include "freddy/config.hpp"                 // config, var_index
+#include "freddy/detail/manager.hpp"         // detail::manager
+#include "freddy/detail/node.hpp"            // detail::edge_ptr
+#include "freddy/detail/operation/conj.hpp"  // detail::conj
 #include "freddy/expansion.hpp"       // expansion::S
 
 #include <algorithm>
@@ -192,50 +193,76 @@ class zdd_manager final : public detail::manager<bool, bool>
         return fs;
     }
 
-    // P ∩ Q = (P0 ∩ Q0) + x(P1 ∩ Q1)
+    // if variable not present, return f itself ("don't care")
+    auto bdd_cof(edge_ptr const& f, var_index const x, bool positive) -> edge_ptr
+    {
+        if (f->is_const() || f->ch()->br().x != x)
+        {
+            return f;  // BDD: variable not present -> return f
+        }
+        return positive ? denorm_high(f) : denorm_low(f);
+    }
+
+    // Conjunction copied from BDD
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
         assert(g);
 
-        // Base cases
-        if (f == constant(0) || g == constant(0)) return constant(0);
-        if (f == g) return f;
+        if (f == constant(0) || g == constant(0))
+        {
+            return constant(0);
+        }
+        if (f == constant(1))
+        {
+            return g;
+        }
+        if (g == constant(1))
+        {
+            return f;
+        }
+        if (f == g)
+        {
+            return f;
+        }
+
+        detail::conj op{f, g};
+        if (auto const* const entry = cached(op))
+        {
+            return entry->get_result();
+        }
 
         auto const x = top_var(f, g);
 
-        auto f0 = subset0(f, x);
-        auto f1 = subset1(f, x);
-        auto g0 = subset0(g, x);
-        auto g1 = subset1(g, x);
-
-        // r0 = f0 ∩ g0
-        // r1 = f1 ∩ g1
-        auto r0 = conj(f0, g0);
-        auto r1 = conj(f1, g1);
-
-        return manager::branch(x, std::move(r1), std::move(r0));
+        op.set_result(branch(x, conj(bdd_cof(f, x, true), bdd_cof(g, x, true)),
+                                conj(bdd_cof(f, x, false), bdd_cof(g, x, false))));
+        return cache(std::move(op))->get_result();
     }
 
 
-    // P U Q = (P0 U Q0) + x(P1 U Q1)
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
-        assert(f);
-        assert(g);
+        return disj_rec(f, g, 0);
+    }
 
-        // Base cases
-        if (f == constant(0)) return g;
-        if (g == constant(0)) return f;
-        if (f == g) return f;
-        if (f == constant(1) && g == constant(1)) return constant(1);
+    auto disj_rec(edge_ptr const& f, edge_ptr const& g, var_index level) -> edge_ptr
+    {
+        //  Boolean OR on constants
+        if (level >= static_cast<var_index>(var_count()))
+        {
+            return (f == constant(0) && g == constant(0)) ? constant(0) : constant(1);
+        }
 
-        auto const x = top_var(f, g);
+        // BDD-style cofactors at current level
+        auto f_hi = (!f->is_const() && f->ch()->br().x == level) ? denorm_high(f) : f;
+        auto f_lo = (!f->is_const() && f->ch()->br().x == level) ? denorm_low(f) : f;
+        auto g_hi = (!g->is_const() && g->ch()->br().x == level) ? denorm_high(g) : g;
+        auto g_lo = (!g->is_const() && g->ch()->br().x == level) ? denorm_low(g) : g;
 
-        auto r0 = disj(subset0(f, x), subset0(g, x));
-        auto r1 = disj(subset1(f, x), subset1(g, x));
+        auto hi = disj_rec(f_hi, g_hi, level + 1);
+        auto lo = disj_rec(f_lo, g_lo, level + 1);
 
-        return manager::branch(x, std::move(r1), std::move(r0));
+        return manager::branch(level, std::move(hi), std::move(lo));
     }
 
     auto complement(edge_ptr const& f) -> edge_ptr override
@@ -341,7 +368,7 @@ class zdd_manager final : public detail::manager<bool, bool>
     }
     [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const -> edge_ptr override
     {
-        return a ? constant(0) : f;
+        return a ? constant(0) : f;  // ZDD: hi-cofactor=0 when variable missing, lo-cofactor=f
     }
 
     // get subsets not containing variable x
