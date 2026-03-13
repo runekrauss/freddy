@@ -100,6 +100,10 @@ class zdd final
 
     [[nodiscard]] auto is_zero() const noexcept;
     [[nodiscard]] auto is_one() const noexcept;
+
+    // BDD basic.cpp style evaluation (truth-table)
+    [[nodiscard]] auto eval(std::vector<bool> const& as) const noexcept -> bool;
+
     [[nodiscard]] auto size() const;
     [[nodiscard]] auto depth() const;
 
@@ -416,6 +420,20 @@ inline auto zdd::is_one() const noexcept
 {
     assert(mgr);
     return *this == mgr->one();
+}
+
+inline auto zdd::eval(std::vector<bool> const& as) const noexcept -> bool
+{
+    assert(mgr);
+    assert(as.size() == mgr->var_count());
+
+    auto cur = *this;
+    while (!cur.is_const())
+    {
+        auto const x = static_cast<std::size_t>(cur.var());
+        cur = as[x] ? cur.high() : cur.low();
+    }
+    return cur.is_one();
 }
 
 inline auto zdd::size() const
