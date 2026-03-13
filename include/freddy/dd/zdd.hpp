@@ -202,7 +202,7 @@ class zdd_manager final : public detail::manager<bool, bool>
         return positive ? denorm_high(f) : denorm_low(f);
     }
 
-    // Conjunction copied from BDD (DOKUNULMADI)
+    // Conjunction copied from BDD
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
