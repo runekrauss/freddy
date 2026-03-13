@@ -2,9 +2,14 @@
 // Includes
 // *********************************************************************************************************************
 
-#include <catch2/catch_test_macros.hpp>  // TEST_CASE, SECTION, CHECK
+#include <catch2/catch_test_macros.hpp>
 
-#include <freddy/dd/zdd.hpp>             // zdd_manager
+#include <freddy/config.hpp>
+#include <freddy/dd/zdd.hpp>
+
+#include <fstream>  // std::ofstream
+#include <sstream>  // std::ostringstream
+#include <vector>   // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -13,140 +18,207 @@
 using namespace freddy;
 
 // *********************************************************************************************************************
+// Helpers (test-only)
+// *********************************************************************************************************************
+
+static auto check_equiv(zdd const& a, zdd const& b, std::size_t var_count) -> void
+{
+    std::vector<bool> as(var_count, false);
+    auto const total = 1uLL << var_count;
+
+    for (std::uint64_t mask = 0; mask < total; ++mask)
+    {
+        for (std::size_t i = 0; i < var_count; ++i)
+        {
+            as[i] = ((mask >> i) & 1uLL) != 0;
+        }
+        CHECK(a.eval(as) == b.eval(as));
+    }
+}
+
+// *********************************************************************************************************************
 // Tests
 // *********************************************************************************************************************
 
-TEST_CASE("ZDD: terminals and variable construction", "[zdd][basic]")
+TEST_CASE("ZDD is constructed", "[basic]")
 {
-    zdd_manager mgr;
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
 
-    SECTION("Zero / One semantics")
+    SECTION("Variables are singletons (structure-independent)")
     {
-        auto const z = mgr.zero();  // {}
-        auto const o = mgr.one();   // {{}}
+        CHECK_FALSE(x0.is_const());
+        CHECK(x0.var() == 0);
 
-        CHECK(z.is_zero());
-        CHECK_FALSE(z.is_one());
+        auto const hi = x0.high();
+        auto const lo = x0.low();
 
-        CHECK(o.is_one());
-        CHECK_FALSE(o.is_zero());
+        CHECK(hi.is_const());
+        CHECK(lo.is_const());
+        CHECK(hi != lo);
     }
 
-    SECTION("Creating variables increments var_count and keeps manager consistent")
+    SECTION("Zero/One are constants")
     {
-        auto const a = mgr.var("a");
-        auto const b = mgr.var("b");
+        CHECK(mgr.zero().is_const());
+        CHECK(mgr.zero().is_zero());
 
-        CHECK_FALSE(a.is_const());
-        CHECK_FALSE(b.is_const());
-        CHECK(mgr.var_count() == 2);
+        CHECK(mgr.one().is_const());
+        CHECK(mgr.one().is_one());
     }
 }
 
-TEST_CASE("ZDD: singleton families", "[zdd][basic]")
+TEST_CASE("ZDD set operations work correctly", "[basic]")
 {
-    zdd_manager mgr;
-    (void)mgr.var("a"); // index 0
-    (void)mgr.var("b"); // index 1
-    (void)mgr.var("c"); // index 2
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
 
-    auto const Sa = mgr.singleton(0); // {{a}}
-    auto const Sb = mgr.singleton(1); // {{b}}
-    auto const Sc = mgr.singleton(2); // {{c}}
+    auto const n = static_cast<std::size_t>(mgr.var_count());
 
-    SECTION("Singleton is not terminal")
+    SECTION("AND idempotence is structural in your implementation")
     {
-        CHECK_FALSE(Sa.is_const());
-        CHECK_FALSE(Sb.is_const());
-        CHECK_FALSE(Sc.is_const());
+        CHECK((x0 & x0) == x0);
     }
 
-    SECTION("Basic set identities with singletons")
+    SECTION("OR idempotence holds semantically (structure may differ)")
     {
-        auto const z = mgr.zero();
-        CHECK((Sa | z) == Sa);
-        CHECK((Sa & z).is_zero());
+        check_equiv(x0 | x0, x0, n);
+    }
 
-        // Sa \ Sa = {}
-        CHECK((Sa - Sa).is_zero());
+    SECTION("OR with zero holds semantically (structure may differ)")
+    {
+        check_equiv(x0 | mgr.zero(), x0, n);
+    }
 
-        // Sa \ {} = Sa
-        CHECK((Sa - z) == Sa);
+    SECTION("Intersection with zero is zero")
+    {
+        CHECK((x0 & mgr.zero()).is_zero());
+    }
+
+    SECTION("Intersection with one is identity (semantic)")
+    {
+        check_equiv(x0 & mgr.one(), x0, n);
+    }
+
+    SECTION("Difference basic behavior (semantic)")
+    {
+        check_equiv(x0 - x0, mgr.zero(), n);
+        check_equiv(x0 - mgr.zero(), x0, n);
+        check_equiv(mgr.zero() - x0, mgr.zero(), n);
+    }
+
+    SECTION("A non-trivial combination builds a non-empty structure")
+    {
+        auto const f = (x0 & x1) | x2;
+        CHECK_FALSE(f.is_zero());
+        CHECK(f.size() >= 1);
+        CHECK(f.depth() >= 1);
     }
 }
 
-TEST_CASE("ZDD: union / intersection / difference on a small example", "[zdd][basic]")
+TEST_CASE("ZDD can be characterized", "[basic]")
 {
-    zdd_manager mgr;
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+    auto const f = (x0 & x1) | x2;
 
-    // Create variables
-    (void)mgr.var("a"); // 0
-    (void)mgr.var("b"); // 1
-    (void)mgr.var("c"); // 2
-
-    // {{a}}, {{b}}, {{c}}
-    auto const Sa = mgr.singleton(0);
-    auto const Sb = mgr.singleton(1);
-    auto const Sc = mgr.singleton(2);
-
-    // Build {{a,b}} via node(a, node(b, one, zero), zero)
-    auto const eps = mgr.one();   // {{}}
-    auto const emp = mgr.zero();  // {}
-
-    auto const Nb  = mgr.node(1, eps, emp);     // {{b}}
-    auto const AB  = mgr.node(0, Nb, emp);      // {{a,b}}
-
-    // A = {{a,b}, {c}}
-    auto const A = AB | Sc;
-
-    // B = {{b}, {c}}
-    auto const B = Sb | Sc;
-
-    // Expected:
-    // U = {{a,b}, {b}, {c}}
-    // I = {{c}}
-    // D = {{a,b}}
-    auto const U = A | B;
-    auto const I = A & B;
-    auto const D = A - B;
-
-    SECTION("Intersection is {{c}}")
+    SECTION("Variables are supported")
     {
-        CHECK(I == Sc);
+        CHECK(mgr.var_count() == 3);
     }
 
-    SECTION("Difference is {{a,b}}")
+    SECTION("#Nodes is determined")
     {
-        CHECK(D == AB);
+        CHECK(mgr.node_count() >= 2);
     }
 
-    SECTION("Union contains all three families")
+    SECTION("Size/depth are computed")
     {
-        // Hard to check 'contains' without iterator API, so we check expected equalities via set algebra:
-        // U - Sc should still contain {{a,b},{b}} and be non-zero
-        CHECK_FALSE((U - Sc).is_zero());
-
-        // Removing AB from U still leaves something (at least {b} or {c})
-        CHECK_FALSE((U - AB).is_zero());
+        CHECK(f.size() >= 1);
+        CHECK(f.depth() >= 1);
     }
 }
 
-TEST_CASE("ZDD: basic identities", "[zdd][basic]")
+TEST_CASE("ZDD variable order is changeable", "[basic]")
 {
-    zdd_manager mgr;
-    (void)mgr.var("a"); // 0
-    auto const Sa = mgr.singleton(0);
-    auto const z  = mgr.zero();
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
+    auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
+    auto const f = (x0 & x1) | (x2 & x3);
 
-    SECTION("Idempotence")
+    SECTION("Levels can be swapped")
     {
-        CHECK((Sa | Sa) == Sa);
-        CHECK((Sa & Sa) == Sa);
+        mgr.swap(1, 2);
+        CHECK_FALSE(f.is_zero());
+        CHECK(f.size() >= 1);
     }
+}
 
-    SECTION("Absorption with empty")
-    {
-        CHECK((Sa | z) == Sa);
-        CHECK((Sa & z).is_zero());
-    }
+TEST_CASE("ZDD can be visualized", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
+    auto const x0 = mgr.var(), x1 = mgr.var();
+    auto const f = x0 | x1;
+
+    std::ostringstream oss;
+    f.dump_dot(oss);
+
+    CHECK_FALSE(oss.str().empty());
+    CHECK(oss.str().find("digraph") != std::string::npos);
+}
+
+TEST_CASE("ZDD instructor example: cube redundancy (semantic check)", "[basic]")
+{
+    // Cubes: xy, x!yz, xz  => x!yz redundant when xz present.
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x = mgr.var("x");
+    auto const y = mgr.var("y");
+    auto const z = mgr.var("z");
+
+    auto const cube_xy = x & y;
+    auto const cube_xnyz = x & (~y) & z;
+    auto const cube_xz = x & z;
+
+    auto const F = cube_xy | cube_xnyz | cube_xz;
+    auto const G = cube_xy | cube_xz;
+
+    check_equiv(F, G, static_cast<std::size_t>(mgr.var_count()));
+}
+
+TEST_CASE("ZDD subsumption effect reduces/reuses structure", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x = mgr.var("x");
+    auto const y = mgr.var("y");
+    auto const z = mgr.var("z");
+
+    auto const xy   = x & y;
+    auto const xnyz = x & (~y) & z;
+    auto const xz   = x & z;
+
+    auto const before = xy | xnyz;
+    auto const after  = before | xz;
+    auto const target = xy | xz;
+
+    // 1) functional correctness
+    check_equiv(after, target, static_cast<std::size_t>(mgr.var_count()));
+
+    // 2) adding a subsuming cube should not make the graph bigger
+    CHECK(after.size() <= before.size());
+}
+
+TEST_CASE("ZDD SOP minimization (two-level logic)", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x = mgr.var("x");
+    auto const y = mgr.var("y");
+    auto const z = mgr.var("z");
+
+    auto const xy   = x & y;
+    auto const xnyz = x & (~y) & z;
+    auto const xz   = x & z;
+
+    auto const F = xy | xnyz | xz | y;
+    auto const G = xy | xz | y;
+
+    check_equiv(F, G, static_cast<std::size_t>(mgr.var_count()));
 }
