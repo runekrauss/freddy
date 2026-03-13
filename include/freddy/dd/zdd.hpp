@@ -7,13 +7,12 @@
 #include "freddy/detail/manager.hpp"         // detail::manager
 #include "freddy/detail/node.hpp"            // detail::edge_ptr
 #include "freddy/detail/operation/conj.hpp"  // detail::conj
-#include "freddy/expansion.hpp"       // expansion::S
+#include "freddy/expansion.hpp"              // expansion::S
 
 #include <algorithm>
 #include <array>
 #include <cassert>
 #include <iostream>
-#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -41,7 +40,7 @@ class zdd final
     auto operator|=(zdd const&) -> zdd&;
     auto operator-=(zdd const&) -> zdd&;
 
-    //negation (Complement)
+    // negation (Complement)
     auto operator~() const -> zdd;
 
     friend auto operator&(zdd lhs, zdd const& rhs)
@@ -203,7 +202,7 @@ class zdd_manager final : public detail::manager<bool, bool>
         return positive ? denorm_high(f) : denorm_low(f);
     }
 
-    // Conjunction copied from BDD
+    // Conjunction copied from BDD (DOKUNULMADI)
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
@@ -235,60 +234,53 @@ class zdd_manager final : public detail::manager<bool, bool>
         auto const x = top_var(f, g);
 
         op.set_result(branch(x, conj(bdd_cof(f, x, true), bdd_cof(g, x, true)),
-                                conj(bdd_cof(f, x, false), bdd_cof(g, x, false))));
+                            conj(bdd_cof(f, x, false), bdd_cof(g, x, false))));
         return cache(std::move(op))->get_result();
     }
 
-
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
-        return disj_rec(f, g, 0);
-    }
+        auto const rec = [this](auto&& self, edge_ptr const& ff, edge_ptr const& gg, var_index level) -> edge_ptr {
+            if (level >= static_cast<var_index>(var_count()))
+            {
+                return (ff == constant(0) && gg == constant(0)) ? constant(0) : constant(1);
+            }
 
-    auto disj_rec(edge_ptr const& f, edge_ptr const& g, var_index level) -> edge_ptr
-    {
-        //  Boolean OR on constants
-        if (level >= static_cast<var_index>(var_count()))
-        {
-            return (f == constant(0) && g == constant(0)) ? constant(0) : constant(1);
-        }
+            auto f_hi = (!ff->is_const() && ff->ch()->br().x == level) ? denorm_high(ff) : ff;
+            auto f_lo = (!ff->is_const() && ff->ch()->br().x == level) ? denorm_low(ff) : ff;
+            auto g_hi = (!gg->is_const() && gg->ch()->br().x == level) ? denorm_high(gg) : gg;
+            auto g_lo = (!gg->is_const() && gg->ch()->br().x == level) ? denorm_low(gg) : gg;
 
-        // BDD-style cofactors at current level
-        auto f_hi = (!f->is_const() && f->ch()->br().x == level) ? denorm_high(f) : f;
-        auto f_lo = (!f->is_const() && f->ch()->br().x == level) ? denorm_low(f) : f;
-        auto g_hi = (!g->is_const() && g->ch()->br().x == level) ? denorm_high(g) : g;
-        auto g_lo = (!g->is_const() && g->ch()->br().x == level) ? denorm_low(g) : g;
+            auto hi = self(self, f_hi, g_hi, static_cast<var_index>(level + 1));
+            auto lo = self(self, f_lo, g_lo, static_cast<var_index>(level + 1));
 
-        auto hi = disj_rec(f_hi, g_hi, level + 1);
-        auto lo = disj_rec(f_lo, g_lo, level + 1);
+            return manager::branch(level, std::move(hi), std::move(lo));
+        };
 
-        return manager::branch(level, std::move(hi), std::move(lo));
+        return rec(rec, f, g, 0);
     }
 
     auto complement(edge_ptr const& f) -> edge_ptr override
     {
-        return complement_rec(f, 0);
+        auto const rec = [this](auto&& self, edge_ptr const& ff, var_index level) -> edge_ptr {
+            if (level >= static_cast<var_index>(var_count()))
+            {
+                return (ff == constant(0)) ? constant(1) : constant(0);
+            }
+
+            auto f0 = this->cof(ff, level, false);
+            auto f1 = this->cof(ff, level, true);
+
+            auto c0 = self(self, f0, static_cast<var_index>(level + 1));
+            auto c1 = self(self, f1, static_cast<var_index>(level + 1));
+
+            return manager::branch(level, std::move(c1), std::move(c0));
+        };
+
+        return rec(rec, f, 0);
     }
 
-    // Recursive helper
-    auto complement_rec(edge_ptr const& f, var_index level) -> edge_ptr
-    {
-        if (level >= static_cast<var_index>(var_count()))
-        {
-            return (f == constant(0)) ? constant(1) : constant(0);
-        }
-
-        // Cofactors
-        auto f0 = subset0(f, level);
-        auto f1 = subset1(f, level);
-
-        auto c0 = complement_rec(f0, level + 1);
-        auto c1 = complement_rec(f1, level + 1);
-
-        return manager::branch(level, std::move(c1), std::move(c0));
-    }
-
-    //  recursive difference function: P \ Q
+    // recursive difference function: P \ Q
     // P \ Q = (P0 \ Q0) + x(P1 \ Q1)
     auto diff_recursive(edge_ptr const& P, edge_ptr const& Q) -> edge_ptr
     {
@@ -296,11 +288,10 @@ class zdd_manager final : public detail::manager<bool, bool>
         if (Q == constant(0)) return P;
         if (P == Q) return constant(0);
 
-        // If P=1 ({{}}), result is 1 if Q doesn't contain {{}}, else 0
         auto const x = top_var(P, Q);
 
-        auto r0 = diff_recursive(subset0(P, x), subset0(Q, x));
-        auto r1 = diff_recursive(subset1(P, x), subset1(Q, x));
+        auto r0 = diff_recursive(this->cof(P, x, false), this->cof(Q, x, false));
+        auto r1 = diff_recursive(this->cof(P, x, true), this->cof(Q, x, true));
 
         return manager::branch(x, std::move(r1), std::move(r0));
     }
@@ -351,11 +342,15 @@ class zdd_manager final : public detail::manager<bool, bool>
 
     [[nodiscard]] auto denorm_high(edge_ptr const& f) -> edge_ptr override
     {
-        assert(f); assert(!f->is_const()); return f->ch()->br().hi;
+        assert(f);
+        assert(!f->is_const());
+        return f->ch()->br().hi;
     }
     [[nodiscard]] auto denorm_low(edge_ptr const& f) -> edge_ptr override
     {
-        assert(f); assert(!f->is_const()); return f->ch()->br().lo;
+        assert(f);
+        assert(!f->is_const());
+        return f->ch()->br().lo;
     }
 
     [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const&, expansion) const -> bool override
@@ -371,19 +366,6 @@ class zdd_manager final : public detail::manager<bool, bool>
         return a ? constant(0) : f;  // ZDD: hi-cofactor=0 when variable missing, lo-cofactor=f
     }
 
-    // get subsets not containing variable x
-    [[nodiscard]] auto subset0(edge_ptr const& S, var_index const x) -> edge_ptr
-    {
-        return this->cof(S, x, false);
-    }
-
-    // get subsets containing variable x
-    [[nodiscard]] auto subset1(edge_ptr const& S, var_index const x) -> edge_ptr
-    {
-        return this->cof(S, x, true);
-    }
-
-    // Difference wrapper for operator-=
     auto diff(edge_ptr const& a, edge_ptr const& b) -> edge_ptr
     {
         return diff_recursive(a, b);
@@ -454,4 +436,4 @@ inline auto zdd::dump_dot(std::ostream& os) const
     mgr->dump_dot({*this}, {}, os);
 }
 
-} // namespace freddy
+}  // namespace freddy
