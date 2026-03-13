@@ -101,7 +101,7 @@ class zdd final
     [[nodiscard]] auto is_zero() const noexcept;
     [[nodiscard]] auto is_one() const noexcept;
 
-    // BDD basic.cpp style evaluation (truth-table)
+    // BDD basic.cpp evaluation 
     [[nodiscard]] auto eval(std::vector<bool> const& as) const noexcept -> bool;
 
     [[nodiscard]] auto size() const;
