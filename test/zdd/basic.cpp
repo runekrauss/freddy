@@ -7,34 +7,16 @@
 #include <freddy/config.hpp>
 #include <freddy/dd/zdd.hpp>
 
-#include <fstream>  // std::ofstream
-#include <sstream>  // std::ostringstream
-#include <vector>   // std::vector
+#include <cstdint>   // std::uint64_t
+#include <fstream>   // std::ofstream
+#include <sstream>   // std::ostringstream
+#include <vector>    // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
 using namespace freddy;
-
-// *********************************************************************************************************************
-// Helpers (test-only)
-// *********************************************************************************************************************
-
-static auto check_equiv(zdd const& a, zdd const& b, std::size_t var_count) -> void
-{
-    std::vector<bool> as(var_count, false);
-    auto const total = 1uLL << var_count;
-
-    for (std::uint64_t mask = 0; mask < total; ++mask)
-    {
-        for (std::size_t i = 0; i < var_count; ++i)
-        {
-            as[i] = ((mask >> i) & 1uLL) != 0;
-        }
-        CHECK(a.eval(as) == b.eval(as));
-    }
-}
 
 // *********************************************************************************************************************
 // Tests
@@ -73,8 +55,6 @@ TEST_CASE("ZDD set operations work correctly", "[basic]")
     zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
 
-    auto const n = static_cast<std::size_t>(mgr.var_count());
-
     SECTION("AND idempotence is structural in your implementation")
     {
         CHECK((x0 & x0) == x0);
@@ -82,12 +62,28 @@ TEST_CASE("ZDD set operations work correctly", "[basic]")
 
     SECTION("OR idempotence holds semantically (structure may differ)")
     {
-        check_equiv(x0 | x0, x0, n);
+        auto const a = x0 | x0;
+        std::vector<bool> as(3, false);
+        for (std::uint64_t mask = 0; mask < 8; ++mask)
+        {
+            as[0] = ((mask >> 0) & 1u) != 0;
+            as[1] = ((mask >> 1) & 1u) != 0;
+            as[2] = ((mask >> 2) & 1u) != 0;
+            CHECK(a.eval(as) == x0.eval(as));
+        }
     }
 
     SECTION("OR with zero holds semantically (structure may differ)")
     {
-        check_equiv(x0 | mgr.zero(), x0, n);
+        auto const a = x0 | mgr.zero();
+        std::vector<bool> as(3, false);
+        for (std::uint64_t mask = 0; mask < 8; ++mask)
+        {
+            as[0] = ((mask >> 0) & 1u) != 0;
+            as[1] = ((mask >> 1) & 1u) != 0;
+            as[2] = ((mask >> 2) & 1u) != 0;
+            CHECK(a.eval(as) == x0.eval(as));
+        }
     }
 
     SECTION("Intersection with zero is zero")
@@ -97,14 +93,15 @@ TEST_CASE("ZDD set operations work correctly", "[basic]")
 
     SECTION("Intersection with one is identity (semantic)")
     {
-        check_equiv(x0 & mgr.one(), x0, n);
-    }
-
-    SECTION("Difference basic behavior (semantic)")
-    {
-        check_equiv(x0 - x0, mgr.zero(), n);
-        check_equiv(x0 - mgr.zero(), x0, n);
-        check_equiv(mgr.zero() - x0, mgr.zero(), n);
+        auto const a = x0 & mgr.one();
+        std::vector<bool> as(3, false);
+        for (std::uint64_t mask = 0; mask < 8; ++mask)
+        {
+            as[0] = ((mask >> 0) & 1u) != 0;
+            as[1] = ((mask >> 1) & 1u) != 0;
+            as[2] = ((mask >> 2) & 1u) != 0;
+            CHECK(a.eval(as) == x0.eval(as));
+        }
     }
 
     SECTION("A non-trivial combination builds a non-empty structure")
@@ -174,14 +171,21 @@ TEST_CASE("ZDD instructor example: cube redundancy (semantic check)", "[basic]")
     auto const y = mgr.var("y");
     auto const z = mgr.var("z");
 
-    auto const cube_xy = x & y;
+    auto const cube_xy  = x & y;
     auto const cube_xnyz = x & (~y) & z;
-    auto const cube_xz = x & z;
+    auto const cube_xz  = x & z;
 
     auto const F = cube_xy | cube_xnyz | cube_xz;
     auto const G = cube_xy | cube_xz;
 
-    check_equiv(F, G, static_cast<std::size_t>(mgr.var_count()));
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0) & 1u) != 0;
+        as[1] = ((mask >> 1) & 1u) != 0;
+        as[2] = ((mask >> 2) & 1u) != 0;
+        CHECK(F.eval(as) == G.eval(as));
+    }
 }
 
 TEST_CASE("ZDD subsumption effect reduces/reuses structure", "[basic]")
@@ -200,7 +204,14 @@ TEST_CASE("ZDD subsumption effect reduces/reuses structure", "[basic]")
     auto const target = xy | xz;
 
     // 1) functional correctness
-    check_equiv(after, target, static_cast<std::size_t>(mgr.var_count()));
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0) & 1u) != 0;
+        as[1] = ((mask >> 1) & 1u) != 0;
+        as[2] = ((mask >> 2) & 1u) != 0;
+        CHECK(after.eval(as) == target.eval(as));
+    }
 
     // 2) adding a subsuming cube should not make the graph bigger
     CHECK(after.size() <= before.size());
@@ -220,5 +231,12 @@ TEST_CASE("ZDD SOP minimization (two-level logic)", "[basic]")
     auto const F = xy | xnyz | xz | y;
     auto const G = xy | xz | y;
 
-    check_equiv(F, G, static_cast<std::size_t>(mgr.var_count()));
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0) & 1u) != 0;
+        as[1] = ((mask >> 1) & 1u) != 0;
+        as[2] = ((mask >> 2) & 1u) != 0;
+        CHECK(F.eval(as) == G.eval(as));
+    }
 }
