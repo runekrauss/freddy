@@ -38,7 +38,6 @@ class zdd final
 
     auto operator&=(zdd const&) -> zdd&;
     auto operator|=(zdd const&) -> zdd&;
-    auto operator-=(zdd const&) -> zdd&;
 
     // negation (Complement)
     auto operator~() const -> zdd;
@@ -52,12 +51,6 @@ class zdd final
     friend auto operator|(zdd lhs, zdd const& rhs)
     {
         lhs |= rhs;
-        return lhs;
-    }
-
-    friend auto operator-(zdd lhs, zdd const& rhs)
-    {
-        lhs -= rhs;
         return lhs;
     }
 
@@ -284,22 +277,6 @@ class zdd_manager final : public detail::manager<bool, bool>
         return rec(rec, f, 0);
     }
 
-    // recursive difference function: P \ Q
-    // P \ Q = (P0 \ Q0) + x(P1 \ Q1)
-    auto diff_recursive(edge_ptr const& P, edge_ptr const& Q) -> edge_ptr
-    {
-        if (P == constant(0)) return constant(0);
-        if (Q == constant(0)) return P;
-        if (P == Q) return constant(0);
-
-        auto const x = top_var(P, Q);
-
-        auto r0 = diff_recursive(this->cof(P, x, false), this->cof(Q, x, false));
-        auto r1 = diff_recursive(this->cof(P, x, true), this->cof(Q, x, true));
-
-        return manager::branch(x, std::move(r1), std::move(r0));
-    }
-
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         return conj(f, g);
@@ -369,11 +346,6 @@ class zdd_manager final : public detail::manager<bool, bool>
     {
         return a ? constant(0) : f;  // ZDD: hi-cofactor=0 when variable missing, lo-cofactor=f
     }
-
-    auto diff(edge_ptr const& a, edge_ptr const& b) -> edge_ptr
-    {
-        return diff_recursive(a, b);
-    }
 };
 
 // =====================================================================================================================
@@ -393,14 +365,6 @@ inline auto zdd::operator|=(zdd const& rhs) -> zdd&
     assert(mgr);
     assert(mgr == rhs.mgr);
     f = mgr->disj(f, rhs.f);
-    return *this;
-}
-
-inline auto zdd::operator-=(zdd const& rhs) -> zdd&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-    f = mgr->diff(f, rhs.f);
     return *this;
 }
 
