@@ -1,22 +1,23 @@
 #pragma once
+
 // *********************************************************************************************************************
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/config.hpp"                 // config, var_index
+#include "freddy/config.hpp"                 // config
 #include "freddy/detail/manager.hpp"         // detail::manager
 #include "freddy/detail/node.hpp"            // detail::edge_ptr
 #include "freddy/detail/operation/conj.hpp"  // detail::conj
 #include "freddy/expansion.hpp"              // expansion::S
 
-#include <algorithm>
-#include <array>
-#include <cassert>
-#include <iostream>
-#include <string>
-#include <string_view>
-#include <utility>
-#include <vector>
+#include <algorithm>    // std::ranges::transform
+#include <array>        // std::array
+#include <cassert>      // assert
+#include <iostream>     // std::cout
+#include <string>       // std::string
+#include <string_view>  // std::string_view
+#include <utility>      // std::forward
+#include <vector>       // std::vector
 
 namespace freddy
 {
@@ -65,6 +66,14 @@ class zdd final
         return !(lhs == rhs);
     }
 
+    [[nodiscard]] auto same_node(zdd const& g) const noexcept
+    {
+        assert(f);
+        assert(mgr == g.mgr);
+
+        return f->ch() == g.f->ch();
+    }
+
     [[nodiscard]] auto is_const() const noexcept
     {
         assert(f);
@@ -94,11 +103,22 @@ class zdd final
     [[nodiscard]] auto is_zero() const noexcept;
     [[nodiscard]] auto is_one() const noexcept;
 
-    // BDD basic.cpp evaluation 
     [[nodiscard]] auto eval(std::vector<bool> const& as) const noexcept -> bool;
 
     [[nodiscard]] auto size() const;
     [[nodiscard]] auto depth() const;
+
+    [[nodiscard]] auto path_count() const noexcept;
+
+    [[nodiscard]] auto is_essential(var_index) const noexcept;
+
+    [[nodiscard]] auto compose(var_index, zdd const&) const;
+
+    [[nodiscard]] auto restr(var_index, bool) const;
+
+    [[nodiscard]] auto exist(var_index) const;
+
+    [[nodiscard]] auto forall(var_index) const;
 
     auto dump_dot(std::ostream& = std::cout) const;
 
@@ -189,17 +209,6 @@ class zdd_manager final : public detail::manager<bool, bool>
         return fs;
     }
 
-    // if variable not present, return f itself ("don't care")
-    auto bdd_cof(edge_ptr const& f, var_index const x, bool positive) -> edge_ptr
-    {
-        if (f->is_const() || f->ch()->br().x != x)
-        {
-            return f;  // BDD: variable not present -> return f
-        }
-        return positive ? denorm_high(f) : denorm_low(f);
-    }
-
-    // Conjunction copied from BDD
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         assert(f);
@@ -230,23 +239,28 @@ class zdd_manager final : public detail::manager<bool, bool>
 
         auto const x = top_var(f, g);
 
-        op.set_result(branch(x, conj(bdd_cof(f, x, true), bdd_cof(g, x, true)),
-                            conj(bdd_cof(f, x, false), bdd_cof(g, x, false))));
+        // Use cof() from manager directly (no separate bdd_cof needed)
+        auto const f_hi = (f->is_const() || f->ch()->br().x != x) ? f : denorm_high(f);
+        auto const f_lo = (f->is_const() || f->ch()->br().x != x) ? f : denorm_low(f);
+        auto const g_hi = (g->is_const() || g->ch()->br().x != x) ? g : denorm_high(g);
+        auto const g_lo = (g->is_const() || g->ch()->br().x != x) ? g : denorm_low(g);
+        // -----------------------------------
+
+        op.set_result(branch(x, conj(f_hi, g_hi), conj(f_lo, g_lo)));
         return cache(std::move(op))->get_result();
     }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
-        auto const rec = [this](auto&& self, edge_ptr const& ff, edge_ptr const& gg, var_index level) -> edge_ptr {
+        auto const rec = [this](auto&& self, edge_ptr const& ff, edge_ptr const& gg, var_index level) -> edge_ptr
+        {
             if (level >= static_cast<var_index>(var_count()))
-            {
                 return (ff == constant(0) && gg == constant(0)) ? constant(0) : constant(1);
-            }
 
             auto f_hi = (!ff->is_const() && ff->ch()->br().x == level) ? denorm_high(ff) : ff;
-            auto f_lo = (!ff->is_const() && ff->ch()->br().x == level) ? denorm_low(ff) : ff;
+            auto f_lo = (!ff->is_const() && ff->ch()->br().x == level) ? denorm_low(ff)  : ff;
             auto g_hi = (!gg->is_const() && gg->ch()->br().x == level) ? denorm_high(gg) : gg;
-            auto g_lo = (!gg->is_const() && gg->ch()->br().x == level) ? denorm_low(gg) : gg;
+            auto g_lo = (!gg->is_const() && gg->ch()->br().x == level) ? denorm_low(gg)  : gg;
 
             auto hi = self(self, f_hi, g_hi, static_cast<var_index>(level + 1));
             auto lo = self(self, f_lo, g_lo, static_cast<var_index>(level + 1));
@@ -257,24 +271,16 @@ class zdd_manager final : public detail::manager<bool, bool>
         return rec(rec, f, g, 0);
     }
 
+    // Complement: recursive over ZDD structure
     auto complement(edge_ptr const& f) -> edge_ptr override
     {
-        auto const rec = [this](auto&& self, edge_ptr const& ff, var_index level) -> edge_ptr {
-            if (level >= static_cast<var_index>(var_count()))
-            {
-                return (ff == constant(0)) ? constant(1) : constant(0);
-            }
+        if (f == constant(0)) return constant(1);
+        if (f == constant(1)) return constant(0);
 
-            auto f0 = this->cof(ff, level, false);
-            auto f1 = this->cof(ff, level, true);
-
-            auto c0 = self(self, f0, static_cast<var_index>(level + 1));
-            auto c1 = self(self, f1, static_cast<var_index>(level + 1));
-
-            return manager::branch(level, std::move(c1), std::move(c0));
-        };
-
-        return rec(rec, f, 0);
+        auto const x = f->ch()->br().x;
+        auto hi = complement(cof(f, x, true));
+        auto lo = complement(cof(f, x, false));
+        return branch(x, std::move(hi), std::move(lo));
     }
 
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -287,7 +293,6 @@ class zdd_manager final : public detail::manager<bool, bool>
         return disj(f, g);
     }
 
-    // Rest of standard overrides
     [[nodiscard]] auto agg(bool const&, bool const& val) const -> bool override
     {
         return val;
@@ -344,7 +349,7 @@ class zdd_manager final : public detail::manager<bool, bool>
     }
     [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const -> edge_ptr override
     {
-        return a ? constant(0) : f;  // ZDD: hi-cofactor=0 when variable missing, lo-cofactor=f
+        return a ? constant(0) : f;
     }
 };
 
@@ -410,6 +415,49 @@ inline auto zdd::depth() const
 {
     assert(mgr);
     return mgr->depth({*this});
+}
+
+inline auto zdd::path_count() const noexcept
+{
+    assert(mgr);
+
+    return mgr->path_count(f);
+}
+
+inline auto zdd::is_essential(var_index const x) const noexcept
+{
+    assert(mgr);
+
+    return mgr->is_essential(f, x);
+}
+
+inline auto zdd::compose(var_index const x, zdd const& g) const
+{
+    assert(mgr);
+    assert(mgr == g.mgr);
+
+    return zdd{mgr->compose(f, x, g.f), mgr};
+}
+
+inline auto zdd::restr(var_index const x, bool const a) const
+{
+    assert(mgr);
+
+    return zdd{mgr->restr(f, x, a), mgr};
+}
+
+inline auto zdd::exist(var_index const x) const
+{
+    assert(mgr);
+
+    return zdd{mgr->exist(f, x), mgr};
+}
+
+inline auto zdd::forall(var_index const x) const
+{
+    assert(mgr);
+
+    return zdd{mgr->forall(f, x), mgr};
 }
 
 inline auto zdd::dump_dot(std::ostream& os) const
