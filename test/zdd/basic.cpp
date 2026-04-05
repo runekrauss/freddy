@@ -1,26 +1,13 @@
-// *********************************************************************************************************************
-// Includes
-// *********************************************************************************************************************
-
 #include <catch2/catch_test_macros.hpp>
 
 #include <freddy/config.hpp>
 #include <freddy/dd/zdd.hpp>
 
-#include <cstdint>   // std::uint64_t
-#include <fstream>   // std::ofstream
-#include <sstream>   // std::ostringstream
-#include <vector>    // std::vector
-
-// *********************************************************************************************************************
-// Namespaces
-// *********************************************************************************************************************
+#include <cstdint>
+#include <sstream>
+#include <vector>
 
 using namespace freddy;
-
-// *********************************************************************************************************************
-// Tests
-// *********************************************************************************************************************
 
 TEST_CASE("ZDD is constructed", "[basic]")
 {
@@ -55,12 +42,12 @@ TEST_CASE("ZDD set operations work correctly", "[basic]")
     zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
 
-    SECTION("AND idempotence is structural in your implementation")
+    SECTION("AND idempotence is structural")
     {
         CHECK((x0 & x0) == x0);
     }
 
-    SECTION("OR idempotence holds semantically (structure may differ)")
+    SECTION("OR idempotence holds semantically")
     {
         auto const a = x0 | x0;
         std::vector<bool> as(3, false);
@@ -73,7 +60,7 @@ TEST_CASE("ZDD set operations work correctly", "[basic]")
         }
     }
 
-    SECTION("OR with zero holds semantically (structure may differ)")
+    SECTION("OR with zero holds semantically")
     {
         auto const a = x0 | mgr.zero();
         std::vector<bool> as(3, false);
@@ -163,6 +150,93 @@ TEST_CASE("ZDD can be visualized", "[basic]")
     CHECK(oss.str().find("digraph") != std::string::npos);
 }
 
+TEST_CASE("ZDD De Morgan identity holds", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var("x0");
+    auto const x1 = mgr.var("x1");
+    auto const x2 = mgr.var("x2");
+
+    auto const lhs = ~(x0 | x1);
+    auto const rhs = (~x0) & (~x1);
+
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0) & 1u) != 0;
+        as[1] = ((mask >> 1) & 1u) != 0;
+        as[2] = ((mask >> 2) & 1u) != 0;
+        CHECK(lhs.eval(as) == rhs.eval(as));
+    }
+}
+
+TEST_CASE("ZDD can be characterized (extended)", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+    auto const f = x0 | x1 | x2;
+
+    SECTION("Number of paths is computed")
+    {
+        CHECK(f.path_count() >= 1);
+    }
+
+    SECTION("Essential variables are identifiable")
+    {
+        CHECK(x0.is_essential(0));
+        CHECK_FALSE(x0.is_essential(1));
+        CHECK(x1.is_essential(1));
+        CHECK(x2.is_essential(2));
+    }
+
+    SECTION("same_node detects structural identity")
+    {
+        auto const g = x0;
+        CHECK(x0.same_node(g));
+        CHECK_FALSE(x0.same_node(x1));
+    }
+}
+
+TEST_CASE("ZDD is substituted", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+
+    SECTION("Variable is restricted to constant")
+    {
+        auto const g = x0.restr(0, false);
+        CHECK(g.is_zero());
+
+        auto const h = x0.restr(0, true);
+        CHECK(h.is_one());
+    }
+
+    SECTION("Variable is replaced by function (compose)")
+    {
+        auto const g = x0.compose(0, x0);
+        std::vector<bool> as(3, false);
+        for (std::uint64_t mask = 0; mask < 8; ++mask)
+        {
+            as[0] = ((mask >> 0) & 1u) != 0;
+            as[1] = ((mask >> 1) & 1u) != 0;
+            as[2] = ((mask >> 2) & 1u) != 0;
+            CHECK(g.eval(as) == x0.eval(as));
+        }
+    }
+
+    SECTION("Variable is eliminated by existential quantification")
+    {
+        auto const g = x0.exist(0);
+        CHECK_FALSE(g.is_zero());
+    }
+
+    SECTION("Variable is eliminated by universal quantification")
+    {
+        auto const g = x0.forall(0);
+        CHECK(g.is_zero());
+    }
+}
+
 TEST_CASE("ZDD instructor example: cube redundancy (semantic check)", "[basic]")
 {
     // Cubes: xy, x!yz, xz  => x!yz redundant when xz present.
@@ -171,9 +245,9 @@ TEST_CASE("ZDD instructor example: cube redundancy (semantic check)", "[basic]")
     auto const y = mgr.var("y");
     auto const z = mgr.var("z");
 
-    auto const cube_xy  = x & y;
+    auto const cube_xy   = x & y;
     auto const cube_xnyz = x & (~y) & z;
-    auto const cube_xz  = x & z;
+    auto const cube_xz   = x & z;
 
     auto const F = cube_xy | cube_xnyz | cube_xz;
     auto const G = cube_xy | cube_xz;
@@ -203,7 +277,7 @@ TEST_CASE("ZDD subsumption effect reduces/reuses structure", "[basic]")
     auto const after  = before | xz;
     auto const target = xy | xz;
 
-    // 1) functional correctness
+    // functional correctness
     std::vector<bool> as(3, false);
     for (std::uint64_t mask = 0; mask < 8; ++mask)
     {
@@ -213,7 +287,7 @@ TEST_CASE("ZDD subsumption effect reduces/reuses structure", "[basic]")
         CHECK(after.eval(as) == target.eval(as));
     }
 
-    // 2) adding a subsuming cube should not make the graph bigger
+    // adding a subsuming cube should not increase graph size
     CHECK(after.size() <= before.size());
 }
 
@@ -228,6 +302,7 @@ TEST_CASE("ZDD SOP minimization (two-level logic)", "[basic]")
     auto const xnyz = x & (~y) & z;
     auto const xz   = x & z;
 
+    // F = xy + x!yz + xz + y  =>  G = xy + xz + y  (x!yz redundant)
     auto const F = xy | xnyz | xz | y;
     auto const G = xy | xz | y;
 
