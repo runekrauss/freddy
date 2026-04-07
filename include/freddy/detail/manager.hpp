@@ -832,11 +832,6 @@ class manager
                 } else if (vlist[lvl2var[counter]].t == expansion::nD) {
                     write_bits(int_to_bits(2,2), byte_to_safe, byte_pos, file);
                 }
-
-                int x = 0;
-                if (x == true){
-                    write_bits(int_to_bits(2,2), byte_to_safe, byte_pos, file);
-                }
             }
             counter++;
             for (edge_ptr e : var_edges){
@@ -867,6 +862,7 @@ class manager
 
         int ver = bits_to_int(read_bits(4, byte_to_read, byte_pos, read_file)); //version
         assert(ver == 1);
+        (void)ver;
 
         int edge_amount = bits_to_int(read_bits(32, byte_to_read, byte_pos, read_file)); //#edges
 
@@ -877,14 +873,13 @@ class manager
             var(expansion::S, {});
         }
 
-
         size_t counter = 0;
         std::vector<std::tuple<int, int, EWeight, int, NValue>> edge_list;
         for (int v = 0; v < var_amount; v++) {
             int var_x_amount = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //#varX
 
             if (v != var_amount - 1) {
-                int var_x_type = bits_to_int(read_bits(2, byte_to_read, byte_pos, read_file));
+                size_t var_x_type = bits_to_int(read_bits(2, byte_to_read, byte_pos, read_file));
 
                 if (var_x_type == 0){
                     if (this->var_count() < counter){
