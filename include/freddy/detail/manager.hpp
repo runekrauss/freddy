@@ -908,7 +908,7 @@ class manager
                 }
             }
 
-            for (int x = 0; x < var_x_amount; x++){
+            for (size_t x = 0; x < var_x_amount; x++){
                 if (v == var_amount - 1){
                     NValue value = from_bits<NValue>(read_bits(sizeof(NValue) * 8, byte_to_read, byte_pos, read_file)); // leaf value
                     EWeight weight = from_bits<EWeight>(read_bits(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file)); // weight
