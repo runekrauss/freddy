@@ -817,7 +817,7 @@ class manager
         write_bits(int_to_bits(1, 4), byte_to_safe, byte_pos, file); //version
         write_bits(int_to_bits(edges.size(), 32), byte_to_safe, byte_pos, file); //#edges
 
-        const auto log_edges_size = std::ceil(log2(edges.size()));
+        const size_t log_edges_size = std::ceil(log2(edges.size()));
         write_bits(int_to_bits(sorted_edges.size(), 8), byte_to_safe, byte_pos, file); //#vars
 
         counter = 0;
@@ -861,13 +861,13 @@ class manager
         static unsigned char byte_to_read = 0;
         static int byte_pos = 0;
 
-        auto ver = bits_to_int(read_bits(4, byte_to_read, byte_pos, read_file)); //version
+        size_t ver = bits_to_int(read_bits(4, byte_to_read, byte_pos, read_file)); //version
         assert(ver == 1);
         (void)ver;
 
-        auto edge_amount = bits_to_int(read_bits(32, byte_to_read, byte_pos, read_file)); //#edges
+        size_t edge_amount = bits_to_int(read_bits(32, byte_to_read, byte_pos, read_file)); //#edges
 
-        auto log_edges_size = std::ceil(log2(edge_amount));
+        size_t log_edges_size = std::ceil(log2(edge_amount));
 
         size_t var_amount = bits_to_int(read_bits(8, byte_to_read, byte_pos, read_file)); //#vars
         for (size_t i = this->var_count(); i < var_amount -1; i++){
@@ -877,7 +877,7 @@ class manager
         size_t counter = 0;
         std::vector<std::tuple<int, int, EWeight, int, NValue>> edge_list;
         for (size_t v = 0; v < var_amount; v++) {
-            auto var_x_amount = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //#varX
+            size_t var_x_amount = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //#varX
 
             if (v != var_amount - 1) {
                 size_t var_x_type = bits_to_int(read_bits(2, byte_to_read, byte_pos, read_file));
@@ -908,7 +908,7 @@ class manager
                 }
             }
 
-            for (auto x = 0; x < var_x_amount; x++){
+            for (int x = 0; x < var_x_amount; x++){
                 if (v == var_amount - 1){
                     NValue value = from_bits<NValue>(read_bits(sizeof(NValue) * 8, byte_to_read, byte_pos, read_file)); // leaf value
                     EWeight weight = from_bits<EWeight>(read_bits(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file)); // weight
@@ -916,8 +916,8 @@ class manager
                     edge_list.emplace_back(-1, -1, weight, -1, value);
                 }
                 else {
-                    auto lo = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //lo edge address
-                    auto hi = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //hi edge address
+                    size_t lo = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //lo edge address
+                    size_t hi = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //hi edge address
 
                     EWeight weight = from_bits<EWeight>(read_bits(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file)); // weight
                     edge_list.emplace_back(lo, hi, weight, v, 0);
