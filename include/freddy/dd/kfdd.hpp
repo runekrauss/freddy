@@ -421,53 +421,6 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return w != val;  // XOR
     }
 
-    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
-    {
-        assert(x < var_count());
-        assert(hi);
-        assert(lo);
-
-        auto const t = decomposition(x);
-        edge_ptr r;
-        bool w{};
-
-        switch (t)
-        {
-            case expansion::S:
-                if (hi == lo)  // redundancy rule
-                {
-                    return hi;  // without limitation of generality
-                }
-
-                w = lo->weight();
-                if (!w)
-                {
-                    return uedge(w, unode(x, std::move(hi), std::move(lo)));
-                }
-                return uedge(w, unode(x, complement(hi), complement(lo)));
-
-            case expansion::pD:
-            case expansion::nD:
-                if (hi == constant(0))
-                {
-                    return lo;
-                }
-                if (lo->weight())
-                {
-                    w = lo->weight();
-                    r = uedge(w, unode(x, std::move(hi), complement(lo)));
-                }
-                else
-                {
-                    r = uedge(false, unode(x, std::move(hi), std::move(lo)));
-                }
-                break;
-
-            default: assert(false); std::unreachable();
-        }
-        return r;
-    }
-
     [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
     {
         return w1 != w2;
@@ -532,9 +485,34 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return cache(std::move(op))->get_result();
     }
 
+    [[nodiscard]] auto denorm_high(edge_ptr const& f) -> edge_ptr override
+    {
+        switch (decomposition(f->ch()->br().x))
+        {
+            case expansion::S: return apply(f->weight(), f->ch()->br().hi);
+            case expansion::pD:
+            case expansion::nD: return f->ch()->br().hi;
+            default: assert(false); std::unreachable();
+        }
+    }
+
+    [[nodiscard]] auto denorm_low(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
+    }
+
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         return complement(conj(complement(f), complement(g)));
+    }
+
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion const t) const noexcept -> edge_ptr override
+    {
+        if ((t == expansion::pD || t == expansion::nD) && a)  // dependent on two subtrees: f ^ f = 0
+        {
+            return constant(0);
+        }
+        return f;
     }
 
     auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr override
@@ -591,9 +569,52 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return conj(f, g);
     }
 
+    [[nodiscard]] auto norm_high(edge_ptr const& hi, bool, expansion const t) -> edge_ptr override
+    {
+        switch (t)
+        {
+            case expansion::S: return complement(hi);
+            case expansion::pD:
+            case expansion::nD: return hi;
+            default: assert(false); std::unreachable();
+        }
+    }
+
+    [[nodiscard]] auto norm_is_needed(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
+    {
+        return lo->weight();
+    }
+
+    [[nodiscard]] auto norm_low(edge_ptr const& lo, bool, expansion) -> edge_ptr override
+    {
+        return complement(lo);
+    }
+
+    [[nodiscard]] auto norm_weight(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
+    {
+        return lo->weight();
+    }
+
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         return antiv(f, g);
+    }
+
+    [[nodiscard]] auto reduced(edge_ptr const&, edge_ptr const& lo, expansion) noexcept -> edge_ptr override
+    {
+        return lo;
+    }
+
+    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const& lo,
+                                 expansion const t) const noexcept -> bool override
+    {
+        switch (t)
+        {
+            case expansion::S: return hi == lo;
+            case expansion::pD:
+            case expansion::nD: return hi == constant(0);
+            default: assert(false); std::unreachable();
+        }
     }
 
     [[nodiscard]] auto regw() const noexcept -> bool override

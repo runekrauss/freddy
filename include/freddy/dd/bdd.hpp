@@ -399,22 +399,6 @@ class bdd_manager final : public detail::manager<bool, bool>
         return w != val;  // XOR
     }
 
-    auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
-    {
-        assert(x < var_count());
-        assert(hi);
-        assert(lo);
-
-        if (hi == lo)  // redundancy rule
-        {
-            return hi;  // without limitation of generality
-        }
-
-        // normalization
-        auto const w = lo->weight();
-        return uedge(w, unode(x, !w ? std::move(hi) : complement(hi), !w ? std::move(lo) : complement(lo)));
-    }
-
     [[nodiscard]] auto comb(bool const& w1, bool const& w2) const noexcept -> bool override
     {
         return w1 != w2;
@@ -461,9 +445,24 @@ class bdd_manager final : public detail::manager<bool, bool>
         return cache(std::move(op))->get_result();
     }
 
+    auto denorm_high(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().hi);
+    }
+
+    auto denorm_low(edge_ptr const& f) -> edge_ptr override
+    {
+        return apply(f->weight(), f->ch()->br().lo);
+    }
+
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
         return complement(conj(complement(f), complement(g)));
+    }
+
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool, expansion) const noexcept -> edge_ptr override
+    {
+        return f;
     }
 
     auto ite(edge_ptr f, edge_ptr g, edge_ptr h) -> edge_ptr override
@@ -520,9 +519,39 @@ class bdd_manager final : public detail::manager<bool, bool>
         return conj(f, g);
     }
 
+    [[nodiscard]] auto norm_high(edge_ptr const& hi, bool const w, expansion) -> edge_ptr override
+    {
+        return apply(w, hi);
+    }
+
+    [[nodiscard]] auto norm_is_needed(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
+    {
+        return lo->weight();
+    }
+
+    [[nodiscard]] auto norm_low(edge_ptr const& lo, bool const w, expansion) -> edge_ptr override
+    {
+        return apply(w, lo);
+    }
+
+    [[nodiscard]] auto norm_weight(edge_ptr const&, edge_ptr const& lo) const noexcept -> bool override
+    {
+        return lo->weight();
+    }
+
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
     {
         return antiv(f, g);
+    }
+
+    [[nodiscard]] auto reduced(edge_ptr const& hi, edge_ptr const&, expansion) noexcept -> edge_ptr override
+    {
+        return hi;  // without limitation of generality
+    }
+
+    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const& lo, expansion) const noexcept -> bool override
+    {  // redundancy rule
+        return hi == lo;
     }
 
     [[nodiscard]] auto regw() const noexcept -> bool override
