@@ -41,7 +41,7 @@ if(NOT Boost_FOUND)
   message(STATUS "Fetching/Preparing Boost modules")
 
   set(BOOST_ENABLE_CMAKE ON)
-  set(BOOST_INCLUDE_LIBRARIES algorithm safe_numerics smart_ptr unordered, dynamic_bitset) # dummies to avoid full Boost configuration
+  set(BOOST_INCLUDE_LIBRARIES algorithm safe_numerics smart_ptr unordered dynamic_bitset) # dummies to avoid full Boost configuration
 
   FetchContent_Declare(Boost
     URL https://github.com/boostorg/boost/releases/download/boost-1.90.0/boost-1.90.0-cmake.tar.xz # performance reasons

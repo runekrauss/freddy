@@ -765,7 +765,7 @@ class manager
         }
 
         std::unordered_map<edge_ptr, int> edge_map;
-        int counter = 0;
+        size_t counter = 0;
         for (auto var_edges : sorted_edges) {
             for (auto e : var_edges) {
                 edge_map[e] = counter;
@@ -783,9 +783,25 @@ class manager
 
         const int log_edges_size = std::ceil(log2(edges.size()));
         write_bits(int_to_bits(sorted_edges.size(), 8), byte_to_safe, byte_pos, file); //#vars
+
         counter = 0;
         for (std::vector<edge_ptr> var_edges : sorted_edges){
             write_bits(int_to_bits(var_edges.size(), log_edges_size), byte_to_safe, byte_pos, file); //#varX
+
+            if (counter < sorted_edges.size() -1){
+                if (vlist[lvl2var[counter]].t == expansion::S){
+                    write_bits(int_to_bits(0,2), byte_to_safe, byte_pos, file);
+                } else if (vlist[lvl2var[counter]].t == expansion::pD) {
+                    write_bits(int_to_bits(1,2), byte_to_safe, byte_pos, file);
+                } else if (vlist[lvl2var[counter]].t == expansion::nD) {
+                    write_bits(int_to_bits(2,2), byte_to_safe, byte_pos, file);
+                }
+
+                int x = 0;
+                if (x == true){
+                    write_bits(int_to_bits(2,2), byte_to_safe, byte_pos, file);
+                }
+            }
             counter++;
             for (edge_ptr e : var_edges){
                 if (e->v->is_const()){
@@ -825,9 +841,41 @@ class manager
             var(expansion::S, {});
         }
 
+
+        size_t counter = 0;
         std::vector<std::tuple<int, int, EWeight, int, NValue>> edge_list;
         for (int v = 0; v < var_amount; v++) {
             int var_x_amount = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //#varX
+
+            if (v != var_amount - 1) {
+                int var_x_type = bits_to_int(read_bits(2, byte_to_read, byte_pos, read_file));
+
+                if (var_x_type == 0){
+                    if (this->var_count() < counter){
+                        var(expansion::S, {});
+                    }
+                    else {
+                        assert(vlist[lvl2var[counter]].t == expansion::S);
+                    }
+                }
+                else if (var_x_type == 1) {
+                    if (this->var_count() < counter){
+                        var(expansion::pD, {});
+                    }
+                    else {
+                        assert(vlist[lvl2var[counter]].t == expansion::pD);
+                    }
+                }
+                else if (var_x_type == 2) {
+                    if (this->var_count() < counter){
+                        var(expansion::nD, {});
+                    }
+                    else {
+                        assert(vlist[lvl2var[counter]].t == expansion::nD);
+                    }
+                }
+            }
+
             for (int x = 0; x < var_x_amount; x++){
                 if (v == var_amount - 1){
                     NValue value = from_bits<NValue>(read_bits(sizeof(NValue) * 8, byte_to_read, byte_pos, read_file)); // leaf value
@@ -941,7 +989,7 @@ class manager
     }
 
     void write_bits(const boost::dynamic_bitset<>& bits, uint8_t& byte, int& pos, std::ofstream& file) const{
-        for (auto i = 0; i < bits.size(); i++){
+        for (size_t i = 0; i < bits.size(); i++){
             write_bit(bits[i], byte, pos, file);
         }
     }
