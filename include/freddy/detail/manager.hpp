@@ -801,7 +801,7 @@ class manager
         }
 
         std::unordered_map<edge_ptr, int> edge_map;
-        size_t counter = 0;
+        auto counter = 0;
         for (auto var_edges : sorted_edges) {
             for (auto e : var_edges) {
                 edge_map[e] = counter;
@@ -817,7 +817,7 @@ class manager
         write_bits(int_to_bits(1, 4), byte_to_safe, byte_pos, file); //version
         write_bits(int_to_bits(edges.size(), 32), byte_to_safe, byte_pos, file); //#edges
 
-        const int log_edges_size = std::ceil(log2(edges.size()));
+        const auto log_edges_size = std::ceil(log2(edges.size()));
         write_bits(int_to_bits(sorted_edges.size(), 8), byte_to_safe, byte_pos, file); //#vars
 
         counter = 0;
@@ -864,11 +864,11 @@ class manager
         assert(ver == 1);
         (void)ver;
 
-        int edge_amount = bits_to_int(read_bits(32, byte_to_read, byte_pos, read_file)); //#edges
+        auto edge_amount = bits_to_int(read_bits(32, byte_to_read, byte_pos, read_file)); //#edges
 
-        int log_edges_size = std::ceil(log2(edge_amount));
+        auto log_edges_size = std::ceil(log2(edge_amount));
 
-        int var_amount = bits_to_int(read_bits(8, byte_to_read, byte_pos, read_file)); //#vars
+        auto var_amount = bits_to_int(read_bits(8, byte_to_read, byte_pos, read_file)); //#vars
         for (int i = this->var_count(); i < var_amount -1; i++){
             var(expansion::S, {});
         }
@@ -1011,7 +1011,7 @@ class manager
         }
     }
 
-    auto int_to_bits(int value, int size) const {
+    auto int_to_bits(size_t value, size_t size) const {
         return boost::dynamic_bitset<>(size, value);
     }
 
