@@ -865,9 +865,9 @@ class manager
         assert(ver == 1);
         (void)ver;
 
-        size_t edge_amount = bits_to_int(read_bits(32, byte_to_read, byte_pos, read_file)); //#edges
+        auto edge_amount = bits_to_int(read_bits(32, byte_to_read, byte_pos, read_file)); //#edges
 
-        size_t log_edges_size = std::ceil(log2(edge_amount));
+        auto log_edges_size = std::ceil(log2(edge_amount));
 
         size_t var_amount = bits_to_int(read_bits(8, byte_to_read, byte_pos, read_file)); //#vars
         for (size_t i = this->var_count(); i < var_amount -1; i++){
@@ -879,6 +879,7 @@ class manager
         for (size_t v = 0; v < var_amount; v++) {
             size_t var_x_amount = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //#varX
 
+            counter++;
             if (v != var_amount - 1) {
                 size_t var_x_type = bits_to_int(read_bits(2, byte_to_read, byte_pos, read_file));
 
@@ -1016,22 +1017,22 @@ class manager
         return boost::dynamic_bitset<>(size, value);
     }
 
-    auto bits_to_int(boost::dynamic_bitset<> bits) const{
+    auto bits_to_int(const boost::dynamic_bitset<>& bits) const{
         return static_cast<int>(bits.to_ulong());
     }
 
     void write_bits(const boost::dynamic_bitset<>& bits, uint8_t& byte, int& pos, std::ofstream& file) const{
-        for (size_t i = 0; i < bits.size(); i++){
-            write_bit(bits[i], byte, pos, file);
+        for (bool bit : bits) {
+            write_bit(bit, byte, pos, file);
         }
     }
 
     void write_bit(bool bit, uint8_t& byte, int& pos, std::ofstream& file) const{
-        byte |= (bit << pos);
+        byte |= static_cast<uint8_t>(static_cast<unsigned int>(bit) << static_cast<unsigned int>(pos));
 
         pos++;
         if (pos == 8){
-            file.put(byte);
+            file.put(static_cast<char>(byte));
             byte = 0;
             pos = 0;
         }
@@ -1055,8 +1056,8 @@ class manager
             pos = 8;
         }
 
-        const bool bit = byte & 1;
-        byte >>= 1;
+        const bool bit = static_cast<bool>(byte & 1u);
+        byte >>= 1u;
         pos--;
         return bit;
     }
@@ -1078,10 +1079,10 @@ class manager
     auto to_bits(const C& object) const -> boost::dynamic_bitset<> {
         boost::dynamic_bitset<> bits(sizeof(C) * 8);
 
-        const unsigned char* object_address = reinterpret_cast<const unsigned char*>(&object);
+        auto object_address = std::bit_cast<std::array<unsigned char, sizeof(C)>>(object);
         for (size_t byte = 0; byte < sizeof(NValue); byte++) {
             for (size_t bit = 0; bit < 8; bit++) {
-                bits[byte*8 + bit] = (object_address[byte] >> bit) & 1;
+                bits[byte*8 + bit] = (static_cast<unsigned>(object_address[byte]) >> bit) & 1u;
             }
         }
         return bits;
@@ -1091,7 +1092,7 @@ class manager
     auto from_bits(const boost::dynamic_bitset<>& bits) -> C {
         C object{};
 
-        unsigned char* object_address = reinterpret_cast<unsigned char*>(&object);
+        auto object_address = reinterpret_cast<unsigned char*>(&object);
         for (size_t byte = 0; byte < sizeof(C); byte++) {
             object_address[byte] = 0;
             for (size_t bit = 0; bit < 8; bit++) {
