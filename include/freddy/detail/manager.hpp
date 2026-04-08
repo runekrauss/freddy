@@ -792,7 +792,7 @@ class manager
         save_all_edges(edges, f);
 
         std::vector<std::vector<edge_ptr>> sorted_edges(this->var_count() +1);
-        for (edge_ptr e : edges){
+        for (const edge_ptr e : edges){
             if (e->v->is_const()){
                 sorted_edges.back().push_back(e);
             } else {
@@ -802,14 +802,14 @@ class manager
 
         std::unordered_map<edge_ptr, size_t> edge_map;
         size_t counter = 0;
-        for (auto var_edges : sorted_edges) {
-            for (auto e : var_edges) {
+        for (const auto var_edges : sorted_edges) {
+            for (const auto e : var_edges) {
                 edge_map[e] = counter;
                 counter++;
             }
         }
 
-        uint8_t byte_to_safe = 0;
+        char byte_to_safe = 0;
         int byte_pos = 0;
         std::ofstream file(file_path + ".freddy", std::ios::binary);
         assert(file);
@@ -821,7 +821,7 @@ class manager
         write_bits(int_to_bits(sorted_edges.size(), 8), byte_to_safe, byte_pos, file); //#vars
 
         counter = 0;
-        for (std::vector<edge_ptr> var_edges : sorted_edges){
+        for (const std::vector<edge_ptr> var_edges : sorted_edges){
             write_bits(int_to_bits(var_edges.size(), log_edges_size), byte_to_safe, byte_pos, file); //#varX
 
             if (counter < sorted_edges.size() -1){
@@ -834,7 +834,7 @@ class manager
                 }
             }
             counter++;
-            for (edge_ptr e : var_edges){
+            for (const edge_ptr e : var_edges){
                 if (e->v->is_const()){
                     write_bits(to_bits(e->v->value()), byte_to_safe, byte_pos, file); // leaf
                 } else {
@@ -861,7 +861,7 @@ class manager
         static unsigned char byte_to_read = 0;
         static int byte_pos = 0;
 
-        size_t ver = bits_to_int(read_bits(4, byte_to_read, byte_pos, read_file)); //version
+        const size_t ver = bits_to_int(read_bits(4, byte_to_read, byte_pos, read_file)); //version
         assert(ver == 1);
         (void)ver;
 
@@ -869,7 +869,7 @@ class manager
 
         auto log_edges_size = std::ceil(log2(edge_amount));
 
-        size_t var_amount = bits_to_int(read_bits(8, byte_to_read, byte_pos, read_file)); //#vars
+        const size_t var_amount = bits_to_int(read_bits(8, byte_to_read, byte_pos, read_file)); //#vars
         for (size_t i = this->var_count(); i < var_amount -1; i++){
             var(expansion::S, {});
         }
@@ -877,11 +877,11 @@ class manager
         size_t counter = 0;
         std::vector<std::tuple<int, int, EWeight, int, NValue>> edge_list;
         for (size_t v = 0; v < var_amount; v++) {
-            size_t var_x_amount = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //#varX
+            const size_t var_x_amount = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //#varX
 
             counter++;
             if (v != var_amount - 1) {
-                size_t var_x_type = bits_to_int(read_bits(2, byte_to_read, byte_pos, read_file));
+                const size_t var_x_type = bits_to_int(read_bits(2, byte_to_read, byte_pos, read_file));
 
                 if (var_x_type == 0){
                     if (this->var_count() < counter){
@@ -911,16 +911,16 @@ class manager
 
             for (size_t x = 0; x < var_x_amount; x++){
                 if (v == var_amount - 1){
-                    NValue value = from_bits<NValue>(read_bits(sizeof(NValue) * 8, byte_to_read, byte_pos, read_file)); // leaf value
-                    EWeight weight = from_bits<EWeight>(read_bits(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file)); // weight
+                    auto value = from_bits<NValue>(read_bits(sizeof(NValue) * 8, byte_to_read, byte_pos, read_file)); // leaf value
+                    auto weight = from_bits<EWeight>(read_bits(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file)); // weight
 
                     edge_list.emplace_back(-1, -1, weight, -1, value);
                 }
                 else {
-                    size_t lo = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //lo edge address
-                    size_t hi = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //hi edge address
+                    const size_t lo = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //lo edge address
+                    const size_t hi = bits_to_int(read_bits(log_edges_size, byte_to_read, byte_pos, read_file)); //hi edge address
 
-                    EWeight weight = from_bits<EWeight>(read_bits(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file)); // weight
+                    auto weight = from_bits<EWeight>(read_bits(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file)); // weight
                     edge_list.emplace_back(lo, hi, weight, v, 0);
                 }
             }
@@ -1013,7 +1013,7 @@ class manager
         }
     }
 
-    auto int_to_bits(size_t value, size_t size) const {
+    auto int_to_bits(auto value, auto size) const {
         return boost::dynamic_bitset<>(size, value);
     }
 
@@ -1021,13 +1021,13 @@ class manager
         return static_cast<int>(bits.to_ulong());
     }
 
-    void write_bits(const boost::dynamic_bitset<>& bits, uint8_t& byte, int& pos, std::ofstream& file) const{
-        for (bool bit : bits) {
+    void write_bits(const boost::dynamic_bitset<>& bits, char& byte, int& pos, std::ofstream& file) const{
+        for (const bool bit : bits) {
             write_bit(bit, byte, pos, file);
         }
     }
 
-    void write_bit(bool bit, uint8_t& byte, int& pos, std::ofstream& file) const{
+    void write_bit(bool bit, char& byte, int& pos, std::ofstream& file) const{
         byte |= static_cast<uint8_t>(static_cast<unsigned int>(bit) << static_cast<unsigned int>(pos));
 
         pos++;
@@ -1038,9 +1038,9 @@ class manager
         }
     }
 
-    auto read_bits(auto size, uint8_t& byte, int& pos, std::ifstream& file) const {
+    auto read_bits(size_t size, uint8_t& byte, int& pos, std::ifstream& file) const {
         boost::dynamic_bitset<> bits(size);
-        for (auto i = 0; i < size; i++){
+        for (size_t i = 0; i < size; i++){
             bits[i] = read_bit(byte, pos, file);
         }
         return bits;
