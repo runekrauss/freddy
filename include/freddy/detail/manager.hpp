@@ -800,7 +800,7 @@ class manager
             }
         }
 
-        std::unordered_map<edge_ptr, int> edge_map;
+        std::unordered_map<edge_ptr, size_t> edge_map;
         size_t counter = 0;
         for (auto var_edges : sorted_edges) {
             for (auto e : var_edges) {
@@ -817,7 +817,7 @@ class manager
         write_bits(int_to_bits(1, 4), byte_to_safe, byte_pos, file); //version
         write_bits(int_to_bits(edges.size(), 32), byte_to_safe, byte_pos, file); //#edges
 
-        const size_t log_edges_size = std::ceil(log2(edges.size()));
+        const auto log_edges_size = std::ceil(log2(edges.size()));
         write_bits(int_to_bits(sorted_edges.size(), 8), byte_to_safe, byte_pos, file); //#vars
 
         counter = 0;
@@ -1038,7 +1038,7 @@ class manager
         }
     }
 
-    auto read_bits(int size, uint8_t& byte, int& pos, std::ifstream& file) const {
+    auto read_bits(auto size, uint8_t& byte, int& pos, std::ifstream& file) const {
         boost::dynamic_bitset<> bits(size);
         for (auto i = 0; i < size; i++){
             bits[i] = read_bit(byte, pos, file);
