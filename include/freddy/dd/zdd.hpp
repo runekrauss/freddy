@@ -6,7 +6,6 @@
 
 #include "freddy/config.hpp"                 // config
 #include "freddy/detail/manager.hpp"         // detail::manager
-#include "freddy/detail/node.hpp"            // detail::edge_ptr
 #include "freddy/detail/operation/conj.hpp"  // detail::conj
 #include "freddy/expansion.hpp"              // expansion::S
 
@@ -239,33 +238,29 @@ class zdd_manager final : public detail::manager<bool, bool>
 
         auto const x = top_var(f, g);
 
-        // Use cof() from manager directly (no separate bdd_cof needed)
-        auto const f_hi = (f->is_const() || f->ch()->br().x != x) ? f : denorm_high(f);
-        auto const f_lo = (f->is_const() || f->ch()->br().x != x) ? f : denorm_low(f);
-        auto const g_hi = (g->is_const() || g->ch()->br().x != x) ? g : denorm_high(g);
-        auto const g_lo = (g->is_const() || g->ch()->br().x != x) ? g : denorm_low(g);
-        // -----------------------------------
-
-        op.set_result(branch(x, conj(f_hi, g_hi), conj(f_lo, g_lo)));
+        op.set_result(branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false))));
         return cache(std::move(op))->get_result();
     }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
-        auto const rec = [this](auto&& self, edge_ptr const& ff, edge_ptr const& gg, var_index level) -> edge_ptr
+        auto const rec = [this](auto&& self, edge_ptr const& ff, edge_ptr const& gg,
+                                var_index const lvl) -> edge_ptr
         {
-            if (level >= static_cast<var_index>(var_count()))
+            if (lvl >= static_cast<var_index>(var_count()))
+            {
                 return (ff == constant(0) && gg == constant(0)) ? constant(0) : constant(1);
+            }
 
-            auto f_hi = (!ff->is_const() && ff->ch()->br().x == level) ? denorm_high(ff) : ff;
-            auto f_lo = (!ff->is_const() && ff->ch()->br().x == level) ? denorm_low(ff)  : ff;
-            auto g_hi = (!gg->is_const() && gg->ch()->br().x == level) ? denorm_high(gg) : gg;
-            auto g_lo = (!gg->is_const() && gg->ch()->br().x == level) ? denorm_low(gg)  : gg;
+            auto const f_hi = (!ff->is_const() && ff->ch()->br().x == lvl) ? denorm_high(ff) : ff;
+            auto const f_lo = (!ff->is_const() && ff->ch()->br().x == lvl) ? denorm_low(ff) : ff;
+            auto const g_hi = (!gg->is_const() && gg->ch()->br().x == lvl) ? denorm_high(gg) : gg;
+            auto const g_lo = (!gg->is_const() && gg->ch()->br().x == lvl) ? denorm_low(gg) : gg;
 
-            auto hi = self(self, f_hi, g_hi, static_cast<var_index>(level + 1));
-            auto lo = self(self, f_lo, g_lo, static_cast<var_index>(level + 1));
+            auto hi = self(self, f_hi, g_hi, static_cast<var_index>(lvl + 1));
+            auto lo = self(self, f_lo, g_lo, static_cast<var_index>(lvl + 1));
 
-            return manager::branch(level, std::move(hi), std::move(lo));
+            return branch(lvl, std::move(hi), std::move(lo));
         };
 
         return rec(rec, f, g, 0);
@@ -347,9 +342,9 @@ class zdd_manager final : public detail::manager<bool, bool>
     {
         return lo;
     }
-    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const -> edge_ptr override
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const, expansion) const -> edge_ptr override
     {
-        return a ? constant(0) : f;
+        return f;
     }
 };
 
