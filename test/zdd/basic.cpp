@@ -123,7 +123,8 @@ TEST_CASE("ZDD can be characterized", "[basic]")
     }
 }
 
-TEST_CASE("ZDD variable order is changeable", "[basic]")
+TEST_CASE("ZDD variable order is changeable", "[basic]"
+    )
 {
     zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
@@ -313,5 +314,214 @@ TEST_CASE("ZDD SOP minimization (two-level logic)", "[basic]")
         as[1] = ((mask >> 1) & 1u) != 0;
         as[2] = ((mask >> 2) & 1u) != 0;
         CHECK(F.eval(as) == G.eval(as));
+    }
+}
+
+// =====================================================================================================================
+// Complement wrapper tests
+// =====================================================================================================================
+
+TEST_CASE("ZDD complement wrapper: terminal behaviour", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+
+    SECTION("Complement of zero is one")
+    {
+        CHECK((~mgr.zero()).is_one());
+    }
+
+    SECTION("Complement of one is zero")
+    {
+        CHECK((~mgr.one()).is_zero());
+    }
+
+    SECTION("Double negation of zero returns zero")
+    {
+        CHECK(~~mgr.zero() == mgr.zero());
+    }
+
+    SECTION("Double negation of one returns one")
+    {
+        CHECK(~~mgr.one() == mgr.one());
+    }
+
+    SECTION("Complement is involutory on constants: ~zero != ~one")
+    {
+        CHECK(~mgr.zero() != ~mgr.one());
+    }
+}
+
+TEST_CASE("ZDD complement wrapper: pointwise correctness on constants", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+    (void)x0; (void)x1; (void)x2;
+
+    std::vector<bool> as(3, false);
+
+    SECTION("~zero evaluates to true everywhere")
+    {
+        for (std::uint64_t mask = 0; mask < 8; ++mask)
+        {
+            as[0] = ((mask >> 0) & 1u) != 0;
+            as[1] = ((mask >> 1) & 1u) != 0;
+            as[2] = ((mask >> 2) & 1u) != 0;
+            CHECK((~mgr.zero()).eval(as));
+        }
+    }
+
+    SECTION("~one evaluates to false everywhere")
+    {
+        for (std::uint64_t mask = 0; mask < 8; ++mask)
+        {
+            as[0] = ((mask >> 0) & 1u) != 0;
+            as[1] = ((mask >> 1) & 1u) != 0;
+            as[2] = ((mask >> 2) & 1u) != 0;
+            CHECK_FALSE((~mgr.one()).eval(as));
+        }
+    }
+}
+
+// =====================================================================================================================
+// Disjunction wrapper tests
+// =====================================================================================================================
+
+TEST_CASE("ZDD disjunction wrapper: commutativity", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+
+    auto const f = x0 & x1;
+    auto const g = x1 & x2;
+
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0) & 1u) != 0;
+        as[1] = ((mask >> 1) & 1u) != 0;
+        as[2] = ((mask >> 2) & 1u) != 0;
+        CHECK((f | g).eval(as) == (g | f).eval(as));
+    }
+}
+
+TEST_CASE("ZDD disjunction wrapper: associativity", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0) & 1u) != 0;
+        as[1] = ((mask >> 1) & 1u) != 0;
+        as[2] = ((mask >> 2) & 1u) != 0;
+        CHECK(((x0 | x1) | x2).eval(as) == (x0 | (x1 | x2)).eval(as));
+    }
+}
+
+TEST_CASE("ZDD disjunction wrapper: identity and annihilation", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+    (void)x2;
+    auto const f = x0 & x1;
+
+    std::vector<bool> as(3, false);
+
+    SECTION("f | zero == f")
+    {
+        for (std::uint64_t mask = 0; mask < 8; ++mask)
+        {
+            as[0] = ((mask >> 0) & 1u) != 0;
+            as[1] = ((mask >> 1) & 1u) != 0;
+            as[2] = ((mask >> 2) & 1u) != 0;
+            CHECK((f | mgr.zero()).eval(as) == f.eval(as));
+        }
+    }
+
+    SECTION("zero | f == f")
+    {
+        for (std::uint64_t mask = 0; mask < 8; ++mask)
+        {
+            as[0] = ((mask >> 0) & 1u) != 0;
+            as[1] = ((mask >> 1) & 1u) != 0;
+            as[2] = ((mask >> 2) & 1u) != 0;
+            CHECK((mgr.zero() | f).eval(as) == f.eval(as));
+        }
+    }
+}
+
+// =====================================================================================================================
+// Boolean algebra laws (BDD-aligned)
+// =====================================================================================================================
+
+TEST_CASE("ZDD De Morgan second law: ~(f&g) == ~f|~g", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+
+    auto const f = x0 & x1;
+    auto const g = x1 & x2;
+
+    auto const lhs = ~(f & g);
+    auto const rhs = (~f) | (~g);
+
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0) & 1u) != 0;
+        as[1] = ((mask >> 1) & 1u) != 0;
+        as[2] = ((mask >> 2) & 1u) != 0;
+        CHECK(lhs.eval(as) == rhs.eval(as));
+    }
+}
+
+TEST_CASE("ZDD boolean algebra: distributivity of & over |", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+
+    // f & (g | h) == (f & g) | (f & h)
+    auto const lhs = x0 & (x1 | x2);
+    auto const rhs = (x0 & x1) | (x0 & x2);
+
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0) & 1u) != 0;
+        as[1] = ((mask >> 1) & 1u) != 0;
+        as[2] = ((mask >> 2) & 1u) != 0;
+        CHECK(lhs.eval(as) == rhs.eval(as));
+    }
+}
+
+TEST_CASE("ZDD boolean algebra: absorption laws", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+    (void)x2;
+
+    std::vector<bool> as(3, false);
+
+    SECTION("f & (f | g) == f")
+    {
+        for (std::uint64_t mask = 0; mask < 8; ++mask)
+        {
+            as[0] = ((mask >> 0) & 1u) != 0;
+            as[1] = ((mask >> 1) & 1u) != 0;
+            as[2] = ((mask >> 2) & 1u) != 0;
+            CHECK((x0 & (x0 | x1)).eval(as) == x0.eval(as));
+        }
+    }
+
+    SECTION("f | (f & g) == f")
+    {
+        for (std::uint64_t mask = 0; mask < 8; ++mask)
+        {
+            as[0] = ((mask >> 0) & 1u) != 0;
+            as[1] = ((mask >> 1) & 1u) != 0;
+            as[2] = ((mask >> 2) & 1u) != 0;
+            CHECK((x0 | (x0 & x1)).eval(as) == x0.eval(as));
+        }
     }
 }
