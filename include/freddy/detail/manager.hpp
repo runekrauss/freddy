@@ -792,7 +792,7 @@ class manager
         save_all_edges(edges, f);
 
         std::vector<std::vector<edge_ptr>> sorted_edges(this->var_count() +1);
-        for (const edge_ptr e : edges){
+        for (const edge_ptr& e : edges){
             if (e->v->is_const()){
                 sorted_edges.back().push_back(e);
             } else {
@@ -802,15 +802,15 @@ class manager
 
         std::unordered_map<edge_ptr, size_t> edge_map;
         size_t counter = 0;
-        for (const auto var_edges : sorted_edges) {
-            for (const auto e : var_edges) {
+        for (const std::vector<edge_ptr>& var_edges : sorted_edges) {
+            for (const edge_ptr& e : var_edges) {
                 edge_map[e] = counter;
                 counter++;
             }
         }
 
-        char byte_to_safe = 0;
-        int byte_pos = 0;
+        unsigned char byte_to_safe = 0;
+        uint8_t byte_pos = 0;
         std::ofstream file(file_path + ".freddy", std::ios::binary);
         assert(file);
 
@@ -821,7 +821,7 @@ class manager
         write_bits(int_to_bits(sorted_edges.size(), 8), byte_to_safe, byte_pos, file); //#vars
 
         counter = 0;
-        for (const std::vector<edge_ptr> var_edges : sorted_edges){
+        for (const std::vector<edge_ptr>& var_edges : sorted_edges){
             write_bits(int_to_bits(var_edges.size(), log_edges_size), byte_to_safe, byte_pos, file); //#varX
 
             if (counter < sorted_edges.size() -1){
@@ -834,7 +834,7 @@ class manager
                 }
             }
             counter++;
-            for (const edge_ptr e : var_edges){
+            for (const edge_ptr& e : var_edges){
                 if (e->v->is_const()){
                     write_bits(to_bits(e->v->value()), byte_to_safe, byte_pos, file); // leaf
                 } else {
@@ -1021,17 +1021,17 @@ class manager
         return static_cast<int>(bits.to_ulong());
     }
 
-    void write_bits(const boost::dynamic_bitset<>& bits, char& byte, int& pos, std::ofstream& file) const{
+    void write_bits(const boost::dynamic_bitset<>& bits, unsigned char& byte, uint8_t& pos, std::ofstream& file) const{
         for (const bool bit : bits) {
             write_bit(bit, byte, pos, file);
         }
     }
 
-    void write_bit(bool bit, char& byte, int& pos, std::ofstream& file) const{
-        byte |= static_cast<uint8_t>(static_cast<unsigned int>(bit) << static_cast<unsigned int>(pos));
+    void write_bit(bool bit, unsigned char& byte, uint8_t& pos, std::ofstream& file) const {
+        byte |= static_cast<unsigned char>(bit) << pos;
 
         pos++;
-        if (pos == 8){
+        if (pos == 8) {
             file.put(static_cast<char>(byte));
             byte = 0;
             pos = 0;
@@ -1079,10 +1079,12 @@ class manager
     auto to_bits(const C& object) const -> boost::dynamic_bitset<> {
         boost::dynamic_bitset<> bits(sizeof(C) * 8);
 
-        auto object_address = std::bit_cast<std::array<unsigned char, sizeof(C)>>(object);
+        const unsigned char* object_address = reinterpret_cast<const unsigned char*>(&object);
+        //auto object_address = std::bit_cast<std::array<unsigned char, sizeof(C)>>(object);
         for (size_t byte = 0; byte < sizeof(NValue); byte++) {
             for (size_t bit = 0; bit < 8; bit++) {
-                bits[byte*8 + bit] = (static_cast<unsigned>(object_address[byte]) >> bit) & 1u;
+                bits[byte*8 + bit] = (object_address[byte] >> bit) & 1;
+                //bits[byte*8 + bit] = (static_cast<unsigned>(object_address[byte]) >> bit) & 1u;
             }
         }
         return bits;
