@@ -1080,7 +1080,7 @@ class manager
         return std::bit_cast<C>(object_bytes);
     }
 
-    void ensure_var(int var_expansion, int level){
+    void ensure_var(int var_expansion, size_t level){
         auto ensure_var = [&](expansion t) {
             if (this->var_count() < level){
                 var(t, {});
