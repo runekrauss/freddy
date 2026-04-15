@@ -870,15 +870,19 @@ class manager
         for (size_t v = 0; v < var_amount; v++) {
             const size_t var_x_amount = read_bits<int>(log_edges_size, byte_to_read, byte_pos, read_file); //#varX
 
+            const bool is_leaf_v = (v == var_amount - 1);
+
             counter++;
-            if (v != var_amount - 1) {
+            if (!is_leaf_v) {
                 const size_t var_x_type = read_bits<int>(2, byte_to_read, byte_pos, read_file); //var expansion
 
                 auto ensure_var = [&](expansion t) {
-                    if (this->var_count() < counter)
+                    if (this->var_count() < counter){
                         var(t, {});
-                    else
+                    }
+                    else {
                         assert(vlist[lvl2var[counter]].t == t);
+                    }
                 };
 
                 switch (var_x_type)
@@ -891,7 +895,7 @@ class manager
             }
 
             for (size_t x = 0; x < var_x_amount; x++){
-                if (v == var_amount - 1){
+                if (is_leaf_v){
                     auto value = read_bits<NValue>(sizeof(NValue) * 8, byte_to_read, byte_pos, read_file); // leaf value
                     auto weight = read_bits<EWeight>(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file); // weight
 
@@ -1069,7 +1073,7 @@ class manager
         auto object_bytes = std::bit_cast<std::array<unsigned char, sizeof(C)>>(object);
         for (size_t byte = 0; byte < sizeof(C); byte++) {
             for (size_t bit = 0; bit < 8; bit++) {
-                bits[byte*8 + bit] = (static_cast<unsigned>(object_bytes[byte]) >> bit) & 1u;
+                bits.at(byte*8 + bit) = (static_cast<unsigned>(object_bytes.at(byte)) >> bit) & 1u;
             }
         }
         return bits;
@@ -1082,10 +1086,10 @@ class manager
         auto object_bytes = std::bit_cast<std::array<unsigned char, sizeof(C)>>(object);
 
         for (size_t byte = 0; byte < sizeof(C); byte++) {
-            object_bytes[byte] = 0;
+            object_bytes.at(byte) = 0;
             for (size_t bit = 0; bit < 8; bit++) {
-                if (bits[byte*8 + bit]){
-                    object_bytes[byte] |= static_cast<unsigned char>(1u << bit);
+                if ((byte*8 + bit) < bits.size() && bits.test(byte*8 + bit)) {
+                    object_bytes.at(byte) |= static_cast<unsigned char>(1u << bit);
                 }
             }
         }
