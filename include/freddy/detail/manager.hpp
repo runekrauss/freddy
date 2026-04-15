@@ -874,31 +874,18 @@ class manager
             if (v != var_amount - 1) {
                 const size_t var_x_type = read_bits<int>(2, byte_to_read, byte_pos, read_file); //var expansion
 
-                switch (var_x_type) {
-                    case 0:
-                        if (this->var_count() < counter){
-                            var(expansion::S, {});
-                        }
-                        else {
-                            assert(vlist[lvl2var[counter]].t == expansion::S);
-                        }
-                        break;
-                    case 1:
-                        if (this->var_count() < counter){
-                            var(expansion::pD, {});
-                        }
-                        else {
-                            assert(vlist[lvl2var[counter]].t == expansion::pD);
-                        }
-                        break;
-                    case 2:
-                        if (this->var_count() < counter){
-                            var(expansion::nD, {});
-                        }
-                        else {
-                            assert(vlist[lvl2var[counter]].t == expansion::nD);
-                        }
-                        break;
+                auto ensure_var = [&](expansion t) {
+                    if (this->var_count() < counter)
+                        var(t, {});
+                    else
+                        assert(vlist[lvl2var[counter]].t == t);
+                };
+
+                switch (var_x_type)
+                {
+                    case 0: ensure_var(expansion::S);  break;
+                    case 1: ensure_var(expansion::pD); break;
+                    case 2: ensure_var(expansion::nD); break;
                     default: assert(false); break;
                 }
             }
