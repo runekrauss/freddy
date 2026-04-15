@@ -865,33 +865,17 @@ class manager
 
         const size_t var_amount = read_bits<int>(8, byte_to_read, byte_pos, read_file); //#vars
 
-        size_t counter = 0;
         std::vector<std::tuple<int, int, EWeight, int, NValue>> edge_list;
         for (size_t v = 0; v < var_amount; v++) {
             const size_t var_x_amount = read_bits<int>(log_edges_size, byte_to_read, byte_pos, read_file); //#varX
 
             const bool is_leaf_v = (v == var_amount - 1);
 
-            counter++;
             if (!is_leaf_v) {
                 const size_t var_x_type = read_bits<int>(2, byte_to_read, byte_pos, read_file); //var expansion
 
-                auto ensure_var = [&](expansion t) {
-                    if (this->var_count() < counter){
-                        var(t, {});
-                    }
-                    else {
-                        assert(vlist[lvl2var[counter]].t == t);
-                    }
-                };
+                ensure_var(var_x_type, v+1);
 
-                switch (var_x_type)
-                {
-                    case 0: ensure_var(expansion::S);  break;
-                    case 1: ensure_var(expansion::pD); break;
-                    case 2: ensure_var(expansion::nD); break;
-                    default: assert(false); break;
-                }
             }
 
             for (size_t x = 0; x < var_x_amount; x++){
@@ -1094,6 +1078,25 @@ class manager
             }
         }
         return std::bit_cast<C>(object_bytes);
+    }
+
+    void ensure_var(int var_expansion, int level){
+        auto ensure_var = [&](expansion t) {
+            if (this->var_count() < level){
+                var(t, {});
+            }
+            else {
+                assert(vlist[lvl2var[level]].t == t);
+            }
+        };
+
+        switch (var_expansion)
+        {
+            case 0: ensure_var(expansion::S);  break;
+            case 1: ensure_var(expansion::pD); break;
+            case 2: ensure_var(expansion::nD); break;
+            default: assert(false); break;
+        }
     }
 
     auto dtl_find_smallest_level(dtl_sift_result const& curr_best, expansion const exp, std::vector<edge_ptr> const& fs)
