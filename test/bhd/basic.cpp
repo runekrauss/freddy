@@ -290,7 +290,7 @@ TEST_CASE("bhd-test", "[test]"){
     std::string path = "NEWPATHTEST";
 
     SECTION("bhd"){
-        auto f = x0 & mgr.exp() | x1 & x2 ;
+        auto f = x0 & mgr.exp() | (x1 & x2) ;
 
         f.write_binary_file(path);
 

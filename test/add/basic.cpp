@@ -266,7 +266,7 @@ TEST_CASE("add-test", "[test]"){
     std::string path = "NEWPATHTEST";
 
     SECTION("add"){
-        auto f = mgr.constant(8) * x0 | x1 & x2;
+        auto f = mgr.constant(8) * x0 | (x1 & x2);
 
         f.write_binary_file(path);
 

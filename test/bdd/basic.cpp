@@ -228,7 +228,7 @@ TEST_CASE("bdd-test", "[test]"){
     std::string path = "NEWPATHTEST";
 
     SECTION("bdd"){
-        auto f = x0 | x1 & x2;
+        auto f = x0 | (x1 & x2);
 
         f.write_binary_file(path);
 
