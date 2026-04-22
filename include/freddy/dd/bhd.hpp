@@ -5,6 +5,7 @@
 // *********************************************************************************************************************
 
 #include "freddy/config.hpp"                 // config
+#include "freddy/detail/dd_base.hpp"         // detail::dd_base
 #include "freddy/detail/manager.hpp"         // detail::manager
 #include "freddy/detail/node.hpp"            // detail::edge_ptr
 #include "freddy/detail/operation/conj.hpp"  // detail::conj
@@ -45,62 +46,27 @@ class bhd_manager;
 // Types
 // =====================================================================================================================
 
-class bhd final  // binary hybrid diagram between BDD and SAT
+class bhd final : public detail::dd_base<bhd, bool, bool, bhd_manager>
 {
+    friend bhd_manager;
+    friend dd_base;
+
+    // wrapper is controlled by its BHD manager
+    bhd(detail::edge_ptr<bool, bool> f, bhd_manager* const mgr) :
+            dd_base{std::move(f), mgr}
+    {}
+
   public:
-    bhd() noexcept = default;  // enable default BHD construction for compatibility with standard containers
+    static constexpr std::string_view LABEL = "BHD";
 
-    auto operator~() const;
-
-    auto operator&=(bhd const&) -> bhd&;
-
-    auto operator|=(bhd const&) -> bhd&;
+    bhd() noexcept = default;
 
     auto operator^=(bhd const&) -> bhd&;
-
-    friend auto operator&(bhd lhs, bhd const& rhs)
-    {
-        lhs &= rhs;
-        return lhs;
-    }
-
-    friend auto operator|(bhd lhs, bhd const& rhs)
-    {
-        lhs |= rhs;
-        return lhs;
-    }
 
     friend auto operator^(bhd lhs, bhd const& rhs)
     {
         lhs ^= rhs;
         return lhs;
-    }
-
-    friend auto operator==(bhd const& lhs, bhd const& rhs) noexcept
-    {
-        assert(lhs.mgr == rhs.mgr);  // check for the same BHD manager
-
-        return lhs.f == rhs.f;
-    }
-
-    friend auto operator!=(bhd const& lhs, bhd const& rhs) noexcept
-    {
-        return !(lhs == rhs);
-    }
-
-    friend auto operator<<(std::ostream& os, bhd const& g) -> std::ostream&
-    {
-        os << "BHD handle: " << g.f << '\n';
-        os << "BHD manager: " << g.mgr;
-        return os;
-    }
-
-    [[nodiscard]] auto same_node(bhd const& g) const noexcept
-    {
-        assert(f);
-        assert(mgr == g.mgr);  // BHD g is valid in any case
-
-        return f->ch() == g.f->ch();
     }
 
     [[nodiscard]] auto is_complemented() const noexcept
@@ -110,90 +76,17 @@ class bhd final  // binary hybrid diagram between BDD and SAT
         return f->weight();
     }
 
-    [[nodiscard]] auto is_const() const noexcept
-    {
-        assert(f);
-
-        return f->is_const();
-    }
-
-    [[nodiscard]] auto var() const noexcept
-    {
-        assert(!is_const());
-
-        return f->ch()->br().x;
-    }
-
-    [[nodiscard]] auto high() const noexcept
-    {
-        assert(mgr);
-        assert(!is_const());
-
-        return bhd{f->ch()->br().hi, mgr};
-    }
-
-    [[nodiscard]] auto low() const noexcept
-    {
-        assert(mgr);
-        assert(!is_const());
-
-        return bhd{f->ch()->br().lo, mgr};
-    }
-
-    [[nodiscard]] auto is_zero() const noexcept;
-
-    [[nodiscard]] auto is_one() const noexcept;
-
     [[nodiscard]] auto is_exp() const noexcept;  // Is there an expansion for SAT solving?
 
-    template <typename TruthValue, typename... TruthValues>
-    auto fn(TruthValue, TruthValues...) const;
-
     [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
-
-    [[nodiscard]] auto ite(bhd const&, bhd const&) const;
-
-    [[nodiscard]] auto size() const;
-
-    [[nodiscard]] auto depth() const;
-
-    [[nodiscard]] auto path_count() const noexcept;
 
     [[nodiscard]] auto has_const(bool) const;
 
     [[nodiscard]] auto has_exp() const;
 
-    [[nodiscard]] auto is_essential(var_index) const noexcept;
-
-    [[nodiscard]] auto compose(var_index, bhd const&) const;
-
-    [[nodiscard]] auto restr(var_index, bool) const;
-
-    [[nodiscard]] auto exist(var_index) const;
-
-    [[nodiscard]] auto forall(var_index) const;
-
     [[nodiscard]] auto sat_solutions() const;  // one existing solution per path
 
     [[nodiscard]] auto unit_clauses() const;  // for each expansion path to solve subfunctions via a SAT solver
-
-    auto dump_dot(std::ostream& = std::cout) const;
-
-  private:
-    friend bhd_manager;
-
-    // wrapper is controlled by its BHD manager
-    bhd(detail::edge_ptr<bool, bool> f, bhd_manager* const mgr) :
-            f{std::move(f)},
-            mgr{mgr}
-    {
-        assert(this->f);
-        assert(this->mgr);
-    }
-
-    detail::edge_ptr<bool, bool> f;  // BHD handle
-
-    bhd_manager* mgr{};  // must be destroyed after this BHD wrapper
 };
 
 enum struct bhd_heuristic : std::uint8_t  // to determine when expansion paths are created
@@ -655,33 +548,6 @@ class bhd_manager final : public detail::manager<bool, bool>
     std::size_t exp_thresh{};
 };
 
-inline auto bhd::operator~() const
-{
-    assert(mgr);
-
-    return bhd{mgr->complement(f), mgr};
-}
-
-inline auto bhd::operator&=(bhd const& rhs) -> bhd&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->conj(f, rhs.f);
-
-    return *this;
-}
-
-inline auto bhd::operator|=(bhd const& rhs) -> bhd&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->disj(f, rhs.f);
-
-    return *this;
-}
-
 inline auto bhd::operator^=(bhd const& rhs) -> bhd&
 {
     assert(mgr);
@@ -692,20 +558,6 @@ inline auto bhd::operator^=(bhd const& rhs) -> bhd&
     return *this;
 }
 
-inline auto bhd::is_zero() const noexcept
-{
-    assert(mgr);
-
-    return *this == mgr->zero();
-}
-
-inline auto bhd::is_one() const noexcept
-{
-    assert(mgr);
-
-    return *this == mgr->one();
-}
-
 inline auto bhd::is_exp() const noexcept
 {
     assert(mgr);
@@ -713,49 +565,11 @@ inline auto bhd::is_exp() const noexcept
     return mgr->is_exp(f);
 }
 
-template <typename TruthValue, typename... TruthValues>
-inline auto bhd::fn(TruthValue const a, TruthValues... as) const
-{
-    assert(mgr);
-
-    return bhd{mgr->fn(f, a, std::forward<TruthValues>(as)...), mgr};
-}
-
 inline auto bhd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
 
     return mgr->eval(f, as);
-}
-
-inline auto bhd::ite(bhd const& g, bhd const& h) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-    assert(g.mgr == h.mgr);
-
-    return bhd{mgr->ite(f, g.f, h.f), mgr};
-}
-
-inline auto bhd::size() const
-{
-    assert(mgr);
-
-    return mgr->size({*this});
-}
-
-inline auto bhd::depth() const
-{
-    assert(mgr);
-
-    return mgr->depth({*this});
-}
-
-inline auto bhd::path_count() const noexcept
-{
-    assert(mgr);
-
-    return mgr->path_count(f);
 }
 
 inline auto bhd::has_const(bool const c) const
@@ -770,42 +584,6 @@ inline auto bhd::has_exp() const
     return has_const(true);
 }
 
-inline auto bhd::is_essential(var_index const x) const noexcept
-{
-    assert(mgr);
-
-    return mgr->is_essential(f, x);
-}
-
-inline auto bhd::compose(var_index const x, bhd const& g) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-
-    return bhd{mgr->compose(f, x, g.f), mgr};
-}
-
-inline auto bhd::restr(var_index const x, bool const a) const
-{
-    assert(mgr);
-
-    return bhd{mgr->restr(f, x, a), mgr};
-}
-
-inline auto bhd::exist(var_index const x) const
-{
-    assert(mgr);
-
-    return bhd{mgr->exist(f, x), mgr};
-}
-
-inline auto bhd::forall(var_index const x) const
-{
-    assert(mgr);
-
-    return bhd{mgr->forall(f, x), mgr};
-}
-
 inline auto bhd::sat_solutions() const
 {
     assert(mgr);
@@ -818,13 +596,6 @@ inline auto bhd::unit_clauses() const
     assert(mgr);
 
     return mgr->unit_clauses(f);
-}
-
-inline auto bhd::dump_dot(std::ostream& os) const
-{
-    assert(mgr);
-
-    mgr->dump_dot({*this}, {}, os);
 }
 
 }  // namespace freddy

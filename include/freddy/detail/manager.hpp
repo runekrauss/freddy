@@ -46,12 +46,22 @@ namespace freddy::detail
 using namespace std::literals;  // sv
 
 // =====================================================================================================================
+// Forwards
+// =====================================================================================================================
+
+template <typename Derived, typename EWeight, typename NValue, typename Manager>
+class dd_base;
+
+// =====================================================================================================================
 // Types
 // =====================================================================================================================
 
 template <hashable EWeight, hashable NValue>  // edge weight, node value
 class manager
 {
+    template <typename, typename, typename, typename>
+    friend class dd_base;
+
   public:
     manager(manager const&) = delete;  // because UTs, among others, constitute the manager
 

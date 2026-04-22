@@ -6,6 +6,7 @@
 
 #include "freddy/config.hpp"                 // config
 #include "freddy/detail/common.hpp"          // detail::hashable
+#include "freddy/detail/dd_base.hpp"         // detail::dd_base
 #include "freddy/detail/edge.hpp"            // detail::edge
 #include "freddy/detail/manager.hpp"         // detail::manager
 #include "freddy/detail/node.hpp"            // detail::edge_ptr
@@ -58,10 +59,24 @@ class add_manager;
 // =====================================================================================================================
 
 template <detail::hashable NValue>
-class add final  // algebraic decision diagram (multi-terminal binary decision diagram)
+class add final : public detail::dd_base<add<NValue>, bool, NValue,
+                                         add_manager<NValue>>  // algebraic decision diagram (multi-terminal binary
+                                                               // decision diagram)
 {
+    using base = detail::dd_base<add, bool, NValue, add_manager<NValue>>;
+
+    friend add_manager<NValue>;
+    friend base;
+
+    // wrapper is controlled by its ADD manager
+    add(detail::edge_ptr<bool, NValue> f, add_manager<NValue>* const mgr) :
+            base{std::move(f), mgr}
+    {}
+
   public:
-    add() noexcept = default;  // enable default ADD construction for compatibility with standard containers
+    static constexpr std::string_view LABEL = "ADD";
+
+    add() noexcept = default;
 
     auto operator-() const;
 
@@ -70,12 +85,6 @@ class add final  // algebraic decision diagram (multi-terminal binary decision d
     auto operator+=(add const&) -> add&;
 
     auto operator-=(add const&) -> add&;
-
-    auto operator~() const;
-
-    auto operator&=(add const&) -> add&;
-
-    auto operator|=(add const&) -> add&;
 
     auto operator^=(add const&) -> add&;
 
@@ -97,129 +106,15 @@ class add final  // algebraic decision diagram (multi-terminal binary decision d
         return lhs;
     }
 
-    friend auto operator&(add lhs, add const& rhs)
-    {
-        lhs &= rhs;
-        return lhs;
-    }
-
-    friend auto operator|(add lhs, add const& rhs)
-    {
-        lhs |= rhs;
-        return lhs;
-    }
-
     friend auto operator^(add lhs, add const& rhs)
     {
         lhs ^= rhs;
         return lhs;
     }
 
-    friend auto operator==(add const& lhs, add const& rhs) noexcept
-    {
-        assert(lhs.mgr == rhs.mgr);  // check for the same ADD manager
-
-        return lhs.f == rhs.f;
-    }
-
-    friend auto operator!=(add const& lhs, add const& rhs) noexcept
-    {
-        return !(lhs == rhs);
-    }
-
-    friend auto operator<<(std::ostream& os, add const& g) -> std::ostream&
-    {
-        os << "ADD handle: " << g.f << '\n';
-        os << "ADD manager: " << g.mgr;
-        return os;
-    }
-
-    [[nodiscard]] auto same_node(add const& g) const noexcept
-    {
-        assert(f);
-        assert(mgr == g.mgr);  // ADD g is valid in any case
-
-        return f->ch() == g.f->ch();
-    }
-
-    [[nodiscard]] auto is_const() const noexcept
-    {
-        assert(f);
-
-        return f->is_const();
-    }
-
-    [[nodiscard]] auto var() const noexcept
-    {
-        assert(!is_const());
-
-        return f->ch()->br().x;
-    }
-
-    [[nodiscard]] auto high() const noexcept
-    {
-        assert(mgr);
-        assert(!is_const());
-
-        return add{f->ch()->br().hi, mgr};
-    }
-
-    [[nodiscard]] auto low() const noexcept
-    {
-        assert(mgr);
-        assert(!is_const());
-
-        return add{f->ch()->br().lo, mgr};
-    }
-
-    [[nodiscard]] auto is_zero() const noexcept;
-
-    [[nodiscard]] auto is_one() const noexcept;
-
     [[nodiscard]] auto is_two() const noexcept;
 
-    template <typename TruthValue, typename... TruthValues>
-    [[nodiscard]] auto fn(TruthValue, TruthValues...) const noexcept;
-
-    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
-
-    [[nodiscard]] auto ite(add const&, add const&) const;
-
-    [[nodiscard]] auto size() const;
-
-    [[nodiscard]] auto depth() const;
-
-    [[nodiscard]] auto path_count() const noexcept;
-
     [[nodiscard]] auto has_const(NValue) const;
-
-    [[nodiscard]] auto is_essential(var_index) const noexcept;
-
-    [[nodiscard]] auto compose(var_index, add const&) const;
-
-    [[nodiscard]] auto restr(var_index, bool) const;
-
-    [[nodiscard]] auto exist(var_index) const;
-
-    [[nodiscard]] auto forall(var_index) const;
-
-    auto dump_dot(std::ostream& = std::cout) const;
-
-  private:
-    friend add_manager<NValue>;
-
-    // wrapper is controlled by its ADD manager
-    add(detail::edge_ptr<bool, NValue> f, add_manager<NValue>* const mgr) :
-            f{std::move(f)},
-            mgr{mgr}
-    {
-        assert(this->f);
-        assert(this->mgr);
-    }
-
-    detail::edge_ptr<bool, NValue> f;  // ADD handle
-
-    add_manager<NValue>* mgr{};  // must be destroyed after this ADD wrapper
 };
 
 template <detail::hashable NValue>  // codomain is a finite set of real numbers or integers
@@ -531,18 +426,18 @@ class add_manager final : public detail::manager<bool, NValue>
 template <detail::hashable NValue>
 inline auto add<NValue>::operator-() const
 {
-    assert(mgr);
+    assert(this->mgr);
 
-    return add{mgr->neg(f), mgr};
+    return add{this->mgr->neg(this->f), this->mgr};
 }
 
 template <detail::hashable NValue>
 inline auto add<NValue>::operator*=(add const& rhs) -> add&
 {
-    assert(mgr);
-    assert(mgr == rhs.mgr);
+    assert(this->mgr);
+    assert(this->mgr == rhs.mgr);
 
-    f = mgr->mul(f, rhs.f);
+    this->f = this->mgr->mul(this->f, rhs.f);
 
     return *this;
 }
@@ -550,10 +445,10 @@ inline auto add<NValue>::operator*=(add const& rhs) -> add&
 template <detail::hashable NValue>
 inline auto add<NValue>::operator+=(add const& rhs) -> add&
 {
-    assert(mgr);
-    assert(mgr == rhs.mgr);
+    assert(this->mgr);
+    assert(this->mgr == rhs.mgr);
 
-    f = mgr->plus(f, rhs.f);
+    this->f = this->mgr->plus(this->f, rhs.f);
 
     return *this;
 }
@@ -561,40 +456,10 @@ inline auto add<NValue>::operator+=(add const& rhs) -> add&
 template <detail::hashable NValue>
 inline auto add<NValue>::operator-=(add const& rhs) -> add&
 {
-    assert(mgr);
-    assert(mgr == rhs.mgr);
+    assert(this->mgr);
+    assert(this->mgr == rhs.mgr);
 
-    f = mgr->sub(f, rhs.f);
-
-    return *this;
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::operator~() const
-{
-    assert(mgr);
-
-    return add{mgr->complement(f), mgr};
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::operator&=(add const& rhs) -> add&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->conj(f, rhs.f);
-
-    return *this;
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::operator|=(add const& rhs) -> add&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->disj(f, rhs.f);
+    this->f = this->mgr->sub(this->f, rhs.f);
 
     return *this;
 }
@@ -602,144 +467,28 @@ inline auto add<NValue>::operator|=(add const& rhs) -> add&
 template <detail::hashable NValue>
 inline auto add<NValue>::operator^=(add const& rhs) -> add&
 {
-    assert(mgr);
-    assert(mgr == rhs.mgr);
+    assert(this->mgr);
+    assert(this->mgr == rhs.mgr);
 
-    f = mgr->antiv(f, rhs.f);
+    this->f = this->mgr->antiv(this->f, rhs.f);
 
     return *this;
 }
 
 template <detail::hashable NValue>
-inline auto add<NValue>::is_zero() const noexcept
-{
-    assert(mgr);
-
-    return *this == mgr->zero();
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::is_one() const noexcept
-{
-    assert(mgr);
-
-    return *this == mgr->one();
-}
-
-template <detail::hashable NValue>
 inline auto add<NValue>::is_two() const noexcept
 {
-    assert(mgr);
+    assert(this->mgr);
 
-    return *this == mgr->two();
-}
-
-template <detail::hashable NValue>
-template <typename TruthValue, typename... TruthValues>
-inline auto add<NValue>::fn(TruthValue const a, TruthValues... as) const noexcept  // as no new ADD will be computed
-{
-    assert(mgr);
-
-    return add{mgr->fn(f, a, std::forward<TruthValues>(as)...), mgr};
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::eval(std::vector<bool> const& as) const noexcept
-{
-    assert(mgr);
-
-    return mgr->eval(f, as);
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::ite(add const& g, add const& h) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-    assert(g.mgr == h.mgr);
-
-    return add{mgr->ite(f, g.f, h.f), mgr};
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::size() const
-{
-    assert(mgr);
-
-    return mgr->size({*this});
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::depth() const
-{
-    assert(mgr);
-
-    return mgr->depth({*this});
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::path_count() const noexcept
-{
-    assert(mgr);
-
-    return mgr->path_count(f);
+    return *this == this->mgr->two();
 }
 
 template <detail::hashable NValue>
 inline auto add<NValue>::has_const(NValue const c) const
 {
-    assert(mgr);
+    assert(this->mgr);
 
-    return mgr->has_const(f, c);
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::is_essential(var_index const x) const noexcept
-{
-    assert(mgr);
-
-    return mgr->is_essential(f, x);
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::compose(var_index const x, add const& g) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-
-    return add{mgr->compose(f, x, g.f), mgr};
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::restr(var_index const x, bool const a) const
-{
-    assert(mgr);
-
-    return add{mgr->restr(f, x, a), mgr};
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::exist(var_index const x) const
-{
-    assert(mgr);
-
-    return add{mgr->exist(f, x), mgr};
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::forall(var_index const x) const
-{
-    assert(mgr);
-
-    return add{mgr->forall(f, x), mgr};
-}
-
-template <detail::hashable NValue>
-inline auto add<NValue>::dump_dot(std::ostream& os) const
-{
-    assert(mgr);
-
-    mgr->dump_dot({*this}, {}, os);
+    return this->mgr->has_const(this->f, c);
 }
 
 }  // namespace freddy
