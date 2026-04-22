@@ -78,6 +78,7 @@ class bhd final : public detail::dd_base<bhd, bool, bool, bhd_manager>
 
     [[nodiscard]] auto is_exp() const noexcept;  // Is there an expansion for SAT solving?
 
+    // hides dd_base::eval because bhd_manager::eval returns std::optional<bool> (SAT expansion may block eval)
     [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
 
     [[nodiscard]] auto has_const(bool) const;

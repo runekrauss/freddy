@@ -7,11 +7,12 @@
 #include "freddy/config.hpp"       // var_index
 #include "freddy/detail/node.hpp"  // detail::edge_ptr
 
-#include <cassert>   // assert
-#include <iostream>  // std::cout
-#include <ostream>   // std::ostream
-#include <utility>   // std::forward, std::move
-#include <vector>    // std::vector
+#include <cassert>      // assert
+#include <iostream>     // std::cout
+#include <ostream>      // std::ostream
+#include <type_traits>  // std::is_base_of_v
+#include <utility>      // std::forward, std::move
+#include <vector>       // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -19,6 +20,13 @@
 
 namespace freddy::detail
 {
+
+// =====================================================================================================================
+// Forwards
+// =====================================================================================================================
+
+template <hashable, hashable>
+class manager;
 
 // =====================================================================================================================
 // Types
@@ -110,9 +118,9 @@ class dd_base
     [[nodiscard]] auto is_one() const noexcept;
 
     template <typename TruthValue, typename... TruthValues>
-    auto fn(TruthValue, TruthValues...) const;
+    auto fn(TruthValue, TruthValues...) const noexcept;
 
-    [[nodiscard]] auto eval(std::vector<bool> const&) const;
+    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
 
     [[nodiscard]] auto ite(Derived const&, Derived const&) const;
 
@@ -143,6 +151,8 @@ class dd_base
             f{std::move(f)},
             mgr{mgr}
     {
+        static_assert(std::is_base_of_v<manager<EWeight, NValue>, Manager>,
+                      "Manager must derive from detail::manager<EWeight, NValue>");
         assert(this->f);
         assert(this->mgr);
     }
@@ -216,7 +226,7 @@ inline auto dd_base<Derived, EWeight, NValue, Manager>::is_one() const noexcept
 
 template <typename Derived, typename EWeight, typename NValue, typename Manager>
 template <typename TruthValue, typename... TruthValues>
-inline auto dd_base<Derived, EWeight, NValue, Manager>::fn(TruthValue const a, TruthValues... as) const
+inline auto dd_base<Derived, EWeight, NValue, Manager>::fn(TruthValue const a, TruthValues... as) const noexcept
 {
     assert(mgr);
 
@@ -224,7 +234,7 @@ inline auto dd_base<Derived, EWeight, NValue, Manager>::fn(TruthValue const a, T
 }
 
 template <typename Derived, typename EWeight, typename NValue, typename Manager>
-inline auto dd_base<Derived, EWeight, NValue, Manager>::eval(std::vector<bool> const& as) const
+inline auto dd_base<Derived, EWeight, NValue, Manager>::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
 
