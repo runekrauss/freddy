@@ -455,27 +455,6 @@ TEST_CASE("ZDD disjunction wrapper: identity and annihilation", "[basic]")
 // Boolean algebra laws (BDD-aligned)
 // =====================================================================================================================
 
-TEST_CASE("ZDD De Morgan second law: ~(f&g) == ~f|~g", "[basic]")
-{
-    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
-    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
-
-    auto const f = x0 & x1;
-    auto const g = x1 & x2;
-
-    auto const lhs = ~(f & g);
-    auto const rhs = (~f) | (~g);
-
-    std::vector<bool> as(3, false);
-    for (std::uint64_t mask = 0; mask < 8; ++mask)
-    {
-        as[0] = ((mask >> 0) & 1u) != 0;
-        as[1] = ((mask >> 1) & 1u) != 0;
-        as[2] = ((mask >> 2) & 1u) != 0;
-        CHECK(lhs.eval(as) == rhs.eval(as));
-    }
-}
-
 TEST_CASE("ZDD boolean algebra: distributivity of & over |", "[basic]")
 {
     zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};

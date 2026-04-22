@@ -4,10 +4,10 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/config.hpp"                 // config
-#include "freddy/detail/manager.hpp"         // detail::manager
-#include "freddy/detail/operation/conj.hpp"  // detail::conj
-#include "freddy/expansion.hpp"              // expansion::S
+#include "freddy/config.hpp"                  // config
+#include "freddy/detail/manager.hpp"          // detail::manager
+#include "freddy/detail/operation/conj.hpp"   // detail::conj
+#include "freddy/expansion.hpp"               // expansion::S
 
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
@@ -238,7 +238,7 @@ class zdd_manager final : public detail::manager<bool, bool>
 
         auto const x = top_var(f, g);
 
-        op.set_result(branch(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false))));
+        op.set_result(uedge(regw(), unode(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)))));
         return cache(std::move(op))->get_result();
     }
 
@@ -266,16 +266,21 @@ class zdd_manager final : public detail::manager<bool, bool>
         return rec(rec, f, g, 0);
     }
 
-    // Complement: recursive over ZDD structure
     auto complement(edge_ptr const& f) -> edge_ptr override
     {
         if (f == constant(0)) return constant(1);
         if (f == constant(1)) return constant(0);
 
         auto const x = f->ch()->br().x;
-        auto hi = complement(cof(f, x, true));
-        auto lo = complement(cof(f, x, false));
-        return branch(x, std::move(hi), std::move(lo));
+        return uedge(regw(), unode(x, complement(denorm_high(f)), complement(denorm_low(f))));
+    }
+
+    auto path_count(edge_ptr const& f) -> double
+    {
+        if (f == constant(0)) return 0.0;
+        if (f == constant(1)) return 1.0;
+
+        return path_count(f->ch()->br().hi) + path_count(f->ch()->br().lo);
     }
 
     auto mul(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -392,11 +397,13 @@ inline auto zdd::eval(std::vector<bool> const& as) const noexcept -> bool
     assert(as.size() == mgr->var_count());
 
     auto cur = *this;
+
     while (!cur.is_const())
     {
         auto const x = static_cast<std::size_t>(cur.var());
         cur = as[x] ? cur.high() : cur.low();
     }
+
     return cur.is_one();
 }
 
@@ -460,5 +467,6 @@ inline auto zdd::dump_dot(std::ostream& os) const
     assert(mgr);
     mgr->dump_dot({*this}, {}, os);
 }
+
 
 }  // namespace freddy
