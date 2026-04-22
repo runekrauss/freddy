@@ -27,12 +27,12 @@ namespace
 // Functions
 // =====================================================================================================================
 
-auto queens(std::int32_t const n, zdd_manager& mgr) // <-- bdd_manager -> zdd_manager
+auto queens(std::int32_t const n, zdd_manager& mgr)
 {
     assert(n > 0);
 
     // initialize nxn chessboard of ZDD variables
-    std::vector<std::vector<zdd>> x(n, std::vector<zdd>(n)); // <-- bdd -> zdd
+    std::vector<std::vector<zdd>> x(n, std::vector<zdd>(n));
     for (auto& row : x)
     {
         std::ranges::generate(row, [&mgr]() { return mgr.var(); });
