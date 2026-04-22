@@ -14,7 +14,6 @@
 #include "freddy/detail/operation/sharpsat.hpp"  // detail::sharpsat
 #include "freddy/expansion.hpp"                  // expansion::nD
 
-#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cstdint>      // std::int32_t
@@ -110,14 +109,14 @@ class kfdd_manager final : public detail::manager<bool, bool>
 
     [[nodiscard]] auto size(std::vector<kfdd> const& fs) const
     {
-        return manager::size(transform(fs));
+        return manager::size(kfdd::transform(fs));
     }
 
     [[nodiscard]] auto depth(std::vector<kfdd> const& fs) const
     {
         assert(!fs.empty());
 
-        return manager::depth(transform(fs));
+        return manager::depth(kfdd::transform(fs));
     }
 
     auto dump_dot(std::vector<kfdd> const& fs, std::vector<std::string> const& outputs = {},
@@ -125,7 +124,7 @@ class kfdd_manager final : public detail::manager<bool, bool>
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        manager::dump_dot(transform(fs), outputs, os);
+        manager::dump_dot(kfdd::transform(fs), outputs, os);
     }
 
     // DTL sifting wrapper for KFDD-typed vectors
@@ -136,7 +135,7 @@ class kfdd_manager final : public detail::manager<bool, bool>
 
     void dtl_sift(std::vector<kfdd> const& fs)
     {
-        manager::dtl_sift(transform(fs));
+        manager::dtl_sift(kfdd::transform(fs));
     }
 
     // Public alias for change_decomposition (compatibility with tests)
@@ -155,13 +154,6 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return {edge_ptr{new edge{false, leaf}}, edge_ptr{new edge{true, leaf}}};
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
-
-    static auto transform(std::vector<kfdd> const& gs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
-        return fs;
-    }
 
     auto antiv(edge_ptr const& f, edge_ptr const& g)
     {

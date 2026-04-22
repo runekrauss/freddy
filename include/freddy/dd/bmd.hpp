@@ -21,7 +21,6 @@
 #pragma warning(pop)
 #endif
 
-#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::abs
@@ -185,14 +184,14 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
 
     [[nodiscard]] auto size(std::vector<bmd> const& fs) const
     {
-        return manager::size(transform(fs));
+        return manager::size(bmd::transform(fs));
     }
 
     [[nodiscard]] auto depth(std::vector<bmd> const& fs) const
     {
         assert(!fs.empty());
 
-        return manager::depth(transform(fs));
+        return manager::depth(bmd::transform(fs));
     }
 
     auto unsigned_bin(std::vector<bmd> const& fs)  // unsigned binary encoding
@@ -222,7 +221,7 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        manager::dump_dot(transform(fs), outputs, os);
+        manager::dump_dot(bmd::transform(fs), outputs, os);
     }
 
   private:
@@ -237,13 +236,6 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return {edge_ptr{new edge{0, leaf}}, edge_ptr{new edge{1, leaf}}};
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
-
-    static auto transform(std::vector<bmd> const& gs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
-        return fs;
-    }
 
     auto neg(edge_ptr const& f)
     {

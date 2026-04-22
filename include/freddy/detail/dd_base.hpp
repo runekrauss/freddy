@@ -7,6 +7,7 @@
 #include "freddy/config.hpp"       // var_index
 #include "freddy/detail/node.hpp"  // detail::edge_ptr
 
+#include <algorithm>    // std::ranges::transform
 #include <cassert>      // assert
 #include <iostream>     // std::cout
 #include <ostream>      // std::ostream
@@ -155,6 +156,14 @@ class dd_base
                       "Manager must derive from detail::manager<EWeight, NValue>");
         assert(this->f);
         assert(this->mgr);
+    }
+
+    // extracts DD handles from a vector of wrappers; visible to DD managers via their wrapper friendship
+    static auto transform(std::vector<Derived> const& gs) -> std::vector<edge_ptr<EWeight, NValue>>
+    {
+        std::vector<edge_ptr<EWeight, NValue>> fs(gs.size());
+        std::ranges::transform(gs, fs.begin(), [](Derived const& g) { return g.f; });
+        return fs;
     }
 
   private:

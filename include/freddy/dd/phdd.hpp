@@ -12,7 +12,6 @@
 #include "freddy/detail/operation/plus.hpp"  // detail::plus
 #include "freddy/expansion.hpp"              // expansion::pD
 
-#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <bit>          // std::bit_width
 #include <cassert>      // assert
@@ -200,14 +199,14 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
 
     [[nodiscard]] auto size(std::vector<phdd> const& fs) const
     {
-        return manager::size(transform(fs));
+        return manager::size(phdd::transform(fs));
     }
 
     [[nodiscard]] auto depth(std::vector<phdd> const& fs) const
     {
         assert(!fs.empty());
 
-        return manager::depth(transform(fs));
+        return manager::depth(phdd::transform(fs));
     }
 
     auto weighted_sum(std::vector<phdd> const& fs)
@@ -225,7 +224,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        manager::dump_dot(transform(fs), outputs, os);
+        manager::dump_dot(phdd::transform(fs), outputs, os);
     }
 
   private:
@@ -237,13 +236,6 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         return {edge_ptr{new edge{{false, 0}, new node{0.0}}}, edge_ptr{new edge{{false, 0}, new node{1.0}}}};
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
-
-    static auto transform(std::vector<phdd> const& gs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
-        return fs;
-    }
 
     static auto factorize_pow2(std::uint64_t const w) -> std::pair<std::uint64_t, std::uint64_t>
     {

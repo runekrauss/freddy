@@ -24,7 +24,6 @@
 #pragma warning(pop)
 #endif
 
-#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::isinf
@@ -164,14 +163,14 @@ class add_manager final : public detail::manager<bool, NValue>
 
     [[nodiscard]] auto size(std::vector<add<NValue>> const& fs) const
     {
-        return manager::size(transform(fs));
+        return manager::size(add<NValue>::transform(fs));
     }
 
     [[nodiscard]] auto depth(std::vector<add<NValue>> const& fs) const
     {
         assert(!fs.empty());
 
-        return manager::depth(transform(fs));
+        return manager::depth(add<NValue>::transform(fs));
     }
 
     auto dump_dot(std::vector<add<NValue>> const& fs, std::vector<std::string> const& outputs = {},
@@ -180,7 +179,7 @@ class add_manager final : public detail::manager<bool, NValue>
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
         std::ostringstream oss;
-        manager::dump_dot(transform(fs), outputs, oss);
+        manager::dump_dot(add<NValue>::transform(fs), outputs, oss);
 
         auto dot = oss.str();
         boost::replace_all(dot, "label=\" 0 \"]", "]");  // as no different edge weights are used
@@ -203,13 +202,6 @@ class add_manager final : public detail::manager<bool, NValue>
         return {edge_ptr{new edge{false, new node{0}}}, edge_ptr{new edge{false, new node{1}}}};
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
-
-    static auto transform(std::vector<add<NValue>> const& gs)
-    {
-        std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
-        return fs;
-    }
 
     auto neg(edge_ptr const& f)
     {

@@ -14,7 +14,6 @@
 
 #include <boost/algorithm/string.hpp>  // boost::replace_all
 
-#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cstddef>      // std::size_t
@@ -149,14 +148,14 @@ class bhd_manager final : public detail::manager<bool, bool>
 
     [[nodiscard]] auto size(std::vector<bhd> const& fs) const
     {
-        return manager::size(transform(fs));
+        return manager::size(bhd::transform(fs));
     }
 
     [[nodiscard]] auto depth(std::vector<bhd> const& fs) const
     {
         assert(!fs.empty());
 
-        return manager::depth(transform(fs));
+        return manager::depth(bhd::transform(fs));
     }
 
     auto dump_dot(std::vector<bhd> const& fs, std::vector<std::string> const& outputs = {},
@@ -166,7 +165,7 @@ class bhd_manager final : public detail::manager<bool, bool>
 
         // to highlight the expansion node labeled with "EXP" that marks the end of all expansion paths
         std::ostringstream oss;
-        manager::dump_dot(transform(fs), outputs, oss);
+        manager::dump_dot(bhd::transform(fs), outputs, oss);
 
         auto dot = oss.str();
         boost::replace_all(dot, "[shape=box,style=filled,color=chocolate,fontcolor=white,label=\"1\"]",
@@ -185,12 +184,6 @@ class bhd_manager final : public detail::manager<bool, bool>
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
 
-    static auto transform(std::vector<bhd> const& gs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
-        return fs;
-    }
 
     [[nodiscard]] auto is_exp(edge_ptr const& f) const noexcept
     {

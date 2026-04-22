@@ -14,7 +14,6 @@
 #include "freddy/detail/operation/sharpsat.hpp"  // detail::sharpsat
 #include "freddy/expansion.hpp"                  // expansion::S
 
-#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cstdint>      // std::int32_t
@@ -105,14 +104,14 @@ class bdd_manager final : public detail::manager<bool, bool>
 
     [[nodiscard]] auto size(std::vector<bdd> const& fs) const
     {
-        return manager::size(transform(fs));
+        return manager::size(bdd::transform(fs));
     }
 
     [[nodiscard]] auto depth(std::vector<bdd> const& fs) const
     {
         assert(!fs.empty());
 
-        return manager::depth(transform(fs));
+        return manager::depth(bdd::transform(fs));
     }
 
     auto dump_dot(std::vector<bdd> const& fs, std::vector<std::string> const& outputs = {},
@@ -120,7 +119,7 @@ class bdd_manager final : public detail::manager<bool, bool>
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        manager::dump_dot(transform(fs), outputs, os);
+        manager::dump_dot(bdd::transform(fs), outputs, os);
     }
 
   private:
@@ -133,13 +132,6 @@ class bdd_manager final : public detail::manager<bool, bool>
         return {edge_ptr{new edge{false, leaf}}, edge_ptr{new edge{true, leaf}}};
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
-
-    static auto transform(std::vector<bdd> const& gs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
-        return fs;
-    }
 
     auto antiv(edge_ptr const& f, edge_ptr const& g)
     {
