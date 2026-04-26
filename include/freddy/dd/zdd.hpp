@@ -268,8 +268,14 @@ class zdd_manager final : public detail::manager<bool, bool>
 
     auto complement(edge_ptr const& f) -> edge_ptr override
     {
-        if (f == constant(0)) return constant(1);
-        if (f == constant(1)) return constant(0);
+        if (f == constant(0))
+        {
+            return constant(1);
+        }
+        if (f == constant(1))
+        {
+            return constant(0);
+        }
 
         auto const x = f->ch()->br().x;
         return uedge(regw(), unode(x, complement(denorm_high(f)), complement(denorm_low(f))));
@@ -277,8 +283,14 @@ class zdd_manager final : public detail::manager<bool, bool>
 
     auto path_count(edge_ptr const& f) -> double
     {
-        if (f == constant(0)) return 0.0;
-        if (f == constant(1)) return 1.0;
+        if (f == constant(0))
+        {
+            return 0.0;
+        }
+        if (f == constant(1))
+        {
+            return 1.0;
+        }
 
         return path_count(f->ch()->br().hi) + path_count(f->ch()->br().lo);
     }
