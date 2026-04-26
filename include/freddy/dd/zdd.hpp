@@ -190,6 +190,7 @@ class zdd_manager final : public detail::manager<bool, bool>
     friend zdd;
 
     // Terminal nodes: {} (empty family) and {{}} (family containing empty set)
+    // NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks)
     static auto tmls() -> std::array<edge_ptr, 2>
     {
         node_ptr const leaf0{new detail::node<bool, bool>{false}};  // {} (empty family) -> 0
@@ -200,6 +201,7 @@ class zdd_manager final : public detail::manager<bool, bool>
             edge_ptr{new detail::edge<bool, bool>{false, leaf1}},  // constant(1)
         };
     }
+    // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
 
     static auto transform(std::vector<zdd> const& gs) -> std::vector<edge_ptr>
     {
