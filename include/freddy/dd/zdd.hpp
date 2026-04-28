@@ -13,8 +13,10 @@
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <iostream>     // std::cout
+#include <map>          // std::map
 #include <string>       // std::string
 #include <string_view>  // std::string_view
+#include <tuple>        // std::tuple
 #include <utility>      // std::forward
 #include <vector>       // std::vector
 
@@ -246,23 +248,38 @@ class zdd_manager final : public detail::manager<bool, bool>
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
-        auto const rec = [this](auto&& self, edge_ptr const& ff, edge_ptr const& gg,
-                                var_index const lvl) -> edge_ptr
+        std::map<std::tuple<edge_ptr, edge_ptr, var_index>, edge_ptr> memo;
+
+        auto const split = [this](edge_ptr const& e, var_index lvl) -> std::pair<edge_ptr, edge_ptr>
+        {
+            if (!e->is_const() && e->ch()->br().x == lvl)
+                return {denorm_high(e), denorm_low(e)};
+            return {e, e};
+        };
+
+        auto const rec = [this, &memo, &split](auto&& self, edge_ptr const& ff, edge_ptr const& gg,
+                        var_index const lvl) -> edge_ptr
         {
             if (lvl >= static_cast<var_index>(var_count()))
-            {
                 return (ff == constant(0) && gg == constant(0)) ? constant(0) : constant(1);
-            }
 
-            auto const f_hi = (!ff->is_const() && ff->ch()->br().x == lvl) ? denorm_high(ff) : ff;
-            auto const f_lo = (!ff->is_const() && ff->ch()->br().x == lvl) ? denorm_low(ff) : ff;
-            auto const g_hi = (!gg->is_const() && gg->ch()->br().x == lvl) ? denorm_high(gg) : gg;
-            auto const g_lo = (!gg->is_const() && gg->ch()->br().x == lvl) ? denorm_low(gg) : gg;
+            auto const key = std::make_tuple(ff, gg, lvl);
+            if (auto const it = memo.find(key); it != memo.end())
+                return it->second;
+
+            auto const [f_hi, f_lo] = split(ff, lvl);
+            auto const [g_hi, g_lo] = split(gg, lvl);
 
             auto hi = self(self, f_hi, g_hi, static_cast<var_index>(lvl + 1));
             auto lo = self(self, f_lo, g_lo, static_cast<var_index>(lvl + 1));
 
-            return branch(lvl, std::move(hi), std::move(lo));
+            // complement node: hi==0 by construction, branch would wrongly eliminate it
+            auto result = (hi == constant(0) && lo != constant(0))
+                ? uedge(regw(), unode(lvl, std::move(hi), std::move(lo)))
+                : branch(lvl, std::move(hi), std::move(lo));
+
+            memo.emplace(key, result);
+            return result;
         };
 
         return rec(rec, f, g, 0);
