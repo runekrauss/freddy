@@ -146,7 +146,7 @@ class zdd_manager final : public detail::manager<bool, bool>
 {
   public:
     explicit zdd_manager(struct config const cfg = {}) :
-            manager{tmls(), cfg}
+            manager{tmls(), cfg}  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks)
     {}
 
     auto var(std::string_view lbl = {})
@@ -253,7 +253,9 @@ class zdd_manager final : public detail::manager<bool, bool>
         auto const split = [this](edge_ptr const& e, var_index lvl) -> std::pair<edge_ptr, edge_ptr>
         {
             if (!e->is_const() && e->ch()->br().x == lvl)
+            {
                 return {denorm_high(e), denorm_low(e)};
+            }
             return {e, e};
         };
 
@@ -261,11 +263,15 @@ class zdd_manager final : public detail::manager<bool, bool>
                         var_index const lvl) -> edge_ptr
         {
             if (lvl >= static_cast<var_index>(var_count()))
+            {
                 return (ff == constant(0) && gg == constant(0)) ? constant(0) : constant(1);
+            }
 
             auto const key = std::make_tuple(ff, gg, lvl);
             if (auto const it = memo.find(key); it != memo.end())
+            {
                 return it->second;
+            }
 
             auto const [f_hi, f_lo] = split(ff, lvl);
             auto const [g_hi, g_lo] = split(gg, lvl);

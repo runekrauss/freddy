@@ -53,9 +53,9 @@ TEST_CASE("ZDD set operations work correctly", "[basic]")
         std::vector<bool> as(3, false);
         for (std::uint64_t mask = 0; mask < 8; ++mask)
         {
-            as[0] = ((mask >> 0) & 1u) != 0;
-            as[1] = ((mask >> 1) & 1u) != 0;
-            as[2] = ((mask >> 2) & 1u) != 0;
+            as[0] = ((mask >> 0u) & 1u) != 0;
+            as[1] = ((mask >> 1u) & 1u) != 0;
+            as[2] = ((mask >> 2u) & 1u) != 0;
             CHECK(a.eval(as) == x0.eval(as));
         }
     }
@@ -66,9 +66,9 @@ TEST_CASE("ZDD set operations work correctly", "[basic]")
         std::vector<bool> as(3, false);
         for (std::uint64_t mask = 0; mask < 8; ++mask)
         {
-            as[0] = ((mask >> 0) & 1u) != 0;
-            as[1] = ((mask >> 1) & 1u) != 0;
-            as[2] = ((mask >> 2) & 1u) != 0;
+            as[0] = ((mask >> 0u) & 1u) != 0;
+            as[1] = ((mask >> 1u) & 1u) != 0;
+            as[2] = ((mask >> 2u) & 1u) != 0;
             CHECK(a.eval(as) == x0.eval(as));
         }
     }
@@ -84,9 +84,9 @@ TEST_CASE("ZDD set operations work correctly", "[basic]")
         std::vector<bool> as(3, false);
         for (std::uint64_t mask = 0; mask < 8; ++mask)
         {
-            as[0] = ((mask >> 0) & 1u) != 0;
-            as[1] = ((mask >> 1) & 1u) != 0;
-            as[2] = ((mask >> 2) & 1u) != 0;
+            as[0] = ((mask >> 0u) & 1u) != 0;
+            as[1] = ((mask >> 1u) & 1u) != 0;
+            as[2] = ((mask >> 2u) & 1u) != 0;
             CHECK(a.eval(as) == x0.eval(as));
         }
     }
@@ -164,9 +164,9 @@ TEST_CASE("ZDD De Morgan identity holds", "[basic]")
     std::vector<bool> as(3, false);
     for (std::uint64_t mask = 0; mask < 8; ++mask)
     {
-        as[0] = ((mask >> 0) & 1u) != 0;
-        as[1] = ((mask >> 1) & 1u) != 0;
-        as[2] = ((mask >> 2) & 1u) != 0;
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
         CHECK(lhs.eval(as) == rhs.eval(as));
     }
 }
@@ -218,9 +218,9 @@ TEST_CASE("ZDD is substituted", "[basic]")
         std::vector<bool> as(3, false);
         for (std::uint64_t mask = 0; mask < 8; ++mask)
         {
-            as[0] = ((mask >> 0) & 1u) != 0;
-            as[1] = ((mask >> 1) & 1u) != 0;
-            as[2] = ((mask >> 2) & 1u) != 0;
+            as[0] = ((mask >> 0u) & 1u) != 0;
+            as[1] = ((mask >> 1u) & 1u) != 0;
+            as[2] = ((mask >> 2u) & 1u) != 0;
             CHECK(g.eval(as) == x0.eval(as));
         }
     }
@@ -256,9 +256,9 @@ TEST_CASE("ZDD instructor example: cube redundancy (semantic check)", "[basic]")
     std::vector<bool> as(3, false);
     for (std::uint64_t mask = 0; mask < 8; ++mask)
     {
-        as[0] = ((mask >> 0) & 1u) != 0;
-        as[1] = ((mask >> 1) & 1u) != 0;
-        as[2] = ((mask >> 2) & 1u) != 0;
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
         CHECK(F.eval(as) == G.eval(as));
     }
 }
@@ -282,9 +282,9 @@ TEST_CASE("ZDD subsumption effect reduces/reuses structure", "[basic]")
     std::vector<bool> as(3, false);
     for (std::uint64_t mask = 0; mask < 8; ++mask)
     {
-        as[0] = ((mask >> 0) & 1u) != 0;
-        as[1] = ((mask >> 1) & 1u) != 0;
-        as[2] = ((mask >> 2) & 1u) != 0;
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
         CHECK(after.eval(as) == target.eval(as));
     }
 
@@ -310,9 +310,9 @@ TEST_CASE("ZDD SOP minimization (two-level logic)", "[basic]")
     std::vector<bool> as(3, false);
     for (std::uint64_t mask = 0; mask < 8; ++mask)
     {
-        as[0] = ((mask >> 0) & 1u) != 0;
-        as[1] = ((mask >> 1) & 1u) != 0;
-        as[2] = ((mask >> 2) & 1u) != 0;
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
         CHECK(F.eval(as) == G.eval(as));
     }
 }
@@ -363,9 +363,9 @@ TEST_CASE("ZDD complement wrapper: pointwise correctness on constants", "[basic]
     {
         for (std::uint64_t mask = 0; mask < 8; ++mask)
         {
-            as[0] = ((mask >> 0) & 1u) != 0;
-            as[1] = ((mask >> 1) & 1u) != 0;
-            as[2] = ((mask >> 2) & 1u) != 0;
+            as[0] = ((mask >> 0u) & 1u) != 0;
+            as[1] = ((mask >> 1u) & 1u) != 0;
+            as[2] = ((mask >> 2u) & 1u) != 0;
             CHECK((~mgr.zero()).eval(as));
         }
     }
@@ -374,9 +374,9 @@ TEST_CASE("ZDD complement wrapper: pointwise correctness on constants", "[basic]
     {
         for (std::uint64_t mask = 0; mask < 8; ++mask)
         {
-            as[0] = ((mask >> 0) & 1u) != 0;
-            as[1] = ((mask >> 1) & 1u) != 0;
-            as[2] = ((mask >> 2) & 1u) != 0;
+            as[0] = ((mask >> 0u) & 1u) != 0;
+            as[1] = ((mask >> 1u) & 1u) != 0;
+            as[2] = ((mask >> 2u) & 1u) != 0;
             CHECK_FALSE((~mgr.one()).eval(as));
         }
     }
@@ -397,9 +397,9 @@ TEST_CASE("ZDD disjunction wrapper: commutativity", "[basic]")
     std::vector<bool> as(3, false);
     for (std::uint64_t mask = 0; mask < 8; ++mask)
     {
-        as[0] = ((mask >> 0) & 1u) != 0;
-        as[1] = ((mask >> 1) & 1u) != 0;
-        as[2] = ((mask >> 2) & 1u) != 0;
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
         CHECK((f | g).eval(as) == (g | f).eval(as));
     }
 }
@@ -412,9 +412,9 @@ TEST_CASE("ZDD disjunction wrapper: associativity", "[basic]")
     std::vector<bool> as(3, false);
     for (std::uint64_t mask = 0; mask < 8; ++mask)
     {
-        as[0] = ((mask >> 0) & 1u) != 0;
-        as[1] = ((mask >> 1) & 1u) != 0;
-        as[2] = ((mask >> 2) & 1u) != 0;
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
         CHECK(((x0 | x1) | x2).eval(as) == (x0 | (x1 | x2)).eval(as));
     }
 }
@@ -432,9 +432,9 @@ TEST_CASE("ZDD disjunction wrapper: identity and annihilation", "[basic]")
     {
         for (std::uint64_t mask = 0; mask < 8; ++mask)
         {
-            as[0] = ((mask >> 0) & 1u) != 0;
-            as[1] = ((mask >> 1) & 1u) != 0;
-            as[2] = ((mask >> 2) & 1u) != 0;
+            as[0] = ((mask >> 0u) & 1u) != 0;
+            as[1] = ((mask >> 1u) & 1u) != 0;
+            as[2] = ((mask >> 2u) & 1u) != 0;
             CHECK((f | mgr.zero()).eval(as) == f.eval(as));
         }
     }
@@ -443,9 +443,9 @@ TEST_CASE("ZDD disjunction wrapper: identity and annihilation", "[basic]")
     {
         for (std::uint64_t mask = 0; mask < 8; ++mask)
         {
-            as[0] = ((mask >> 0) & 1u) != 0;
-            as[1] = ((mask >> 1) & 1u) != 0;
-            as[2] = ((mask >> 2) & 1u) != 0;
+            as[0] = ((mask >> 0u) & 1u) != 0;
+            as[1] = ((mask >> 1u) & 1u) != 0;
+            as[2] = ((mask >> 2u) & 1u) != 0;
             CHECK((mgr.zero() | f).eval(as) == f.eval(as));
         }
     }
@@ -467,9 +467,9 @@ TEST_CASE("ZDD boolean algebra: distributivity of & over |", "[basic]")
     std::vector<bool> as(3, false);
     for (std::uint64_t mask = 0; mask < 8; ++mask)
     {
-        as[0] = ((mask >> 0) & 1u) != 0;
-        as[1] = ((mask >> 1) & 1u) != 0;
-        as[2] = ((mask >> 2) & 1u) != 0;
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
         CHECK(lhs.eval(as) == rhs.eval(as));
     }
 }
@@ -486,9 +486,9 @@ TEST_CASE("ZDD boolean algebra: absorption laws", "[basic]")
     {
         for (std::uint64_t mask = 0; mask < 8; ++mask)
         {
-            as[0] = ((mask >> 0) & 1u) != 0;
-            as[1] = ((mask >> 1) & 1u) != 0;
-            as[2] = ((mask >> 2) & 1u) != 0;
+            as[0] = ((mask >> 0u) & 1u) != 0;
+            as[1] = ((mask >> 1u) & 1u) != 0;
+            as[2] = ((mask >> 2u) & 1u) != 0;
             CHECK((x0 & (x0 | x1)).eval(as) == x0.eval(as));
         }
     }
@@ -497,9 +497,9 @@ TEST_CASE("ZDD boolean algebra: absorption laws", "[basic]")
     {
         for (std::uint64_t mask = 0; mask < 8; ++mask)
         {
-            as[0] = ((mask >> 0) & 1u) != 0;
-            as[1] = ((mask >> 1) & 1u) != 0;
-            as[2] = ((mask >> 2) & 1u) != 0;
+            as[0] = ((mask >> 0u) & 1u) != 0;
+            as[1] = ((mask >> 1u) & 1u) != 0;
+            as[2] = ((mask >> 2u) & 1u) != 0;
             CHECK((x0 | (x0 & x1)).eval(as) == x0.eval(as));
         }
     }
