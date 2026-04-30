@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <sstream>
+#include <string>
 #include <vector>
 
 using namespace freddy;
@@ -37,67 +38,83 @@ TEST_CASE("ZDD is constructed", "[basic]")
     }
 }
 
-TEST_CASE("ZDD set operations work correctly", "[basic]")
+TEST_CASE("ZDD AND is idempotent", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var();
+    (void)mgr.var();
+    (void)mgr.var();
+    CHECK((x0 & x0) == x0);
+}
+
+TEST_CASE("ZDD OR is idempotent (semantic)", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var();
+    (void)mgr.var();
+    (void)mgr.var();
+    auto const a = x0 | x0;
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
+        CHECK(a.eval(as) == x0.eval(as));
+    }
+}
+
+TEST_CASE("ZDD OR with zero holds semantically", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var();
+    (void)mgr.var();
+    (void)mgr.var();
+    auto const a = x0 | mgr.zero();
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
+        CHECK(a.eval(as) == x0.eval(as));
+    }
+}
+
+TEST_CASE("ZDD AND with zero is zero", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var();
+    (void)mgr.var();
+    (void)mgr.var();
+    CHECK((x0 & mgr.zero()).is_zero());
+}
+
+TEST_CASE("ZDD AND with one is identity (semantic)", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var();
+    (void)mgr.var();
+    (void)mgr.var();
+    auto const a = x0 & mgr.one();
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
+    {
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
+        CHECK(a.eval(as) == x0.eval(as));
+    }
+}
+
+TEST_CASE("ZDD non-trivial combination builds non-empty structure", "[basic]")
 {
     zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
-
-    SECTION("AND idempotence is structural")
-    {
-        CHECK((x0 & x0) == x0);
-    }
-
-    SECTION("OR idempotence holds semantically")
-    {
-        auto const a = x0 | x0;
-        std::vector<bool> as(3, false);
-        for (std::uint64_t mask = 0; mask < 8; ++mask)
-        {
-            as[0] = ((mask >> 0u) & 1u) != 0;
-            as[1] = ((mask >> 1u) & 1u) != 0;
-            as[2] = ((mask >> 2u) & 1u) != 0;
-            CHECK(a.eval(as) == x0.eval(as));
-        }
-    }
-
-    SECTION("OR with zero holds semantically")
-    {
-        auto const a = x0 | mgr.zero();
-        std::vector<bool> as(3, false);
-        for (std::uint64_t mask = 0; mask < 8; ++mask)
-        {
-            as[0] = ((mask >> 0u) & 1u) != 0;
-            as[1] = ((mask >> 1u) & 1u) != 0;
-            as[2] = ((mask >> 2u) & 1u) != 0;
-            CHECK(a.eval(as) == x0.eval(as));
-        }
-    }
-
-    SECTION("Intersection with zero is zero")
-    {
-        CHECK((x0 & mgr.zero()).is_zero());
-    }
-
-    SECTION("Intersection with one is identity (semantic)")
-    {
-        auto const a = x0 & mgr.one();
-        std::vector<bool> as(3, false);
-        for (std::uint64_t mask = 0; mask < 8; ++mask)
-        {
-            as[0] = ((mask >> 0u) & 1u) != 0;
-            as[1] = ((mask >> 1u) & 1u) != 0;
-            as[2] = ((mask >> 2u) & 1u) != 0;
-            CHECK(a.eval(as) == x0.eval(as));
-        }
-    }
-
-    SECTION("A non-trivial combination builds a non-empty structure")
-    {
-        auto const f = (x0 & x1) | x2;
-        CHECK_FALSE(f.is_zero());
-        CHECK(f.size() >= 1);
-        CHECK(f.depth() >= 1);
-    }
+    auto const f = (x0 & x1) | x2;
+    CHECK_FALSE(f.is_zero());
+    CHECK(f.size() >= 1);
+    CHECK(f.depth() >= 1);
 }
 
 TEST_CASE("ZDD can be characterized", "[basic]")
@@ -123,8 +140,7 @@ TEST_CASE("ZDD can be characterized", "[basic]")
     }
 }
 
-TEST_CASE("ZDD variable order is changeable", "[basic]"
-    )
+TEST_CASE("ZDD variable order is changeable", "[basic]")
 {
     zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
     auto const x1 = mgr.var("x1"), x3 = mgr.var("x3"), x0 = mgr.var("x0"), x2 = mgr.var("x2");
@@ -192,50 +208,59 @@ TEST_CASE("ZDD can be characterized (extended)", "[basic]")
 
     SECTION("same_node detects structural identity")
     {
-        auto const g = x0;
+        auto const& g = x0;
         CHECK(x0.same_node(g));
         CHECK_FALSE(x0.same_node(x1));
     }
 }
 
-TEST_CASE("ZDD is substituted", "[basic]")
+TEST_CASE("ZDD variable is restricted to constant", "[basic]")
 {
     zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
-    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+    auto const x0 = mgr.var();
+    (void)mgr.var();
+    (void)mgr.var();
+    auto const g = x0.restr(0, false);
+    CHECK(g.is_zero());
+    auto const h = x0.restr(0, true);
+    CHECK(h.is_one());
+}
 
-    SECTION("Variable is restricted to constant")
+TEST_CASE("ZDD variable is replaced by function (compose)", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var();
+    (void)mgr.var();
+    (void)mgr.var();
+    auto const g = x0.compose(0, x0);
+    std::vector<bool> as(3, false);
+    for (std::uint64_t mask = 0; mask < 8; ++mask)
     {
-        auto const g = x0.restr(0, false);
-        CHECK(g.is_zero());
-
-        auto const h = x0.restr(0, true);
-        CHECK(h.is_one());
+        as[0] = ((mask >> 0u) & 1u) != 0;
+        as[1] = ((mask >> 1u) & 1u) != 0;
+        as[2] = ((mask >> 2u) & 1u) != 0;
+        CHECK(g.eval(as) == x0.eval(as));
     }
+}
 
-    SECTION("Variable is replaced by function (compose)")
-    {
-        auto const g = x0.compose(0, x0);
-        std::vector<bool> as(3, false);
-        for (std::uint64_t mask = 0; mask < 8; ++mask)
-        {
-            as[0] = ((mask >> 0u) & 1u) != 0;
-            as[1] = ((mask >> 1u) & 1u) != 0;
-            as[2] = ((mask >> 2u) & 1u) != 0;
-            CHECK(g.eval(as) == x0.eval(as));
-        }
-    }
+TEST_CASE("ZDD variable is eliminated by existential quantification", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var();
+    (void)mgr.var();
+    (void)mgr.var();
+    auto const g = x0.exist(0);
+    CHECK_FALSE(g.is_zero());
+}
 
-    SECTION("Variable is eliminated by existential quantification")
-    {
-        auto const g = x0.exist(0);
-        CHECK_FALSE(g.is_zero());
-    }
-
-    SECTION("Variable is eliminated by universal quantification")
-    {
-        auto const g = x0.forall(0);
-        CHECK(g.is_zero());
-    }
+TEST_CASE("ZDD variable is eliminated by universal quantification", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x0 = mgr.var();
+    (void)mgr.var();
+    (void)mgr.var();
+    auto const g = x0.forall(0);
+    CHECK(g.is_zero());
 }
 
 TEST_CASE("ZDD instructor example: cube redundancy (semantic check)", "[basic]")
@@ -246,12 +271,12 @@ TEST_CASE("ZDD instructor example: cube redundancy (semantic check)", "[basic]")
     auto const y = mgr.var("y");
     auto const z = mgr.var("z");
 
-    auto const cube_xy   = x & y;
+    auto const cube_xy = x & y;
     auto const cube_xnyz = x & (~y) & z;
-    auto const cube_xz   = x & z;
+    auto const cube_xz = x & z;
 
-    auto const F = cube_xy | cube_xnyz | cube_xz;
-    auto const G = cube_xy | cube_xz;
+    auto const f = cube_xy | cube_xnyz | cube_xz;
+    auto const g = cube_xy | cube_xz;
 
     std::vector<bool> as(3, false);
     for (std::uint64_t mask = 0; mask < 8; ++mask)
@@ -259,7 +284,7 @@ TEST_CASE("ZDD instructor example: cube redundancy (semantic check)", "[basic]")
         as[0] = ((mask >> 0u) & 1u) != 0;
         as[1] = ((mask >> 1u) & 1u) != 0;
         as[2] = ((mask >> 2u) & 1u) != 0;
-        CHECK(F.eval(as) == G.eval(as));
+        CHECK(f.eval(as) == g.eval(as));
     }
 }
 
@@ -270,12 +295,12 @@ TEST_CASE("ZDD subsumption effect reduces/reuses structure", "[basic]")
     auto const y = mgr.var("y");
     auto const z = mgr.var("z");
 
-    auto const xy   = x & y;
+    auto const xy = x & y;
     auto const xnyz = x & (~y) & z;
-    auto const xz   = x & z;
+    auto const xz = x & z;
 
     auto const before = xy | xnyz;
-    auto const after  = before | xz;
+    auto const after = before | xz;
     auto const target = xy | xz;
 
     // functional correctness
@@ -299,13 +324,13 @@ TEST_CASE("ZDD SOP minimization (two-level logic)", "[basic]")
     auto const y = mgr.var("y");
     auto const z = mgr.var("z");
 
-    auto const xy   = x & y;
+    auto const xy = x & y;
     auto const xnyz = x & (~y) & z;
-    auto const xz   = x & z;
+    auto const xz = x & z;
 
-    // F = xy + x!yz + xz + y  =>  G = xy + xz + y  (x!yz redundant)
-    auto const F = xy | xnyz | xz | y;
-    auto const G = xy | xz | y;
+    // f = xy + x!yz + xz + y  =>  g = xy + xz + y  (x!yz redundant)
+    auto const f = xy | xnyz | xz | y;
+    auto const g = xy | xz | y;
 
     std::vector<bool> as(3, false);
     for (std::uint64_t mask = 0; mask < 8; ++mask)
@@ -313,7 +338,7 @@ TEST_CASE("ZDD SOP minimization (two-level logic)", "[basic]")
         as[0] = ((mask >> 0u) & 1u) != 0;
         as[1] = ((mask >> 1u) & 1u) != 0;
         as[2] = ((mask >> 2u) & 1u) != 0;
-        CHECK(F.eval(as) == G.eval(as));
+        CHECK(f.eval(as) == g.eval(as));
     }
 }
 
@@ -355,7 +380,9 @@ TEST_CASE("ZDD complement wrapper: pointwise correctness on constants", "[basic]
 {
     zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
-    (void)x0; (void)x1; (void)x2;
+    (void)x0;
+    (void)x1;
+    (void)x2;
 
     std::vector<bool> as(3, false);
 

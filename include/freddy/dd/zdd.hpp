@@ -4,10 +4,10 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/config.hpp"                  // config
-#include "freddy/detail/manager.hpp"          // detail::manager
-#include "freddy/detail/operation/conj.hpp"   // detail::conj
-#include "freddy/expansion.hpp"               // expansion::S
+#include "freddy/config.hpp"                 // config
+#include "freddy/detail/manager.hpp"         // detail::manager
+#include "freddy/detail/operation/conj.hpp"  // detail::conj
+#include "freddy/expansion.hpp"              // expansion::S
 
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
@@ -180,8 +180,7 @@ class zdd_manager final : public detail::manager<bool, bool>
         return manager::depth(transform(fs));
     }
 
-    auto dump_dot(std::vector<zdd> const& fs,
-                  std::vector<std::string> const& outputs = {},
+    auto dump_dot(std::vector<zdd> const& fs, std::vector<std::string> const& outputs = {},
                   std::ostream& os = std::cout) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
@@ -242,7 +241,8 @@ class zdd_manager final : public detail::manager<bool, bool>
 
         auto const x = top_var(f, g);
 
-        op.set_result(uedge(regw(), unode(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)))));
+        op.set_result(
+            uedge(regw(), unode(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)))));
         return cache(std::move(op))->get_result();
     }
 
@@ -250,8 +250,7 @@ class zdd_manager final : public detail::manager<bool, bool>
     {
         std::map<std::tuple<edge_ptr, edge_ptr, var_index>, edge_ptr> memo;
 
-        auto const split = [this](edge_ptr const& e, var_index lvl) -> std::pair<edge_ptr, edge_ptr>
-        {
+        auto const split = [this](edge_ptr const& e, var_index lvl) -> std::pair<edge_ptr, edge_ptr> {
             if (!e->is_const() && e->ch()->br().x == lvl)
             {
                 return {denorm_high(e), denorm_low(e)};
@@ -260,8 +259,7 @@ class zdd_manager final : public detail::manager<bool, bool>
         };
 
         auto const rec = [this, &memo, &split](auto&& self, edge_ptr const& ff, edge_ptr const& gg,
-                        var_index const lvl) -> edge_ptr
-        {
+                                               var_index const lvl) -> edge_ptr {
             if (lvl >= static_cast<var_index>(var_count()))
             {
                 return (ff == constant(0) && gg == constant(0)) ? constant(0) : constant(1);
@@ -281,8 +279,8 @@ class zdd_manager final : public detail::manager<bool, bool>
 
             // complement node: hi==0 by construction, branch would wrongly eliminate it
             auto result = (hi == constant(0) && lo != constant(0))
-                ? uedge(regw(), unode(lvl, std::move(hi), std::move(lo)))
-                : branch(lvl, std::move(hi), std::move(lo));
+                              ? uedge(regw(), unode(lvl, std::move(hi), std::move(lo)))
+                              : branch(lvl, std::move(hi), std::move(lo));
 
             memo.emplace(key, result);
             return result;
@@ -504,6 +502,5 @@ inline auto zdd::dump_dot(std::ostream& os) const
     assert(mgr);
     mgr->dump_dot({*this}, {}, os);
 }
-
 
 }  // namespace freddy
