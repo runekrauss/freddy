@@ -239,7 +239,8 @@ class kfdd_manager final : public detail::manager<bool, bool>
         manager::dump_dot(transform(fs), outputs, os);
     }
 
-    auto read_binary_file(std::string& file_path){
+    auto read_binary_file(std::string& file_path)
+    {
         return kfdd{manager::read_binary_file(file_path), this};
     }
 
@@ -605,8 +606,8 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return lo;
     }
 
-    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const& lo,
-                                 expansion const t) const noexcept -> bool override
+    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const& lo, expansion const t) const noexcept
+        -> bool override
     {
         switch (t)
         {

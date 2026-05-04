@@ -282,7 +282,8 @@ class bhd_manager final : public detail::manager<bool, bool>
         os << dot;
     }
 
-    auto read_binary_file(std::string& file_path){
+    auto read_binary_file(std::string& file_path)
+    {
         return bhd{manager::read_binary_file(file_path), this};
     }
 

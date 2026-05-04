@@ -7,9 +7,8 @@
 #include <freddy/dd/kfdd.hpp>    // kfdd_manager
 #include <freddy/expansion.hpp>  // expansion::nD
 
-#include <vector>  // std::vector
-
 #include <string>
+#include <vector>  // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -605,14 +604,16 @@ TEST_CASE("compose prints", "[basic]")
     CHECK(pred2.eval({true, false, false, true, true}) == false);
 }
 
-TEST_CASE("kfdd-test", "[test]"){
+TEST_CASE("kfdd-test", "[test]")
+{
     kfdd_manager mgr;
     auto and_v1 = mgr.var(expansion::S);
     auto and_v2 = mgr.var(expansion::nD);
 
     std::string path = "NEWPATHTEST";
 
-    SECTION("kfdd"){
+    SECTION("kfdd")
+    {
         auto f = and_v1 & and_v2;
 
         f.write_binary_file(path);

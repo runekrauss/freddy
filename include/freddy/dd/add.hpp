@@ -294,7 +294,8 @@ class add_manager final : public detail::manager<bool, NValue>
         os << dot;
     }
 
-    auto read_binary_file(std::string& file_path){
+    auto read_binary_file(std::string& file_path)
+    {
         return add{manager::read_binary_file(file_path), this};
     }
 

@@ -8,9 +8,8 @@
 #include <freddy/dd/bdd.hpp>  // bdd_manager
 
 #include <sstream>  // std::ostringstream
-#include <vector>   // std::vector
-
 #include <string>
+#include <vector>  // std::vector
 
 // *********************************************************************************************************************
 // Namespaces
@@ -221,13 +220,15 @@ TEST_CASE("BDD solves #SAT", "[basic]")
     CHECK(((mgr.var() & mgr.var()) | ~mgr.var()).sharpsat() == 5);
 }
 
-TEST_CASE("bdd-test", "[test]"){
+TEST_CASE("bdd-test", "[test]")
+{
     bdd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
 
     std::string path = "NEWPATHTEST";
 
-    SECTION("bdd"){
+    SECTION("bdd")
+    {
         auto f = x0 | (x1 & x2);
 
         f.write_binary_file(path);

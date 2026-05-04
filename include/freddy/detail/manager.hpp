@@ -15,33 +15,30 @@
 #include "freddy/detail/variable.hpp"             // variable
 #include "freddy/expansion.hpp"                   // to_string
 
+#include <boost/dynamic_bitset.hpp>
 #include <boost/smart_ptr/intrusive_ptr.hpp>       // boost::intrusive_ptr
 #include <boost/unordered/unordered_flat_set.hpp>  // boost::unordered::erase_if
-#include <boost/dynamic_bitset.hpp>
 
-#include <algorithm>    // std::ranges::fold_left
-#include <array>        // std::array
-#include <cassert>      // assert
-#include <cmath>        // std::ceil
-#include <concepts>     // std::same_as
-#include <cstddef>      // std::size_t
-#include <format>       // std::format
-#include <limits>       // std::numeric_limits
-#include <memory>       // std::unique_ptr
-#include <ostream>      // std::ostream
-#include <ranges>       // std::views::iota
+#include <algorithm>  // std::ranges::fold_left
+#include <array>      // std::array
+#include <cassert>    // assert
+#include <cmath>      // std::ceil
+#include <concepts>   // std::same_as
+#include <cstddef>    // std::size_t
+#include <format>     // std::format
+#include <fstream>
+#include <iostream>
+#include <limits>   // std::numeric_limits
+#include <memory>   // std::unique_ptr
+#include <ostream>  // std::ostream
+#include <ranges>   // std::views::iota
+#include <set>
 #include <stdexcept>    // std::overflow_error
 #include <string>       // std::string
 #include <string_view>  // std::string_view
 #include <type_traits>  // std::is_base_of_v
 #include <utility>      // std::pair
 #include <vector>       // std::vector
-
-
-#include <set>
-#include <iostream>
-#include <fstream>
-
 
 // *********************************************************************************************************************
 // Namespaces
@@ -786,24 +783,31 @@ class manager
         gc();
     }
 
-    auto write_binary_file(edge_ptr const& f, std::string& file_path) const{
+    auto write_binary_file(edge_ptr const& f, std::string& file_path) const
+    {
         std::set<edge_ptr> edges;
 
         save_all_edges(edges, f);
 
-        std::vector<std::vector<edge_ptr>> sorted_edges(this->var_count() +1);
-        for (const edge_ptr& e : edges){
-            if (e->v->is_const()){
+        std::vector<std::vector<edge_ptr>> sorted_edges(this->var_count() + 1);
+        for (const edge_ptr& e : edges)
+        {
+            if (e->v->is_const())
+            {
                 sorted_edges.back().push_back(e);
-            } else {
+            }
+            else
+            {
                 sorted_edges[e->v->br().x].push_back(e);
             }
         }
 
         std::unordered_map<edge_ptr, size_t> edge_map;
         size_t counter = 0;
-        for (const std::vector<edge_ptr>& var_edges : sorted_edges) {
-            for (const edge_ptr& e : var_edges) {
+        for (const std::vector<edge_ptr>& var_edges : sorted_edges)
+        {
+            for (const edge_ptr& e : var_edges)
+            {
                 edge_map[e] = counter;
                 counter++;
             }
@@ -814,37 +818,51 @@ class manager
         std::ofstream file(file_path + ".freddy", std::ios::binary);
         assert(file);
 
-        write_bits(int_to_bits(edges.size(), 32), byte_to_safe, byte_pos, file); //#edges
+        write_bits(int_to_bits(edges.size(), 32), byte_to_safe, byte_pos, file);  // #edges
 
         const auto log_edges_size = std::ceil(log2(edges.size()));
-        write_bits(int_to_bits(sorted_edges.size(), 8), byte_to_safe, byte_pos, file); //#vars
+        write_bits(int_to_bits(sorted_edges.size(), 8), byte_to_safe, byte_pos, file);  // #vars
 
         counter = 0;
-        for (const std::vector<edge_ptr>& var_edges : sorted_edges){
-            write_bits(int_to_bits(var_edges.size(), log_edges_size), byte_to_safe, byte_pos, file); //#varX
+        for (std::vector<edge_ptr>& var_edges : sorted_edges)
+        {
+            write_bits(int_to_bits(var_edges.size(), log_edges_size), byte_to_safe, byte_pos, file);  // #varX
 
-            if (counter < sorted_edges.size() -1){ //var expansion
-                if (vlist[lvl2var[counter]].t == expansion::S){
-                    write_bits(int_to_bits(0,2), byte_to_safe, byte_pos, file);
-                } else if (vlist[lvl2var[counter]].t == expansion::pD) {
-                    write_bits(int_to_bits(1,2), byte_to_safe, byte_pos, file);
-                } else if (vlist[lvl2var[counter]].t == expansion::nD) {
-                    write_bits(int_to_bits(2,2), byte_to_safe, byte_pos, file);
+            if (counter < sorted_edges.size() - 1)
+            {  // var expansion
+                if (vlist[lvl2var[counter]].t == expansion::S)
+                {
+                    write_bits(int_to_bits(0, 2), byte_to_safe, byte_pos, file);
+                }
+                else if (vlist[lvl2var[counter]].t == expansion::pD)
+                {
+                    write_bits(int_to_bits(1, 2), byte_to_safe, byte_pos, file);
+                }
+                else if (vlist[lvl2var[counter]].t == expansion::nD)
+                {
+                    write_bits(int_to_bits(2, 2), byte_to_safe, byte_pos, file);
                 }
             }
             counter++;
-            for (const edge_ptr& e : var_edges){
-                if (e->v->is_const()){
-                    write_bits(to_bits(e->v->value()), byte_to_safe, byte_pos, file); // leaf
-                } else {
-                    write_bits(int_to_bits(edge_map[e->v->br().lo], log_edges_size), byte_to_safe, byte_pos, file); //lo edge address
-                    write_bits(int_to_bits(edge_map[e->v->br().hi], log_edges_size), byte_to_safe, byte_pos, file); //hi edge address
+            for (const edge_ptr& e : var_edges)
+            {
+                if (e->v->is_const())
+                {
+                    write_bits(to_bits(e->v->value()), byte_to_safe, byte_pos, file);  // leaf
                 }
-                write_bits(to_bits(e->weight()), byte_to_safe, byte_pos, file); //weight
+                else
+                {
+                    write_bits(int_to_bits(edge_map[e->v->br().lo], log_edges_size), byte_to_safe, byte_pos,
+                               file);  // lo edge address
+                    write_bits(int_to_bits(edge_map[e->v->br().hi], log_edges_size), byte_to_safe, byte_pos,
+                               file);  // hi edge address
+                }
+                write_bits(to_bits(e->weight()), byte_to_safe, byte_pos, file);  // weight
             }
         }
 
-        if (byte_pos > 0){
+        if (byte_pos > 0)
+        {
             file.put(static_cast<char>(byte_to_safe));
         }
 
@@ -859,37 +877,44 @@ class manager
         static unsigned char byte_to_read = 0;
         static int byte_pos = 0;
 
-        auto edge_amount = read_bits<int>(32, byte_to_read, byte_pos, read_file); //#edges
+        auto edge_amount = read_bits<int>(32, byte_to_read, byte_pos, read_file);  // #edges
 
         auto log_edges_size = std::ceil(log2(edge_amount));
 
-        const size_t var_amount = read_bits<int>(8, byte_to_read, byte_pos, read_file); //#vars
+        const size_t var_amount = read_bits<int>(8, byte_to_read, byte_pos, read_file);  // #vars
 
         std::vector<std::tuple<int, int, EWeight, int, NValue>> edge_list;
-        for (size_t v = 0; v < var_amount; v++) {
-            const size_t var_x_amount = read_bits<int>(log_edges_size, byte_to_read, byte_pos, read_file); //#varX
+        for (size_t v = 0; v < var_amount; v++)
+        {
+            const size_t var_x_amount = read_bits<int>(log_edges_size, byte_to_read, byte_pos, read_file);  // #varX
 
             const bool is_leaf_v = (v == var_amount - 1);
 
-            if (!is_leaf_v) {
-                const size_t var_x_type = read_bits<int>(2, byte_to_read, byte_pos, read_file); //var expansion
+            if (!is_leaf_v)
+            {
+                const size_t var_x_type = read_bits<int>(2, byte_to_read, byte_pos, read_file);  // var expansion
 
-                ensure_var(var_x_type, v+1);
-
+                ensure_var(var_x_type, v + 1);
             }
 
-            for (size_t x = 0; x < var_x_amount; x++){
-                if (is_leaf_v){
-                    auto value = read_bits<NValue>(sizeof(NValue) * 8, byte_to_read, byte_pos, read_file); // leaf value
-                    auto weight = read_bits<EWeight>(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file); // weight
+            for (size_t x = 0; x < var_x_amount; x++)
+            {
+                if (is_leaf_v)
+                {
+                    auto value =
+                        read_bits<NValue>(sizeof(NValue) * 8, byte_to_read, byte_pos, read_file);  // leaf value
+                    auto weight = read_bits<EWeight>(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file);  // weight
 
                     edge_list.emplace_back(-1, -1, weight, -1, value);
                 }
-                else {
-                    const size_t lo = read_bits<int>(log_edges_size, byte_to_read, byte_pos, read_file); //lo edge address
-                    const size_t hi = read_bits<int>(log_edges_size, byte_to_read, byte_pos, read_file); //hi edge address
+                else
+                {
+                    const size_t lo =
+                        read_bits<int>(log_edges_size, byte_to_read, byte_pos, read_file);  // lo edge address
+                    const size_t hi =
+                        read_bits<int>(log_edges_size, byte_to_read, byte_pos, read_file);  // hi edge address
 
-                    auto weight = read_bits<EWeight>(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file); // weight
+                    auto weight = read_bits<EWeight>(sizeof(EWeight) * 8, byte_to_read, byte_pos, read_file);  // weight
                     edge_list.emplace_back(lo, hi, weight, v, 0);
                 }
             }
@@ -972,59 +997,72 @@ class manager
         return f->is_const() ? 1 : std::max(depth(f->v->inner.hi), depth(f->v->inner.lo)) + 1;
     }
 
-
     void save_all_edges(std::set<edge_ptr>& edges, edge_ptr e) const
     {
         edges.insert(e);
-        if (!e->v->is_const()){
+        if (!e->v->is_const())
+        {
             save_all_edges(edges, e->v->br().lo);
             save_all_edges(edges, e->v->br().hi);
         }
     }
 
-    auto int_to_bits(auto value, auto size) const {
+    auto int_to_bits(auto value, auto size) const
+    {
         return boost::dynamic_bitset<>(size, value);
     }
 
-    void write_bits(const boost::dynamic_bitset<>& bits, unsigned char& byte, uint8_t& pos, std::ofstream& file) const{
-        for (const bool bit : bits) {
+    void write_bits(const boost::dynamic_bitset<>& bits, unsigned char& byte, uint8_t& pos, std::ofstream& file) const
+    {
+        for (const bool bit : bits)
+        {
             write_bit(bit, byte, pos, file);
         }
     }
 
-    void write_bit(bool bit, unsigned char& byte, uint8_t& pos, std::ofstream& file) const {
+    void write_bit(bool bit, unsigned char& byte, uint8_t& pos, std::ofstream& file) const
+    {
         byte |= static_cast<unsigned char>(static_cast<unsigned>(bit) << pos);
 
         pos++;
-        if (pos == 8) {
+        if (pos == 8)
+        {
             file.put(static_cast<char>(byte));
             byte = 0;
             pos = 0;
         }
     }
 
-    template<typename T>
-    auto read_bits(size_t size, uint8_t& byte, int& pos, std::ifstream& file) const -> T {
+    template <typename T>
+    auto read_bits(size_t size, uint8_t& byte, int& pos, std::ifstream& file) const -> T
+    {
         boost::dynamic_bitset<> bits(size);
-        for (size_t i = 0; i < size; i++){
+        for (size_t i = 0; i < size; i++)
+        {
             bits[i] = read_bit(byte, pos, file);
         }
 
-        if constexpr (std::is_same_v<T, NValue>){
+        if constexpr (std::is_same_v<T, NValue>)
+        {
             return from_bits<NValue>(bits);
         }
-        else if constexpr (std::is_same_v<T, EWeight>){
+        else if constexpr (std::is_same_v<T, EWeight>)
+        {
             return from_bits<EWeight>(bits);
         }
-        else {
+        else
+        {
             return static_cast<int>(bits.to_ulong());
         }
     }
 
-    auto read_bit(uint8_t& byte, int& pos, std::ifstream& file) const{
-        if (pos == 0){
+    auto read_bit(uint8_t& byte, int& pos, std::ifstream& file) const
+    {
+        if (pos == 0)
+        {
             const int new_byte = file.get();
-            if (new_byte == EOF){
+            if (new_byte == EOF)
+            {
                 throw std::runtime_error("End of file");
             }
             byte = static_cast<uint8_t>(new_byte);
@@ -1037,11 +1075,12 @@ class manager
         return bit;
     }
 
-
-    auto create_tree(int edge_source, std::vector<std::tuple<int, int, EWeight, int, NValue>>& edges) {
+    auto create_tree(int edge_source, std::vector<std::tuple<int, int, EWeight, int, NValue>>& edges)
+    {
         auto edge = edges[edge_source];
 
-        if(std::get<0>(edge) == -1){
+        if (std::get<0>(edge) == -1)
+        {
             return constant(std::get<2>(edge), std::get<4>(edge), false);
         }
 
@@ -1051,48 +1090,57 @@ class manager
     }
 
     template <typename C>
-    auto to_bits(const C& object) const -> boost::dynamic_bitset<> {
+    auto to_bits(const C& object) const -> boost::dynamic_bitset<>
+    {
         boost::dynamic_bitset<> bits(sizeof(C) * 8);
 
         auto object_bytes = std::bit_cast<std::array<unsigned char, sizeof(C)>>(object);
-        for (size_t byte = 0; byte < sizeof(C); byte++) {
-            for (size_t bit = 0; bit < 8; bit++) {
-                bits.at(byte*8 + bit) = (static_cast<unsigned>(object_bytes.at(byte)) >> bit) & 1u;
+        for (size_t byte = 0; byte < sizeof(C); byte++)
+        {
+            for (size_t bit = 0; bit < 8; bit++)
+            {
+                bits.at(byte * 8 + bit) = (static_cast<unsigned>(object_bytes.at(byte)) >> bit) & 1u;
             }
         }
         return bits;
     }
 
     template <typename C>
-    auto from_bits(const boost::dynamic_bitset<>& bits) const -> C {
-        C object{};
+    auto from_bits(const boost::dynamic_bitset<>& bits) const -> C
+    {
+        std::array<unsigned char, sizeof(C)> object_bytes{};
 
-        auto object_bytes = std::bit_cast<std::array<unsigned char, sizeof(C)>>(object);
-
-        for (size_t byte = 0; byte < sizeof(C); byte++) {
-            object_bytes.at(byte) = 0;
-            for (size_t bit = 0; bit < 8; bit++) {
-                if ((byte*8 + bit) < bits.size() && bits.test(byte*8 + bit)) {
+        for (size_t byte = 0; byte < sizeof(C); byte++)
+        {
+            for (size_t bit = 0; bit < 8; bit++)
+            {
+                if ((byte * 8 + bit) < bits.size() && bits.test(byte * 8 + bit))
+                {
                     object_bytes.at(byte) |= static_cast<unsigned char>(1u << bit);
                 }
             }
         }
-        return std::bit_cast<C>(object_bytes);
+        C object{};
+        std::memcpy(&object, object_bytes.data(), sizeof(C));
+        return object;
     }
 
-    void ensure_var(int var_expansion, size_t level){
+    void ensure_var(int var_expansion, size_t level)
+    {
         auto ensure_var = [&](expansion t) {
-            if (this->var_count() < level){
+            if (this->var_count() < level)
+            {
                 var(t, {});
             }
-            else {
+            else
+            {
                 assert(vlist[lvl2var[level]].t == t);
             }
         };
 
         switch (var_expansion)
         {
-            case 0: ensure_var(expansion::S);  break;
+            case 0: ensure_var(expansion::S); break;
             case 1: ensure_var(expansion::pD); break;
             case 2: ensure_var(expansion::nD); break;
             default: assert(false); break;

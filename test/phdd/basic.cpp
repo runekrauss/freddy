@@ -7,10 +7,9 @@
 #include <freddy/dd/phdd.hpp>    // phdd_manager
 #include <freddy/expansion.hpp>  // expansion::S
 
+#include <string>
 #include <utility>  // std::pair
 #include <vector>   // std::vector
-
-#include <string>
 
 // *********************************************************************************************************************
 // Namespaces
@@ -237,13 +236,15 @@ TEST_CASE("PHDD interprets bits numerically", "[basic]")
     }
 }
 
-TEST_CASE("phdd-test", "[test]"){
+TEST_CASE("phdd-test", "[test]")
+{
     phdd_manager mgr;
     auto const x0 = mgr.var(expansion::pD, "x0"), x1 = mgr.var(expansion::S, "x1");
 
     std::string path = "NEWPATHTEST";
 
-    SECTION("phdd"){
+    SECTION("phdd")
+    {
         auto f = x0 | x1;
 
         f.write_binary_file(path);

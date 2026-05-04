@@ -7,15 +7,14 @@
 #include <freddy/config.hpp>  // config
 #include <freddy/dd/add.hpp>  // add_manager
 
-#include <cmath>         // std::nextafter
-#include <cstdint>       // std::int32_t
-#include <limits>        // std::numeric_limits
-#include <sstream>       // std::ostringstream
-#include <stdexcept>     // std::overflow_error
+#include <cmath>      // std::nextafter
+#include <cstdint>    // std::int32_t
+#include <limits>     // std::numeric_limits
+#include <sstream>    // std::ostringstream
+#include <stdexcept>  // std::overflow_error
+#include <string>
 #include <system_error>  // std::system_error
 #include <vector>        // std::vector
-
-#include <string>
 
 // *********************************************************************************************************************
 // Namespaces
@@ -259,13 +258,15 @@ TEST_CASE("ADD detects misuse of word-level operations", "[basic]")
     }
 }
 
-TEST_CASE("add-test", "[test]"){
+TEST_CASE("add-test", "[test]")
+{
     add_manager<std::int32_t> mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
 
     std::string path = "NEWPATHTEST";
 
-    SECTION("add"){
+    SECTION("add")
+    {
         auto f = mgr.constant(8) * x0 | (x1 & x2);
 
         f.write_binary_file(path);

@@ -337,7 +337,8 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         manager::dump_dot(transform(fs), outputs, os);
     }
 
-    auto read_binary_file(std::string& file_path){
+    auto read_binary_file(std::string& file_path)
+    {
         return phdd{manager::read_binary_file(file_path), this};
     }
 

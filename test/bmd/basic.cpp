@@ -7,12 +7,11 @@
 #include <freddy/config.hpp>  // config
 #include <freddy/dd/bmd.hpp>  // bmd_manager
 
-#include <limits>        // std::numeric_limits
-#include <sstream>       // std::ostringstream
+#include <limits>   // std::numeric_limits
+#include <sstream>  // std::ostringstream
+#include <string>
 #include <system_error>  // std::system_error
 #include <vector>        // std::vector
-
-#include <string>
 
 // *********************************************************************************************************************
 // Namespaces
@@ -276,13 +275,15 @@ TEST_CASE("BMD interprets bits numerically", "[basic]")
     }
 }
 
-TEST_CASE("bmd-test", "[test]"){
+TEST_CASE("bmd-test", "[test]")
+{
     bmd_manager mgr;
     auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
 
     std::string path = "NEWPATHTEST";
 
-    SECTION("bmd"){
+    SECTION("bmd")
+    {
         auto f = x0 | x1;
 
         f.write_binary_file(path);
@@ -294,4 +295,3 @@ TEST_CASE("bmd-test", "[test]"){
         CHECK(g == f);
     }
 }
-
