@@ -824,7 +824,7 @@ class manager
         write_bits(int_to_bits(sorted_edges.size(), 8), byte_to_safe, byte_pos, file);  // #vars
 
         counter = 0;
-        for (std::vector<edge_ptr>& var_edges : sorted_edges)
+        for (const std::vector<edge_ptr>& var_edges : sorted_edges)
         {
             write_bits(int_to_bits(var_edges.size(), log_edges_size), byte_to_safe, byte_pos, file);  // #varX
 

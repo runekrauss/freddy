@@ -606,8 +606,8 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return lo;
     }
 
-    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const& lo, expansion const t) const noexcept
-        -> bool override
+    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const& lo,
+                                 expansion const t) const noexcept -> bool override
     {
         switch (t)
         {
