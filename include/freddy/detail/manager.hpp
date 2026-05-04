@@ -1094,7 +1094,9 @@ class manager
     {
         boost::dynamic_bitset<> bits(sizeof(C) * 8);
 
-        auto object_bytes = std::bit_cast<std::array<unsigned char, sizeof(C)>>(object);
+        std::array<unsigned char, sizeof(C)> object_bytes{};
+        std::memcpy(object_bytes.data(), &object, sizeof(C));
+
         for (size_t byte = 0; byte < sizeof(C); byte++)
         {
             for (size_t bit = 0; bit < 8; bit++)
