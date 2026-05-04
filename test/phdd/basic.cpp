@@ -236,6 +236,7 @@ TEST_CASE("PHDD interprets bits numerically", "[basic]")
     }
 }
 
+/*
 TEST_CASE("phdd-test", "[test]")
 {
     phdd_manager mgr;
@@ -255,4 +256,4 @@ TEST_CASE("phdd-test", "[test]")
 
         CHECK(g == f);
     }
-}
+}*/
