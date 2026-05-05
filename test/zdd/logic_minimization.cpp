@@ -55,7 +55,7 @@ auto run_subsumption_check() -> void
     //  - cube = product of literals (e.g., xy, x!yz, xz)
     //  - SOP = disjunction (union) of cubes
     //
-    // Subsumption / redundancy (teacher example):
+    // Subsumption / redundancy:
     //  - cubes: xy, x!yz, xz
     //  - once xz is present, x!yz is redundant (xz subsumes x!yz)
     //
