@@ -59,7 +59,7 @@ namespace std
 
 // hash specialization for multiplicative edge weights
 template <>
-struct std::hash<phdd_weight>
+struct hash<phdd_weight>
 {
     auto operator()(phdd_weight const& w) const noexcept
     {
