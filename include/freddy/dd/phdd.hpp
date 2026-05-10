@@ -30,9 +30,11 @@
 // Namespaces
 // *********************************************************************************************************************
 
-struct phdd_weight  // NOLINT(misc-non-private-member-variables-in-classes)
+struct phdd_weight
 {
+    // NOLINT(misc-non-private-member-variables-in-classes)
     bool x;
+    // NOLINT(misc-non-private-member-variables-in-classes)
     std::int32_t y;
 
     auto operator<=>(const phdd_weight&) const = default;
