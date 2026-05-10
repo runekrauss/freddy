@@ -7,6 +7,7 @@
 #include <freddy/dd/kfdd.hpp>    // kfdd_manager
 #include <freddy/expansion.hpp>  // expansion::nD
 
+#include <string>
 #include <vector>  // std::vector
 
 // *********************************************************************************************************************
@@ -601,4 +602,26 @@ TEST_CASE("compose prints", "[basic]")
     CHECK(pred2.eval({true, false, true, true, true}) == true);
     CHECK(pred2.eval({true, true, true, true, true}) == true);
     CHECK(pred2.eval({true, false, false, true, true}) == false);
+}
+
+TEST_CASE("kfdd-test", "[test]")
+{
+    kfdd_manager mgr;
+    auto and_v1 = mgr.var(expansion::S);
+    auto and_v2 = mgr.var(expansion::nD);
+
+    std::string path = "NEWPATHTEST";
+
+    SECTION("kfdd")
+    {
+        auto f = and_v1 & and_v2;
+
+        f.write_binary_file(path);
+
+        auto g = mgr.read_binary_file(path);
+
+        g.dump_dot();
+
+        CHECK(g == f);
+    }
 }

@@ -205,6 +205,8 @@ class add final  // algebraic decision diagram (multi-terminal binary decision d
 
     auto dump_dot(std::ostream& = std::cout) const;
 
+    auto write_binary_file(std::string& file_path) const;
+
   private:
     friend add_manager<NValue>;
 
@@ -290,6 +292,11 @@ class add_manager final : public detail::manager<bool, NValue>
         auto dot = oss.str();
         boost::replace_all(dot, "label=\" 0 \"]", "]");  // as no different edge weights are used
         os << dot;
+    }
+
+    auto read_binary_file(std::string& file_path)
+    {
+        return add{manager::read_binary_file(file_path), this};
     }
 
   private:
@@ -740,6 +747,14 @@ inline auto add<NValue>::dump_dot(std::ostream& os) const
     assert(mgr);
 
     mgr->dump_dot({*this}, {}, os);
+}
+
+template <detail::hashable NValue>
+inline auto add<NValue>::write_binary_file(std::string& file_path) const
+{
+    assert(mgr);
+
+    return mgr->write_binary_file(f, file_path);
 }
 
 }  // namespace freddy

@@ -7,11 +7,12 @@
 #include <freddy/config.hpp>  // config
 #include <freddy/dd/add.hpp>  // add_manager
 
-#include <cmath>         // std::nextafter
-#include <cstdint>       // std::int32_t
-#include <limits>        // std::numeric_limits
-#include <sstream>       // std::ostringstream
-#include <stdexcept>     // std::overflow_error
+#include <cmath>      // std::nextafter
+#include <cstdint>    // std::int32_t
+#include <limits>     // std::numeric_limits
+#include <sstream>    // std::ostringstream
+#include <stdexcept>  // std::overflow_error
+#include <string>
 #include <system_error>  // std::system_error
 #include <vector>        // std::vector
 
@@ -254,5 +255,26 @@ TEST_CASE("ADD detects misuse of word-level operations", "[basic]")
     {
         CHECK_THROWS_AS(ic + imgr.one(), std::system_error);
         CHECK_THROWS_AS(fc + fmgr.constant(std::ldexp(std::numeric_limits<float>::max(), -1)), std::overflow_error);
+    }
+}
+
+TEST_CASE("add-test", "[test]")
+{
+    add_manager<std::int32_t> mgr;
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+
+    std::string path = "NEWPATHTEST";
+
+    SECTION("add")
+    {
+        auto f = mgr.constant(8) * x0 | (x1 & x2);
+
+        f.write_binary_file(path);
+
+        auto g = mgr.read_binary_file(path);
+
+        g.dump_dot();
+
+        CHECK(g == f);
     }
 }

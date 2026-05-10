@@ -233,6 +233,8 @@ class bmd final  // (multiplicative) binary moment diagram
 
     auto dump_dot(std::ostream& = std::cout) const;
 
+    auto write_binary_file(std::string& file_path) const;
+
   private:
     friend bmd_manager;
 
@@ -332,6 +334,11 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
         manager::dump_dot(transform(fs), outputs, os);
+    }
+
+    auto read_binary_file(std::string& file_path)
+    {
+        return bmd{manager::read_binary_file(file_path), this};
     }
 
   private:
@@ -755,6 +762,13 @@ inline auto bmd::dump_dot(std::ostream& os) const
     assert(mgr);
 
     mgr->dump_dot({*this}, {}, os);
+}
+
+inline auto bmd::write_binary_file(std::string& file_path) const
+{
+    assert(mgr);
+
+    return mgr->write_binary_file(f, file_path);
 }
 
 }  // namespace freddy

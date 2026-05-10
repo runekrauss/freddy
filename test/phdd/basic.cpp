@@ -7,9 +7,6 @@
 #include <freddy/dd/phdd.hpp>    // phdd_manager
 #include <freddy/expansion.hpp>  // expansion::S
 
-#include <utility>  // std::pair
-#include <vector>   // std::vector
-
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
@@ -29,7 +26,8 @@ TEST_CASE("PHDD is constructed", "[basic]")
     {
         auto const f = -x0;
 
-        CHECK(f.weight() == std::pair{true, 0});
+        phdd_weight w{true, 0};
+        CHECK(f.weight() == w);
         CHECK(f.high().is_const());
         CHECK(f.low().is_const());
         CHECK_FALSE(f.fn(true).is_one());
@@ -234,3 +232,25 @@ TEST_CASE("PHDD interprets bits numerically", "[basic]")
         CHECK(f.eval({true, true}) == 2);
     }
 }
+
+/*
+TEST_CASE("phdd-test", "[test]")
+{
+    phdd_manager mgr;
+    auto const x0 = mgr.var(expansion::pD, "x0"), x1 = mgr.var(expansion::S, "x1");
+
+    std::string path = "NEWPATHTEST";
+
+    SECTION("phdd")
+    {
+        auto f = x0 | x1;
+
+        f.write_binary_file(path);
+
+        auto g = mgr.read_binary_file(path);
+
+        g.dump_dot();
+
+        CHECK(g == f);
+    }
+}*/
