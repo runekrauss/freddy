@@ -11,12 +11,13 @@
 #include "freddy/detail/operation/plus.hpp"  // detail::plus
 #include "freddy/expansion.hpp"              // expansion::pD
 
-#include <algorithm>    // std::ranges::transform
-#include <array>        // std::array
-#include <bit>          // std::bit_width
-#include <cassert>      // assert
-#include <cmath>        // std::signbit
-#include <cstdint>      // std::int32_t
+#include <algorithm>  // std::ranges::transform
+#include <array>      // std::array
+#include <bit>        // std::bit_width
+#include <cassert>    // assert
+#include <cmath>      // std::signbit
+#include <cstdint>    // std::int32_t
+#include <functional>
 #include <iostream>     // std::cout
 #include <limits>       // std::numeric_limits
 #include <ostream>      // std::ostream
@@ -25,13 +26,11 @@
 #include <utility>      // std::pair
 #include <vector>       // std::vector
 
-#include <functional>
-
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
 
-struct phdd_weight
+struct phdd_weight  // NOLINT(misc-non-private-member-variables-in-classes)
 {
     bool x;
     std::int32_t y;
@@ -57,17 +56,7 @@ namespace std
 {
 
 // hash specialization for multiplicative edge weights
-/*
-template <typename W1, typename W2>
-struct hash<std::pair<W1, W2>> final
-{
-    auto operator()(std::pair<W1, W2> const& w) const noexcept
-    {
-        return hash<W2>{}(w.second) ^ (static_cast<unsigned>(w.first) << 31u);
-    }
-};*/
-
-template<>
+template <>
 struct std::hash<phdd_weight>
 {
     auto operator()(phdd_weight const& w) const noexcept
@@ -77,10 +66,6 @@ struct std::hash<phdd_weight>
 };
 
 }  // namespace std
-
-
-
-
 
 namespace freddy
 {
@@ -94,8 +79,6 @@ class phdd_manager;
 // =====================================================================================================================
 // Aliases
 // =====================================================================================================================
-
-//using phdd_weight = std::pair<bool, std::int32_t>;
 
 // =====================================================================================================================
 // Types
