@@ -25,14 +25,39 @@
 #include <utility>      // std::pair
 #include <vector>       // std::vector
 
+#include <functional>
+
 // *********************************************************************************************************************
 // Namespaces
 // *********************************************************************************************************************
+
+struct phdd_weight
+{
+    bool x;
+    std::int32_t y;
+
+    auto operator<=>(const phdd_weight&) const = default;
+};
+
+inline auto operator<<(std::ostream& os, phdd_weight const& w) -> std::ostream&
+{
+    if (w.x)
+    {
+        os << "neg\n";
+    }
+    return os << w.y;
+}
+
+inline auto operator!([[maybe_unused]] phdd_weight const& w) -> phdd_weight
+{
+    return {true, 0};
+}
 
 namespace std
 {
 
 // hash specialization for multiplicative edge weights
+/*
 template <typename W1, typename W2>
 struct hash<std::pair<W1, W2>> final
 {
@@ -40,25 +65,22 @@ struct hash<std::pair<W1, W2>> final
     {
         return hash<W2>{}(w.second) ^ (static_cast<unsigned>(w.first) << 31u);
     }
+};*/
+
+template<>
+struct std::hash<phdd_weight>
+{
+    auto operator()(phdd_weight const& w) const noexcept
+    {
+        return std::hash<std::int32_t>{}(w.y) ^ (static_cast<unsigned>(w.x) << 31u);
+    }
 };
 
-template <typename W1, typename W2>
-inline auto operator<<(std::ostream& os, std::pair<W1, W2> const& w) -> std::ostream&
-{
-    if (w.first)
-    {
-        os << "neg\n";
-    }
-    return os << w.second;
-}
-
-template <typename W1, typename W2>
-inline auto operator!([[maybe_unused]] std::pair<W1, W2> const& w) -> std::pair<W1, W2>
-{
-    return {true, 0};
-}
-
 }  // namespace std
+
+
+
+
 
 namespace freddy
 {
@@ -73,7 +95,7 @@ class phdd_manager;
 // Aliases
 // =====================================================================================================================
 
-using phdd_weight = std::pair<bool, std::int32_t>;
+//using phdd_weight = std::pair<bool, std::int32_t>;
 
 // =====================================================================================================================
 // Types
@@ -412,14 +434,14 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
 
     [[nodiscard]] auto agg(phdd_weight const& w, double const& val) const noexcept -> double override
     {
-        return w.first ? -1 * std::pow(2, w.second) * val : std::pow(2, w.second) * val;
+        return w.x ? -1 * std::pow(2, w.y) * val : std::pow(2, w.y) * val;
     }
 
     auto apply(phdd_weight const& w, edge_ptr const& f) -> edge_ptr override
     {
         assert(f);
 
-        return f == manager::constant(0) || (!w.first && w.second == 0) ? f : uedge(comb(w, f->weight()), f->ch());
+        return f == manager::constant(0) || (!w.x && w.y == 0) ? f : uedge(comb(w, f->weight()), f->ch());
     }
 
     auto branch(var_index const x, edge_ptr&& hi, edge_ptr&& lo) -> edge_ptr override
@@ -446,13 +468,13 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         }
 
         auto const w = norm_weight(hi, lo);
-        return uedge(w, unode(x, uedge({hi->weight().first ^ w.first, hi->weight().second - w.second}, hi->ch()),
-                              uedge({lo->weight().first ^ w.first, lo->weight().second - w.second}, lo->ch())));
+        return uedge(w, unode(x, uedge({static_cast<bool>(hi->weight().x ^ w.x), hi->weight().y - w.y}, hi->ch()),
+                              uedge({static_cast<bool>(lo->weight().x ^ w.x), lo->weight().y - w.y}, lo->ch())));
     }
 
     [[nodiscard]] auto comb(phdd_weight const& w1, phdd_weight const& w2) const noexcept -> phdd_weight override
     {
-        return {w1.first ^ w2.first, w1.second + w2.second};
+        return {static_cast<bool>(w1.x ^ w2.x), w1.y + w2.y};
     }
 
     auto complement(edge_ptr const& f) -> edge_ptr override
@@ -530,11 +552,11 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
             {
                 throw std::invalid_argument("too big constants, multiplication of constants leads to underflow");
             }
-            return manager::constant({f->weight().first ^ g->weight().first, f->weight().second + g->weight().second},
+            return manager::constant({static_cast<bool>(f->weight().x ^ g->weight().x), f->weight().y + g->weight().y},
                                      f->ch()->value() * g->ch()->value(), false);
         }
 
-        auto const w = phdd_weight{f->weight().first ^ g->weight().first, f->weight().second + g->weight().second};
+        auto const w = phdd_weight{static_cast<bool>(f->weight().x ^ g->weight().x), f->weight().y + g->weight().y};
         if ((*f->ch())() <= (*g->ch())())
         {
             std::swap(f, g);
@@ -593,7 +615,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         {
             return hi->weight();
         }
-        return {hi->weight().first, std::min(hi->weight().second, lo->weight().second)};
+        return {hi->weight().x, std::min(hi->weight().y, lo->weight().y)};
     }
 
     auto plus(edge_ptr f, edge_ptr g) -> edge_ptr override
@@ -609,27 +631,27 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         {
             return f;
         }
-        if (f->ch() == g->ch() && f->weight().first != g->weight().first && f->weight().second == g->weight().second)
+        if (f->ch() == g->ch() && f->weight().x != g->weight().x && f->weight().y == g->weight().y)
         {
             return manager::constant(0);
         }
         if (f->is_const() && g->is_const())
         {
-            if (f->weight().second > g->weight().second)
+            if (f->weight().y > g->weight().y)
             {
                 std::swap(f, g);
             }  // 2^f_w * (f_vc + 2^(g_w - f_w) * g_vc)
             auto f_vc = static_cast<std::uint64_t>(f->ch()->value());
             auto g_vc = static_cast<std::uint64_t>(g->ch()->value());
-            auto shift = static_cast<std::uint64_t>(g->weight().second - f->weight().second);
-            auto sign = f->weight().first;
+            auto shift = static_cast<std::uint64_t>(g->weight().y - f->weight().y);
+            auto sign = f->weight().x;
             if (std::cmp_less(std::countl_zero(g_vc), shift))
             {
                 throw std::invalid_argument("too big constants, addition of constants leads to underflow");
             }
             g_vc <<= shift;
             std::pair<std::uint64_t, std::uint64_t> factors;
-            if (f->weight().first == g->weight().first)
+            if (f->weight().x == g->weight().x)
             {
                 if (f_vc > std::numeric_limits<std::uint64_t>::max() - g_vc)
                 {
@@ -642,7 +664,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
                 if (f_vc < g_vc)
                 {
                     std::swap(f_vc, g_vc);
-                    sign = g->weight().first;
+                    sign = g->weight().x;
                 }
                 factors = factorize_pow2(f_vc - g_vc);
             }
@@ -650,17 +672,17 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
             {
                 throw std::invalid_argument("too big constants, addition of constants leads to underflow");
             }
-            return manager::constant({sign, static_cast<std::int32_t>(factors.first + f->weight().second)},
+            return manager::constant({sign, static_cast<std::int32_t>(factors.first + f->weight().y)},
                                      static_cast<double>(factors.second), false);
         }
 
-        if (std::abs(f->weight().second) <= std::abs(g->weight().second))
+        if (std::abs(f->weight().y) <= std::abs(g->weight().y))
         {
             std::swap(f, g);
         }
         auto const w = norm_weight(f, g);
-        f = uedge({f->weight().first ^ w.first, f->weight().second - w.second}, f->ch());
-        g = uedge({g->weight().first ^ w.first, g->weight().second - w.second}, g->ch());
+        f = uedge({static_cast<bool>(f->weight().x ^ w.x), f->weight().y - w.y}, f->ch());
+        g = uedge({static_cast<bool>(g->weight().x ^ w.x), g->weight().y - w.y}, g->ch());
 
         detail::plus op{f, g};
         if (auto const* const entry = cached(op))

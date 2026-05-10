@@ -1092,6 +1092,8 @@ class manager
     template <typename C>
     auto to_bits(const C& object) const -> boost::dynamic_bitset<>
     {
+        static_assert(std::is_trivially_copyable_v<C>);
+
         boost::dynamic_bitset<> bits(sizeof(C) * 8);
 
         std::array<unsigned char, sizeof(C)> object_bytes{};
@@ -1110,6 +1112,8 @@ class manager
     template <typename C>
     auto from_bits(const boost::dynamic_bitset<>& bits) const -> C
     {
+        static_assert(std::is_trivially_copyable_v<C>);
+
         std::array<unsigned char, sizeof(C)> object_bytes{};
 
         for (size_t byte = 0; byte < sizeof(C); byte++)

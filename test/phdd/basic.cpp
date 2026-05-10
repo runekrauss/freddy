@@ -30,7 +30,8 @@ TEST_CASE("PHDD is constructed", "[basic]")
     {
         auto const f = -x0;
 
-        CHECK(f.weight() == std::pair{true, 0});
+        phdd_weight w{true, 0};
+        CHECK(f.weight() == w);
         CHECK(f.high().is_const());
         CHECK(f.low().is_const());
         CHECK_FALSE(f.fn(true).is_one());
