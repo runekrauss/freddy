@@ -267,7 +267,7 @@ inline auto dd_base<Derived, EWeight, NValue, Manager>::size() const
 {
     assert(mgr);
 
-    return mgr->size({derived()});
+    return mgr->size(std::vector<Derived>{derived()});
 }
 
 template <typename Derived, typename EWeight, typename NValue, typename Manager>
@@ -275,7 +275,7 @@ inline auto dd_base<Derived, EWeight, NValue, Manager>::depth() const
 {
     assert(mgr);
 
-    return mgr->depth({derived()});
+    return mgr->depth(std::vector<Derived>{derived()});
 }
 
 template <typename Derived, typename EWeight, typename NValue, typename Manager>
