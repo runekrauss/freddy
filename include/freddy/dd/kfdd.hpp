@@ -5,6 +5,7 @@
 // *********************************************************************************************************************
 
 #include "freddy/config.hpp"                     // config
+#include "freddy/detail/dd_base.hpp"             // detail::dd_base
 #include "freddy/detail/manager.hpp"             // detail::manager
 #include "freddy/detail/node.hpp"                // detail::edge_ptr
 #include "freddy/detail/operation/antiv.hpp"     // detail::antiv
@@ -13,7 +14,6 @@
 #include "freddy/detail/operation/sharpsat.hpp"  // detail::sharpsat
 #include "freddy/expansion.hpp"                  // expansion::nD
 
-#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cstdint>      // std::int32_t
@@ -21,7 +21,7 @@
 #include <ostream>      // std::ostream
 #include <string>       // std::string
 #include <string_view>  // std::string_view
-#include <utility>      // std::forward
+#include <utility>      // std::move
 #include <vector>       // std::vector
 
 // *********************************************************************************************************************
@@ -41,62 +41,27 @@ class kfdd_manager;
 // Types
 // =====================================================================================================================
 
-class kfdd final  // Kronecker functional decision diagram
+class kfdd final : public detail::dd_base<kfdd, bool, bool, kfdd_manager>
 {
+    friend kfdd_manager;
+    friend dd_base;
+
+    // wrapper is controlled by its KFDD manager
+    kfdd(detail::edge_ptr<bool, bool> f, kfdd_manager* const mgr) :
+            dd_base{std::move(f), mgr}
+    {}
+
   public:
-    kfdd() noexcept = default;  // enable default KFDD construction for compatibility with standard containers
+    static constexpr std::string_view LABEL = "KFDD";
 
-    auto operator~() const;
-
-    auto operator&=(kfdd const&) -> kfdd&;
-
-    auto operator|=(kfdd const&) -> kfdd&;
+    kfdd() noexcept = default;
 
     auto operator^=(kfdd const&) -> kfdd&;
-
-    friend auto operator&(kfdd lhs, kfdd const& rhs)
-    {
-        lhs &= rhs;
-        return lhs;
-    }
-
-    friend auto operator|(kfdd lhs, kfdd const& rhs)
-    {
-        lhs |= rhs;
-        return lhs;
-    }
 
     friend auto operator^(kfdd lhs, kfdd const& rhs)
     {
         lhs ^= rhs;
         return lhs;
-    }
-
-    friend auto operator==(kfdd const& lhs, kfdd const& rhs) noexcept
-    {
-        assert(lhs.mgr == rhs.mgr);  // check for the same KFDD manager
-
-        return lhs.f == rhs.f;
-    }
-
-    friend auto operator!=(kfdd const& lhs, kfdd const& rhs) noexcept
-    {
-        return !(lhs == rhs);
-    }
-
-    friend auto operator<<(std::ostream& os, kfdd const& g) -> std::ostream&
-    {
-        os << "KFDD handle: " << g.f << '\n';
-        os << "KFDD manager: " << g.mgr;
-        return os;
-    }
-
-    [[nodiscard]] auto same_node(kfdd const& g) const noexcept
-    {
-        assert(f);
-        assert(mgr == g.mgr);  // KFDD g is valid in any case
-
-        return f->ch() == g.f->ch();
     }
 
     [[nodiscard]] auto is_complemented() const noexcept
@@ -106,87 +71,12 @@ class kfdd final  // Kronecker functional decision diagram
         return f->weight();
     }
 
-    [[nodiscard]] auto is_const() const noexcept
-    {
-        assert(f);
-
-        return f->is_const();
-    }
-
-    [[nodiscard]] auto var() const noexcept
-    {
-        assert(!is_const());
-
-        return f->ch()->br().x;
-    }
-
-    [[nodiscard]] auto high() const noexcept
-    {
-        assert(mgr);
-        assert(!is_const());
-
-        return kfdd{f->ch()->br().hi, mgr};
-    }
-
-    [[nodiscard]] auto low() const noexcept
-    {
-        assert(mgr);
-        assert(!is_const());
-
-        return kfdd{f->ch()->br().lo, mgr};
-    }
-
-    [[nodiscard]] auto is_zero() const noexcept;
-
-    [[nodiscard]] auto is_one() const noexcept;
-
-    template <typename TruthValue, typename... TruthValues>
-    auto fn(TruthValue, TruthValues...) const;
-
-    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
-
-    [[nodiscard]] auto ite(kfdd const&, kfdd const&) const;
-
-    [[nodiscard]] auto size() const;
-
-    [[nodiscard]] auto depth() const;
-
-    [[nodiscard]] auto path_count() const noexcept;
-
-    [[nodiscard]] auto is_essential(var_index) const noexcept;
-
-    [[nodiscard]] auto compose(var_index, kfdd const&) const;
-
-    [[nodiscard]] auto restr(var_index, bool) const;
-
-    [[nodiscard]] auto exist(var_index) const;
-
-    [[nodiscard]] auto forall(var_index) const;
-
     [[nodiscard]] auto sharpsat() const;
 
     [[nodiscard]] auto manager() const noexcept -> kfdd_manager const&
     {
         return *mgr;
     }
-
-    auto dump_dot(std::ostream& = std::cout) const;
-
-  private:
-    friend kfdd_manager;
-
-    // wrapper is controlled by its KFDD manager
-    kfdd(detail::edge_ptr<bool, bool> f, kfdd_manager* const mgr) :
-            f{std::move(f)},
-            mgr{mgr}
-    {
-        assert(this->f);
-        assert(this->mgr);
-    }
-
-    detail::edge_ptr<bool, bool> f;  // KFDD handle
-
-    kfdd_manager* mgr{};  // must be destroyed after this KFDD wrapper
 };
 
 class kfdd_manager final : public detail::manager<bool, bool>
@@ -217,35 +107,18 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return kfdd{constant(1), this};
     }
 
-    [[nodiscard]] auto size(std::vector<kfdd> const& fs) const
-    {
-        return manager::size(transform(fs));
-    }
-
-    [[nodiscard]] auto depth(std::vector<kfdd> const& fs) const
-    {
-        assert(!fs.empty());
-
-        return manager::depth(transform(fs));
-    }
-
     auto dump_dot(std::vector<kfdd> const& fs, std::vector<std::string> const& outputs = {},
                   std::ostream& os = std::cout) const
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        manager::dump_dot(transform(fs), outputs, os);
+        manager::dump_dot(kfdd::transform(fs), outputs, os);
     }
 
     // DTL sifting wrapper for KFDD-typed vectors
-    void dtl_sift()
+    void dtl_sift(std::vector<kfdd> const& fs = {})
     {
-        manager::dtl_sift({});
-    }
-
-    void dtl_sift(std::vector<kfdd> const& fs)
-    {
-        manager::dtl_sift(transform(fs));
+        manager::dtl_sift(fs);
     }
 
     // Public alias for change_decomposition (compatibility with tests)
@@ -264,13 +137,6 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return {edge_ptr{new edge{false, leaf}}, edge_ptr{new edge{true, leaf}}};
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
-
-    static auto transform(std::vector<kfdd> const& gs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
-        return fs;
-    }
 
     auto antiv(edge_ptr const& f, edge_ptr const& g)
     {
@@ -599,8 +465,8 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return lo;
     }
 
-    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const& lo,
-                                 expansion const t) const noexcept -> bool override
+    [[nodiscard]] auto reducible(edge_ptr const& hi, edge_ptr const& lo, expansion const t) const noexcept
+        -> bool override
     {
         switch (t)
         {
@@ -617,33 +483,6 @@ class kfdd_manager final : public detail::manager<bool, bool>
     }
 };
 
-inline auto kfdd::operator~() const
-{
-    assert(mgr);
-
-    return kfdd{mgr->complement(f), mgr};
-}
-
-inline auto kfdd::operator&=(kfdd const& rhs) -> kfdd&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->conj(f, rhs.f);
-
-    return *this;
-}
-
-inline auto kfdd::operator|=(kfdd const& rhs) -> kfdd&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->disj(f, rhs.f);
-
-    return *this;
-}
-
 inline auto kfdd::operator^=(kfdd const& rhs) -> kfdd&
 {
     assert(mgr);
@@ -654,113 +493,11 @@ inline auto kfdd::operator^=(kfdd const& rhs) -> kfdd&
     return *this;
 }
 
-inline auto kfdd::is_zero() const noexcept
-{
-    assert(mgr);
-
-    return *this == mgr->zero();
-}
-
-inline auto kfdd::is_one() const noexcept
-{
-    assert(mgr);
-
-    return *this == mgr->one();
-}
-
-template <typename TruthValue, typename... TruthValues>
-inline auto kfdd::fn(TruthValue const a, TruthValues... as) const
-{
-    assert(mgr);
-
-    return kfdd{mgr->fn(f, a, std::forward<TruthValues>(as)...), mgr};
-}
-
-inline auto kfdd::eval(std::vector<bool> const& as) const noexcept
-{
-    assert(mgr);
-
-    return mgr->eval(f, as);
-}
-
-inline auto kfdd::ite(kfdd const& g, kfdd const& h) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-    assert(g.mgr == h.mgr);  // transitive property
-
-    return kfdd{mgr->ite(f, g.f, h.f), mgr};
-}
-
-inline auto kfdd::size() const
-{
-    assert(mgr);
-
-    return mgr->size({*this});
-}
-
-inline auto kfdd::depth() const
-{
-    assert(mgr);
-
-    return mgr->depth({*this});
-}
-
-inline auto kfdd::path_count() const noexcept
-{
-    assert(mgr);
-
-    return mgr->path_count(f);
-}
-
-inline auto kfdd::is_essential(var_index const x) const noexcept
-{
-    assert(mgr);
-
-    return mgr->is_essential(f, x);
-}
-
-inline auto kfdd::compose(var_index const x, kfdd const& g) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-
-    return kfdd{mgr->compose(f, x, g.f), mgr};
-}
-
-inline auto kfdd::restr(var_index const x, bool const a) const
-{
-    assert(mgr);
-
-    return kfdd{mgr->restr(f, x, a), mgr};
-}
-
-inline auto kfdd::exist(var_index const x) const
-{
-    assert(mgr);
-
-    return kfdd{mgr->exist(f, x), mgr};
-}
-
-inline auto kfdd::forall(var_index const x) const
-{
-    assert(mgr);
-
-    return kfdd{mgr->forall(f, x), mgr};
-}
-
 inline auto kfdd::sharpsat() const
 {
     assert(mgr);
 
     return mgr->sharpsat(f);
-}
-
-inline auto kfdd::dump_dot(std::ostream& os) const
-{
-    assert(mgr);
-
-    mgr->dump_dot({*this}, {}, os);
 }
 
 }  // namespace freddy

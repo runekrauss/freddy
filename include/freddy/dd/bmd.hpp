@@ -5,6 +5,7 @@
 // *********************************************************************************************************************
 
 #include "freddy/config.hpp"                 // config
+#include "freddy/detail/dd_base.hpp"         // detail::dd_base
 #include "freddy/detail/manager.hpp"         // detail::manager
 #include "freddy/detail/node.hpp"            // detail::edge_ptr
 #include "freddy/detail/operation/mul.hpp"   // detail::mul
@@ -20,7 +21,6 @@
 #pragma warning(pop)
 #endif
 
-#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <cmath>        // std::abs
@@ -32,7 +32,7 @@
 #include <ostream>      // std::ostream
 #include <ranges>       // std::views::iota
 #include <string>       // std::string
-#include <string_view>  // hash
+#include <string_view>  // std::string_view
 #include <type_traits>  // std::is_signed_v
 #include <utility>      // std::move
 #include <vector>       // std::vector
@@ -81,9 +81,19 @@ static_assert(std::is_integral_v<boost::safe_numerics::base_type<bmd_int>::type>
 // Types
 // =====================================================================================================================
 
-class bmd final  // (multiplicative) binary moment diagram
+class bmd final : public detail::dd_base<bmd, bmd_int, bmd_int, bmd_manager>  // (multiplicative) binary moment diagram
 {
+    friend bmd_manager;
+    friend dd_base;
+
+    // wrapper is controlled by its BMD manager
+    bmd(detail::edge_ptr<bmd_int, bmd_int> f, bmd_manager* const mgr) :
+            dd_base{std::move(f), mgr}
+    {}
+
   public:
+    static constexpr std::string_view LABEL = "BMD";
+
     bmd() noexcept = default;  // enable default BMD construction for compatibility with standard containers
 
     auto operator-() const;
@@ -93,12 +103,6 @@ class bmd final  // (multiplicative) binary moment diagram
     auto operator+=(bmd const&) -> bmd&;
 
     auto operator-=(bmd const&) -> bmd&;
-
-    auto operator~() const;
-
-    auto operator&=(bmd const&) -> bmd&;
-
-    auto operator|=(bmd const&) -> bmd&;
 
     auto operator^=(bmd const&) -> bmd&;
 
@@ -120,49 +124,10 @@ class bmd final  // (multiplicative) binary moment diagram
         return lhs;
     }
 
-    friend auto operator&(bmd lhs, bmd const& rhs)
-    {
-        lhs &= rhs;
-        return lhs;
-    }
-
-    friend auto operator|(bmd lhs, bmd const& rhs)
-    {
-        lhs |= rhs;
-        return lhs;
-    }
-
     friend auto operator^(bmd lhs, bmd const& rhs)
     {
         lhs ^= rhs;
         return lhs;
-    }
-
-    friend auto operator==(bmd const& lhs, bmd const& rhs) noexcept
-    {
-        assert(lhs.mgr == rhs.mgr);  // check for the same BMD manager
-
-        return lhs.f == rhs.f;
-    }
-
-    friend auto operator!=(bmd const& lhs, bmd const& rhs) noexcept
-    {
-        return !(lhs == rhs);
-    }
-
-    friend auto operator<<(std::ostream& os, bmd const& g) -> std::ostream&
-    {
-        os << "BMD handle: " << g.f << '\n';
-        os << "BMD manager: " << g.mgr;
-        return os;
-    }
-
-    [[nodiscard]] auto same_node(bmd const& g) const noexcept
-    {
-        assert(f);
-        assert(mgr == g.mgr);  // BMD g is valid in any case
-
-        return f->ch() == g.f->ch();
     }
 
     [[nodiscard]] auto weight() const noexcept
@@ -172,82 +137,7 @@ class bmd final  // (multiplicative) binary moment diagram
         return f->weight();
     }
 
-    [[nodiscard]] auto is_const() const noexcept
-    {
-        assert(f);
-
-        return f->is_const();
-    }
-
-    [[nodiscard]] auto var() const noexcept
-    {
-        assert(!is_const());
-
-        return f->ch()->br().x;
-    }
-
-    [[nodiscard]] auto high() const noexcept
-    {
-        assert(mgr);
-        assert(!is_const());
-
-        return bmd{f->ch()->br().hi, mgr};
-    }
-
-    [[nodiscard]] auto low() const noexcept
-    {
-        assert(mgr);
-        assert(!is_const());
-
-        return bmd{f->ch()->br().lo, mgr};
-    }
-
-    [[nodiscard]] auto is_zero() const noexcept;
-
-    [[nodiscard]] auto is_one() const noexcept;
-
     [[nodiscard]] auto is_two() const noexcept;
-
-    template <typename TruthValue, typename... TruthValues>
-    auto fn(TruthValue, TruthValues...) const;
-
-    [[nodiscard]] auto eval(std::vector<bool> const&) const;
-
-    [[nodiscard]] auto ite(bmd const&, bmd const&) const;
-
-    [[nodiscard]] auto size() const;
-
-    [[nodiscard]] auto depth() const;
-
-    [[nodiscard]] auto path_count() const noexcept;
-
-    [[nodiscard]] auto is_essential(var_index) const noexcept;
-
-    [[nodiscard]] auto compose(var_index, bmd const&) const;
-
-    [[nodiscard]] auto restr(var_index, bool) const;
-
-    [[nodiscard]] auto exist(var_index) const;
-
-    [[nodiscard]] auto forall(var_index) const;
-
-    auto dump_dot(std::ostream& = std::cout) const;
-
-  private:
-    friend bmd_manager;
-
-    // wrapper is controlled by its BMD manager
-    bmd(detail::edge_ptr<bmd_int, bmd_int> f, bmd_manager* const mgr) :
-            f{std::move(f)},
-            mgr{mgr}
-    {
-        assert(this->f);
-        assert(this->mgr);
-    }
-
-    detail::edge_ptr<bmd_int, bmd_int> f;  // BMD handle
-
-    bmd_manager* mgr{};  // must be destroyed after this BMD wrapper
 };
 
 class bmd_manager final : public detail::manager<bmd_int, bmd_int>
@@ -292,18 +182,6 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return bmd{manager::constant(2), this};
     }
 
-    [[nodiscard]] auto size(std::vector<bmd> const& fs) const
-    {
-        return manager::size(transform(fs));
-    }
-
-    [[nodiscard]] auto depth(std::vector<bmd> const& fs) const
-    {
-        assert(!fs.empty());
-
-        return manager::depth(transform(fs));
-    }
-
     auto unsigned_bin(std::vector<bmd> const& fs)  // unsigned binary encoding
     {
         assert(fs.size() < std::numeric_limits<bmd_int>::digits);  // since weights are represented by bmd_int
@@ -331,7 +209,7 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        manager::dump_dot(transform(fs), outputs, os);
+        manager::dump_dot(bmd::transform(fs), outputs, os);
     }
 
   private:
@@ -346,13 +224,6 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return {edge_ptr{new edge{0, leaf}}, edge_ptr{new edge{1, leaf}}};
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
-
-    static auto transform(std::vector<bmd> const& gs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
-        return fs;
-    }
 
     auto neg(edge_ptr const& f)
     {
@@ -611,33 +482,6 @@ inline auto bmd::operator-=(bmd const& rhs) -> bmd&
     return *this;
 }
 
-inline auto bmd::operator~() const
-{
-    assert(mgr);
-
-    return bmd{mgr->complement(f), mgr};
-}
-
-inline auto bmd::operator&=(bmd const& rhs) -> bmd&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->conj(f, rhs.f);
-
-    return *this;
-}
-
-inline auto bmd::operator|=(bmd const& rhs) -> bmd&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->disj(f, rhs.f);
-
-    return *this;
-}
-
 inline auto bmd::operator^=(bmd const& rhs) -> bmd&
 {
     assert(mgr);
@@ -648,113 +492,11 @@ inline auto bmd::operator^=(bmd const& rhs) -> bmd&
     return *this;
 }
 
-inline auto bmd::is_zero() const noexcept
-{
-    assert(mgr);
-
-    return *this == mgr->zero();
-}
-
-inline auto bmd::is_one() const noexcept
-{
-    assert(mgr);
-
-    return *this == mgr->one();
-}
-
 inline auto bmd::is_two() const noexcept
 {
     assert(mgr);
 
     return *this == mgr->two();
-}
-
-template <typename TruthValue, typename... TruthValues>
-inline auto bmd::fn(TruthValue const a, TruthValues... as) const
-{
-    assert(mgr);
-
-    return bmd{mgr->fn(f, a, std::forward<TruthValues>(as)...), mgr};
-}
-
-inline auto bmd::eval(std::vector<bool> const& as) const
-{
-    assert(mgr);
-
-    return mgr->eval(f, as);
-}
-
-inline auto bmd::ite(bmd const& g, bmd const& h) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-    assert(g.mgr == h.mgr);
-
-    return bmd{mgr->ite(f, g.f, h.f), mgr};
-}
-
-inline auto bmd::size() const
-{
-    assert(mgr);
-
-    return mgr->size({*this});
-}
-
-inline auto bmd::depth() const
-{
-    assert(mgr);
-
-    return mgr->depth({*this});
-}
-
-inline auto bmd::path_count() const noexcept
-{
-    assert(mgr);
-
-    return mgr->path_count(f);
-}
-
-inline auto bmd::is_essential(var_index const x) const noexcept
-{
-    assert(mgr);
-
-    return mgr->is_essential(f, x);
-}
-
-inline auto bmd::compose(var_index const x, bmd const& g) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-
-    return bmd{mgr->compose(f, x, g.f), mgr};
-}
-
-inline auto bmd::restr(var_index const x, bool const a) const
-{
-    assert(mgr);
-
-    return bmd{mgr->restr(f, x, a), mgr};
-}
-
-inline auto bmd::exist(var_index const x) const
-{
-    assert(mgr);
-
-    return bmd{mgr->exist(f, x), mgr};
-}
-
-inline auto bmd::forall(var_index const x) const
-{
-    assert(mgr);
-
-    return bmd{mgr->forall(f, x), mgr};
-}
-
-inline auto bmd::dump_dot(std::ostream& os) const
-{
-    assert(mgr);
-
-    mgr->dump_dot({*this}, {}, os);
 }
 
 }  // namespace freddy

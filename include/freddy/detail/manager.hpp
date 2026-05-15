@@ -46,12 +46,22 @@ namespace freddy::detail
 using namespace std::literals;  // sv
 
 // =====================================================================================================================
+// Forwards
+// =====================================================================================================================
+
+template <typename Derived, typename EWeight, typename NValue, typename Manager>
+class dd_base;
+
+// =====================================================================================================================
 // Types
 // =====================================================================================================================
 
 template <hashable EWeight, hashable NValue>  // edge weight, node value
 class manager
 {
+    template <typename, typename, typename, typename>
+    friend class dd_base;
+
   public:
     manager(manager const&) = delete;  // because UTs, among others, constitute the manager
 
@@ -224,6 +234,38 @@ class manager
     auto config() noexcept -> struct config&
     {
         return cfg;
+    }
+
+    template <typename DD>
+    [[nodiscard]] auto size(std::vector<DD> const& fs) const
+    {
+        boost::unordered_flat_set<node*, hash, equal> marks;
+        marks.reserve(cfg.utable_size_hint);
+
+        for (auto const& dd : fs)
+        {
+            assert(dd.f);
+
+            size(dd.f, marks);
+        }
+
+        return marks.size();  // including leaves
+    }
+
+    template <typename DD>
+    [[nodiscard]] auto depth(std::vector<DD> const& fs) const
+    {
+        assert(!fs.empty());
+
+        std::vector<var_index> paths(fs.size());
+
+        parallel_for(0uz, fs.size(), [&fs, &paths, this](std::size_t const i) {
+            assert(fs[i].f);
+
+            paths[i] = depth(fs[i].f);
+        });
+
+        return *std::ranges::max_element(paths) - 1;  // due to the root edge
     }
 
   protected:
@@ -568,37 +610,6 @@ class manager
         return agg(f->w, eval(f->v, as));  // assignment follows the made variable ordering
     }
 
-    [[nodiscard]] auto size(std::vector<edge_ptr> const& fs) const
-    {
-        boost::unordered_flat_set<node*, hash, equal> marks;
-        marks.reserve(cfg.utable_size_hint);
-
-        for (auto const& f : fs)
-        {  // (shared) number of nodes
-            assert(f);
-
-            size(f, marks);
-        }
-
-        return marks.size();  // including leaves
-    }
-
-    [[nodiscard]] auto depth(std::vector<edge_ptr> const& fs) const
-    {
-        assert(!fs.empty());
-
-        std::vector<var_index> paths(fs.size());
-
-        parallel_for(0uz, fs.size(), [&fs, &paths, this](std::size_t const i) {
-            assert(fs[i]);
-
-            // std::cout << std::this_thread::get_id() << std::endl;
-            paths[i] = depth(fs[i]);
-        });
-
-        return *std::ranges::max_element(paths) - 1;  // due to the root edge
-    }
-
     [[nodiscard]] auto path_count(edge_ptr const& f) const noexcept -> double  // as results can be very large
     {
         assert(f);
@@ -757,7 +768,8 @@ class manager
     }
 
     // DTL (Decomposition Type List) sifting: optimizes variable order and decomposition types
-    void dtl_sift(std::vector<edge_ptr> const& fs)
+    template <typename DD>
+    void dtl_sift(std::vector<DD> const& fs)
     {
         auto comp_largest_layer = [this](var_index const x, var_index const y) {
             return vlist[x].ntable.size() > vlist[y].ntable.size();
@@ -850,7 +862,8 @@ class manager
         return f->is_const() ? 1 : std::max(depth(f->v->inner.hi), depth(f->v->inner.lo)) + 1;
     }
 
-    auto dtl_find_smallest_level(dtl_sift_result const& curr_best, expansion const exp, std::vector<edge_ptr> const& fs)
+    template <typename DD>
+    auto dtl_find_smallest_level(dtl_sift_result const& curr_best, expansion const exp, std::vector<DD> const& fs)
     {
         auto res = curr_best;
         auto const x = curr_best.x;
@@ -876,16 +889,18 @@ class manager
         return res;
     }
 
-    [[nodiscard]] auto dtl_get_size(std::vector<edge_ptr> const& fs) const
+    template <typename DD>
+    [[nodiscard]] auto dtl_get_size(std::vector<DD> const& fs) const
     {
         if (fs.empty())
         {
             return node_count();
         }
-        return size(fs);
+        return size(fs);  // calls templated size<DD>
     }
 
-    auto dtl_sift_single_var(var_index const x, std::vector<edge_ptr> const& fs)
+    template <typename DD>
+    auto dtl_sift_single_var(var_index const x, std::vector<DD> const& fs)
     {
         dtl_sift_result res{.x = x, .pos = var2lvl[x], .size = dtl_get_size(fs), .exp = vlist[x].t};
 

@@ -5,23 +5,22 @@
 // *********************************************************************************************************************
 
 #include "freddy/config.hpp"                 // config
+#include "freddy/detail/dd_base.hpp"         // detail::dd_base
 #include "freddy/detail/manager.hpp"         // detail::manager
 #include "freddy/detail/node.hpp"            // detail::edge_ptr
 #include "freddy/detail/operation/mul.hpp"   // detail::mul
 #include "freddy/detail/operation/plus.hpp"  // detail::plus
 #include "freddy/expansion.hpp"              // expansion::pD
 
-#include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <bit>          // std::bit_width
 #include <cassert>      // assert
 #include <cmath>        // std::signbit
-#include <cstdint>      // std::int32_t
 #include <iostream>     // std::cout
 #include <limits>       // std::numeric_limits
 #include <ostream>      // std::ostream
 #include <string>       // std::string
-#include <string_view>  // hash
+#include <string_view>  // std::string_view
 #include <utility>      // std::pair
 #include <vector>       // std::vector
 
@@ -79,10 +78,21 @@ using phdd_weight = std::pair<bool, std::int32_t>;
 // Types
 // =====================================================================================================================
 
-class phdd  // (multiplicative) power hybrid decision diagram
+class phdd : public detail::dd_base<phdd, phdd_weight, double,
+                                    phdd_manager>  // (multiplicative) power hybrid decision diagram
 {
+    friend phdd_manager;
+    friend dd_base;
+
+    // wrapper is controlled by its PHDD manager
+    phdd(detail::edge_ptr<phdd_weight, double> f, phdd_manager* const mgr) :
+            dd_base{std::move(f), mgr}
+    {}
+
   public:
-    phdd() = default;  // enable default PHDD construction for compatibility with standard containers
+    static constexpr std::string_view LABEL = "PHDD";
+
+    phdd() noexcept = default;
 
     auto operator-() const;
 
@@ -91,12 +101,6 @@ class phdd  // (multiplicative) power hybrid decision diagram
     auto operator+=(phdd const&) -> phdd&;
 
     auto operator-=(phdd const&) -> phdd&;
-
-    auto operator~() const;
-
-    auto operator&=(phdd const&) -> phdd&;
-
-    auto operator|=(phdd const&) -> phdd&;
 
     auto operator^=(phdd const&) -> phdd&;
 
@@ -118,49 +122,10 @@ class phdd  // (multiplicative) power hybrid decision diagram
         return lhs;
     }
 
-    friend auto operator&(phdd lhs, phdd const& rhs)
-    {
-        lhs &= rhs;
-        return lhs;
-    }
-
-    friend auto operator|(phdd lhs, phdd const& rhs)
-    {
-        lhs |= rhs;
-        return lhs;
-    }
-
     friend auto operator^(phdd lhs, phdd const& rhs)
     {
         lhs ^= rhs;
         return lhs;
-    }
-
-    friend auto operator==(phdd const& lhs, phdd const& rhs) noexcept
-    {
-        assert(lhs.mgr == rhs.mgr);  // check for the same PHDD manager
-
-        return lhs.f == rhs.f;
-    }
-
-    friend auto operator!=(phdd const& lhs, phdd const& rhs) noexcept
-    {
-        return !(lhs == rhs);
-    }
-
-    friend auto operator<<(std::ostream& os, phdd const& g) -> std::ostream&
-    {
-        os << "PHDD handle: " << g.f << '\n';
-        os << "PHDD manager: " << g.mgr;
-        return os;
-    }
-
-    [[nodiscard]] auto same_node(phdd const& g) const noexcept
-    {
-        assert(f);
-        assert(mgr == g.mgr);  // PHDD g is valid in any case
-
-        return f->ch() == g.f->ch();
     }
 
     [[nodiscard]] auto weight() const noexcept
@@ -170,86 +135,13 @@ class phdd  // (multiplicative) power hybrid decision diagram
         return f->weight();
     }
 
-    [[nodiscard]] auto is_const() const noexcept
-    {
-        assert(f);
-
-        return f->is_const();
-    }
-
-    [[nodiscard]] auto var() const noexcept
-    {
-        assert(!is_const());
-
-        return f->ch()->br().x;
-    }
-
-    [[nodiscard]] auto high() const noexcept
-    {
-        assert(mgr);
-        assert(!is_const());
-
-        return phdd{f->ch()->br().hi, mgr};
-    }
-
-    [[nodiscard]] auto low() const noexcept
-    {
-        assert(mgr);
-        assert(!is_const());
-
-        return phdd{f->ch()->br().lo, mgr};
-    }
-
-    [[nodiscard]] auto is_zero() const noexcept;
-
-    [[nodiscard]] auto is_one() const noexcept;
-
     [[nodiscard]] auto is_two() const noexcept;
-
-    template <typename TruthValue, typename... TruthValues>
-    auto fn(TruthValue, TruthValues...) const;
-
-    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
-
-    [[nodiscard]] auto ite(phdd const&, phdd const&) const;
-
-    [[nodiscard]] auto size() const;
-
-    [[nodiscard]] auto depth() const;
-
-    [[nodiscard]] auto path_count() const noexcept;
 
     [[nodiscard]] auto has_const(double) const;
 
-    [[nodiscard]] auto is_essential(var_index) const noexcept;
-
-    [[nodiscard]] auto compose(var_index, phdd const&) const;
-
-    [[nodiscard]] auto restr(var_index, bool) const;
-
-    [[nodiscard]] auto exist(var_index) const;
-
-    [[nodiscard]] auto forall(var_index) const;
-
     [[nodiscard]] auto support() const;
 
-    auto dump_dot(std::ostream& = std::cout) const;
-
   private:
-    friend phdd_manager;
-
-    // wrapper is controlled by its PHDD manager
-    phdd(detail::edge_ptr<phdd_weight, double> f, phdd_manager* const mgr) :
-            f{std::move(f)},
-            mgr{mgr}
-    {
-        assert(this->f);
-        assert(this->mgr);
-    }
-
-    detail::edge_ptr<phdd_weight, double> f;  // PHDD handle
-
-    phdd_manager* mgr{};  // must be destroyed after this PHDD wrapper
 };
 
 class phdd_manager final : public detail::manager<phdd_weight, double>
@@ -305,18 +197,6 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
                     this};
     }
 
-    [[nodiscard]] auto size(std::vector<phdd> const& fs) const
-    {
-        return manager::size(transform(fs));
-    }
-
-    [[nodiscard]] auto depth(std::vector<phdd> const& fs) const
-    {
-        assert(!fs.empty());
-
-        return manager::depth(transform(fs));
-    }
-
     auto weighted_sum(std::vector<phdd> const& fs)
     {
         auto res = manager::constant(0);
@@ -332,7 +212,7 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
     {
         assert(outputs.empty() ? true : outputs.size() == fs.size());
 
-        manager::dump_dot(transform(fs), outputs, os);
+        manager::dump_dot(phdd::transform(fs), outputs, os);
     }
 
   private:
@@ -344,13 +224,6 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
         return {edge_ptr{new edge{{false, 0}, new node{0.0}}}, edge_ptr{new edge{{false, 0}, new node{1.0}}}};
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
-
-    static auto transform(std::vector<phdd> const& gs) -> std::vector<edge_ptr>
-    {
-        std::vector<edge_ptr> fs(gs.size());
-        std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
-        return fs;
-    }
 
     static auto factorize_pow2(std::uint64_t const w) -> std::pair<std::uint64_t, std::uint64_t>
     {
@@ -723,33 +596,6 @@ inline auto phdd::operator-=(phdd const& rhs) -> phdd&
     return *this;
 }
 
-inline auto phdd::operator~() const
-{
-    assert(mgr);
-
-    return phdd{mgr->complement(f), mgr};
-}
-
-inline auto phdd::operator&=(phdd const& rhs) -> phdd&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->conj(f, rhs.f);
-
-    return *this;
-}
-
-inline auto phdd::operator|=(phdd const& rhs) -> phdd&
-{
-    assert(mgr);
-    assert(mgr == rhs.mgr);
-
-    f = mgr->disj(f, rhs.f);
-
-    return *this;
-}
-
 inline auto phdd::operator^=(phdd const& rhs) -> phdd&
 {
     assert(mgr);
@@ -760,20 +606,6 @@ inline auto phdd::operator^=(phdd const& rhs) -> phdd&
     return *this;
 }
 
-inline auto phdd::is_zero() const noexcept
-{
-    assert(mgr);
-
-    return *this == mgr->zero();
-}
-
-inline auto phdd::is_one() const noexcept
-{
-    assert(mgr);
-
-    return *this == mgr->one();
-}
-
 inline auto phdd::is_two() const noexcept
 {
     assert(mgr);
@@ -781,99 +613,11 @@ inline auto phdd::is_two() const noexcept
     return *this == mgr->two();
 }
 
-template <typename TruthValue, typename... TruthValues>
-inline auto phdd::fn(TruthValue const a, TruthValues... as) const
-{
-    assert(mgr);
-
-    return phdd{mgr->fn(f, a, std::forward<TruthValues>(as)...), mgr};
-}
-
-inline auto phdd::eval(std::vector<bool> const& as) const noexcept
-{
-    assert(mgr);
-
-    return mgr->eval(f, as);
-}
-
-inline auto phdd::ite(phdd const& g, phdd const& h) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-    assert(g.mgr == h.mgr);
-
-    return phdd{mgr->ite(f, g.f, h.f), mgr};
-}
-
-inline auto phdd::size() const
-{
-    assert(mgr);
-
-    return mgr->size({*this});
-}
-
-inline auto phdd::depth() const
-{
-    assert(mgr);
-
-    return mgr->depth({*this});
-}
-
-inline auto phdd::path_count() const noexcept
-{
-    assert(mgr);
-
-    return mgr->path_count(f);
-}
-
 inline auto phdd::has_const(double const c) const
 {
     assert(mgr);
 
     return mgr->has_const(f, c);
-}
-
-inline auto phdd::is_essential(var_index const x) const noexcept
-{
-    assert(mgr);
-
-    return mgr->is_essential(f, x);
-}
-
-inline auto phdd::compose(var_index const x, phdd const& g) const
-{
-    assert(mgr);
-    assert(mgr == g.mgr);
-
-    return phdd{mgr->compose(f, x, g.f), mgr};
-}
-
-inline auto phdd::restr(var_index const x, bool const a) const
-{
-    assert(mgr);
-
-    return phdd{mgr->restr(f, x, a), mgr};
-}
-
-inline auto phdd::exist(var_index const x) const
-{
-    assert(mgr);
-
-    return phdd{mgr->exist(f, x), mgr};
-}
-
-inline auto phdd::forall(var_index const x) const
-{
-    assert(mgr);
-
-    return phdd{mgr->forall(f, x), mgr};
-}
-
-inline auto phdd::dump_dot(std::ostream& os) const
-{
-    assert(mgr);
-
-    mgr->dump_dot({*this}, {}, os);
 }
 
 }  // namespace freddy
