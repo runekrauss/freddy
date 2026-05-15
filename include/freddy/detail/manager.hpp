@@ -236,6 +236,38 @@ class manager
         return cfg;
     }
 
+    template <typename DD>
+    [[nodiscard]] auto size(std::vector<DD> const& fs) const
+    {
+        boost::unordered_flat_set<node*, hash, equal> marks;
+        marks.reserve(cfg.utable_size_hint);
+
+        for (auto const& dd : fs)
+        {
+            assert(dd.f);
+
+            size(dd.f, marks);
+        }
+
+        return marks.size();  // including leaves
+    }
+
+    template <typename DD>
+    [[nodiscard]] auto depth(std::vector<DD> const& fs) const
+    {
+        assert(!fs.empty());
+
+        std::vector<var_index> paths(fs.size());
+
+        parallel_for(0uz, fs.size(), [&fs, &paths, this](std::size_t const i) {
+            assert(fs[i].f);
+
+            paths[i] = depth(fs[i].f);
+        });
+
+        return *std::ranges::max_element(paths) - 1;  // due to the root edge
+    }
+
   protected:
     using edge = detail::edge<EWeight, NValue>;
 
