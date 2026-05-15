@@ -116,14 +116,9 @@ class kfdd_manager final : public detail::manager<bool, bool>
     }
 
     // DTL sifting wrapper for KFDD-typed vectors
-    void dtl_sift()
+    void dtl_sift(std::vector<kfdd> const& fs = {})
     {
-        manager::dtl_sift({});
-    }
-
-    void dtl_sift(std::vector<kfdd> const& fs)
-    {
-        manager::dtl_sift(kfdd::transform(fs));
+        manager::dtl_sift(fs);
     }
 
     // Public alias for change_decomposition (compatibility with tests)
