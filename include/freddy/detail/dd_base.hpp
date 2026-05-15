@@ -36,6 +36,8 @@ class manager;
 template <typename Derived, typename EWeight, typename NValue, typename Manager>
 class dd_base
 {
+    friend class manager<EWeight, NValue>;
+
   public:
     dd_base() noexcept = default;
 
