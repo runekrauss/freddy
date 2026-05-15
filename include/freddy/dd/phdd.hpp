@@ -197,18 +197,6 @@ class phdd_manager final : public detail::manager<phdd_weight, double>
                     this};
     }
 
-    [[nodiscard]] auto size(std::vector<phdd> const& fs) const
-    {
-        return manager::size(phdd::transform(fs));
-    }
-
-    [[nodiscard]] auto depth(std::vector<phdd> const& fs) const
-    {
-        assert(!fs.empty());
-
-        return manager::depth(phdd::transform(fs));
-    }
-
     auto weighted_sum(std::vector<phdd> const& fs)
     {
         auto res = manager::constant(0);

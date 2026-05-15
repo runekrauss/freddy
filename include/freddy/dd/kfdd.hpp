@@ -107,18 +107,6 @@ class kfdd_manager final : public detail::manager<bool, bool>
         return kfdd{constant(1), this};
     }
 
-    [[nodiscard]] auto size(std::vector<kfdd> const& fs) const
-    {
-        return manager::size(kfdd::transform(fs));
-    }
-
-    [[nodiscard]] auto depth(std::vector<kfdd> const& fs) const
-    {
-        assert(!fs.empty());
-
-        return manager::depth(kfdd::transform(fs));
-    }
-
     auto dump_dot(std::vector<kfdd> const& fs, std::vector<std::string> const& outputs = {},
                   std::ostream& os = std::cout) const
     {

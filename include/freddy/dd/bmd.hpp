@@ -182,18 +182,6 @@ class bmd_manager final : public detail::manager<bmd_int, bmd_int>
         return bmd{manager::constant(2), this};
     }
 
-    [[nodiscard]] auto size(std::vector<bmd> const& fs) const
-    {
-        return manager::size(bmd::transform(fs));
-    }
-
-    [[nodiscard]] auto depth(std::vector<bmd> const& fs) const
-    {
-        assert(!fs.empty());
-
-        return manager::depth(bmd::transform(fs));
-    }
-
     auto unsigned_bin(std::vector<bmd> const& fs)  // unsigned binary encoding
     {
         assert(fs.size() < std::numeric_limits<bmd_int>::digits);  // since weights are represented by bmd_int

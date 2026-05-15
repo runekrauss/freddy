@@ -161,18 +161,6 @@ class add_manager final : public detail::manager<bool, NValue>
         return add{manager::constant(2), this};
     }
 
-    [[nodiscard]] auto size(std::vector<add<NValue>> const& fs) const
-    {
-        return manager::size(add<NValue>::transform(fs));
-    }
-
-    [[nodiscard]] auto depth(std::vector<add<NValue>> const& fs) const
-    {
-        assert(!fs.empty());
-
-        return manager::depth(add<NValue>::transform(fs));
-    }
-
     auto dump_dot(std::vector<add<NValue>> const& fs, std::vector<std::string> const& outputs = {},
                   std::ostream& os = std::cout) const
     {

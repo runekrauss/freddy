@@ -146,18 +146,6 @@ class bhd_manager final : public detail::manager<bool, bool>
         return bhd{constant(2), this};
     }
 
-    [[nodiscard]] auto size(std::vector<bhd> const& fs) const
-    {
-        return manager::size(bhd::transform(fs));
-    }
-
-    [[nodiscard]] auto depth(std::vector<bhd> const& fs) const
-    {
-        assert(!fs.empty());
-
-        return manager::depth(bhd::transform(fs));
-    }
-
     auto dump_dot(std::vector<bhd> const& fs, std::vector<std::string> const& outputs = {},
                   std::ostream& os = std::cout) const
     {

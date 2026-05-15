@@ -102,18 +102,6 @@ class bdd_manager final : public detail::manager<bool, bool>
         return bdd{constant(1), this};
     }
 
-    [[nodiscard]] auto size(std::vector<bdd> const& fs) const
-    {
-        return manager::size(bdd::transform(fs));
-    }
-
-    [[nodiscard]] auto depth(std::vector<bdd> const& fs) const
-    {
-        assert(!fs.empty());
-
-        return manager::depth(bdd::transform(fs));
-    }
-
     auto dump_dot(std::vector<bdd> const& fs, std::vector<std::string> const& outputs = {},
                   std::ostream& os = std::cout) const
     {
