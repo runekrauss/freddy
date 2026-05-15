@@ -610,37 +610,6 @@ class manager
         return agg(f->w, eval(f->v, as));  // assignment follows the made variable ordering
     }
 
-    [[nodiscard]] auto size(std::vector<edge_ptr> const& fs) const
-    {
-        boost::unordered_flat_set<node*, hash, equal> marks;
-        marks.reserve(cfg.utable_size_hint);
-
-        for (auto const& f : fs)
-        {  // (shared) number of nodes
-            assert(f);
-
-            size(f, marks);
-        }
-
-        return marks.size();  // including leaves
-    }
-
-    [[nodiscard]] auto depth(std::vector<edge_ptr> const& fs) const
-    {
-        assert(!fs.empty());
-
-        std::vector<var_index> paths(fs.size());
-
-        parallel_for(0uz, fs.size(), [&fs, &paths, this](std::size_t const i) {
-            assert(fs[i]);
-
-            // std::cout << std::this_thread::get_id() << std::endl;
-            paths[i] = depth(fs[i]);
-        });
-
-        return *std::ranges::max_element(paths) - 1;  // due to the root edge
-    }
-
     [[nodiscard]] auto path_count(edge_ptr const& f) const noexcept -> double  // as results can be very large
     {
         assert(f);
@@ -799,28 +768,6 @@ class manager
     }
 
     // DTL (Decomposition Type List) sifting: optimizes variable order and decomposition types
-    void dtl_sift(std::vector<edge_ptr> const& fs)
-    {
-        auto comp_largest_layer = [this](var_index const x, var_index const y) {
-            return vlist[x].ntable.size() > vlist[y].ntable.size();
-        };
-
-        gc();
-
-        std::vector<var_index> tmp_vars(var_count());
-        for (var_index x = 0; x < var_count(); ++x)
-        {
-            tmp_vars[x] = x;
-        }
-        gc();
-        std::ranges::sort(tmp_vars, comp_largest_layer);
-        for (var_index i = 0; i < var_count(); ++i)
-        {
-            dtl_sift_single_var(tmp_vars[i], fs);
-        }
-        gc();
-    }
-
     template <typename DD>
     void dtl_sift(std::vector<DD> const& fs)
     {
@@ -915,32 +862,6 @@ class manager
         return f->is_const() ? 1 : std::max(depth(f->v->inner.hi), depth(f->v->inner.lo)) + 1;
     }
 
-    auto dtl_find_smallest_level(dtl_sift_result const& curr_best, expansion const exp, std::vector<edge_ptr> const& fs)
-    {
-        auto res = curr_best;
-        auto const x = curr_best.x;
-        sift(var2lvl[x], static_cast<var_index>(var_count() - 1));  // move to the bottom
-        change_decomposition(x, exp);
-        auto const exceeding_size = static_cast<double>(dtl_get_size(fs)) * cfg.max_node_growth;
-        for (auto i = var2lvl[x]; i > 0; --i)
-        {
-            sift(i, i - 1);
-            gc();
-            auto const current_size = dtl_get_size(fs);
-            if (static_cast<double>(current_size) > exceeding_size)
-            {
-                break;
-            }
-            if (current_size < res.size)
-            {
-                res.size = current_size;
-                res.pos = var2lvl[x];
-                res.exp = vlist[x].t;
-            }
-        }
-        return res;
-    }
-
     template <typename DD>
     auto dtl_find_smallest_level(dtl_sift_result const& curr_best, expansion const exp, std::vector<DD> const& fs)
     {
@@ -968,15 +889,6 @@ class manager
         return res;
     }
 
-    [[nodiscard]] auto dtl_get_size(std::vector<edge_ptr> const& fs) const
-    {
-        if (fs.empty())
-        {
-            return node_count();
-        }
-        return size(fs);
-    }
-
     template <typename DD>
     [[nodiscard]] auto dtl_get_size(std::vector<DD> const& fs) const
     {
@@ -985,27 +897,6 @@ class manager
             return node_count();
         }
         return size(fs);  // calls templated size<DD>
-    }
-
-    auto dtl_sift_single_var(var_index const x, std::vector<edge_ptr> const& fs)
-    {
-        dtl_sift_result res{.x = x, .pos = var2lvl[x], .size = dtl_get_size(fs), .exp = vlist[x].t};
-
-        // find smallest level for Shannon
-        res = dtl_find_smallest_level(res, expansion::S, fs);
-
-        // find smallest level for positive Davio
-        res = dtl_find_smallest_level(res, expansion::pD, fs);
-
-        // find smallest level for negative Davio
-        res = dtl_find_smallest_level(res, expansion::nD, fs);
-
-        // move variable to smallest level with smallest expansion type
-        sift(var2lvl[x], static_cast<var_index>(var_count() - 1));
-        change_decomposition(x, res.exp);
-        sift(var2lvl[x], res.pos);
-
-        return res;
     }
 
     template <typename DD>
