@@ -4,9 +4,10 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/detail/common.hpp" // mix_hash
-#include <cstddef>   // std::size_t
-#include <cstdint>   // std::uint8_t
+#include "freddy/detail/common.hpp"  // mix_hash
+
+#include <cstddef>  // std::size_t
+#include <cstdint>  // std::uint8_t
 #include <typeinfo>
 
 // *********************************************************************************************************************
@@ -22,16 +23,16 @@ namespace freddy::detail
 
 enum class op_kind : std::uint8_t
 {
-    antiv,
-    compose,
-    conj,
-    has_const,
-    ite,
-    mul,
-    plus,
-    repl,
-    restr,
-    sharpsat
+    ANTIV,
+    COMPOSE,
+    CONJ,
+    HAS_CONST,
+    ITE,
+    MUL,
+    PLUS,
+    REPL,
+    RESTR,
+    SHARPSAT
 };
 
 class operation  // for caching

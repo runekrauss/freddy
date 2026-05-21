@@ -33,7 +33,7 @@ class plus final : public operation  // addition
 
     [[nodiscard]] auto kind() const noexcept -> op_kind override
     {
-        return op_kind::plus;
+        return op_kind::PLUS;
     }
 
     // for looking up a cached result using summands

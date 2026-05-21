@@ -33,7 +33,7 @@ class antiv final : public operation  // antivalence
 
     [[nodiscard]] auto kind() const noexcept -> op_kind override
     {
-        return op_kind::antiv;
+        return op_kind::ANTIV;
     }
 
     // for looking up a cached result using XOR input

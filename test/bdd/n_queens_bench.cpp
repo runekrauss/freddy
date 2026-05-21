@@ -1,11 +1,16 @@
+#include <freddy/config.hpp>
 #include <freddy/dd/bdd.hpp>
-#include <iostream>
-#include <chrono>
-#include <string>
-#include <vector>
+
 #include <algorithm>
 #include <cassert>
+#include <chrono>
+#include <cstdint>
+#include <exception>
+#include <iostream>
+#include <string>
+#include <string_view>
 #include <utility>
+#include <vector>
 
 using namespace freddy;
 
@@ -84,34 +89,38 @@ auto queens(std::int32_t const n, bdd_manager& mgr)
 
 }  // namespace
 
-int main(int argc, char** argv)
+auto main(int argc, char** argv) -> int
 {
-    if (argc < 2 || argc > 6)
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+    std::vector<std::string_view> const args(argv, argv + argc);
+
+    if (args.size() < 2 || args.size() > 6)
     {
-        std::cerr << "Usage: " << argv[0] << " <n> [<heap_mem_limit>] [<utable_size_hint>] [<cache_size_hint>] [<init_var_cap>]" << std::endl;
+        std::cerr << "Usage: " << args.at(0)
+                  << " <n> [<heap_mem_limit>] [<utable_size_hint>] [<cache_size_hint>] [<init_var_cap>]\n";
         return 1;
     }
 
     try
     {
-        std::int32_t const n = std::stoi(argv[1]);
-        
+        std::int32_t const n = std::stoi(std::string{args.at(1)});
+
         freddy::config cfg;
-        if (argc >= 3)
+        if (args.size() >= 3)
         {
-            cfg.heap_mem_limit = std::stoull(argv[2]);
+            cfg.heap_mem_limit = std::stoull(std::string{args.at(2)});
         }
-        if (argc >= 4)
+        if (args.size() >= 4)
         {
-            cfg.utable_size_hint = std::stoull(argv[3]);
+            cfg.utable_size_hint = std::stoull(std::string{args.at(3)});
         }
-        if (argc >= 5)
+        if (args.size() >= 5)
         {
-            cfg.cache_size_hint = std::stoull(argv[4]);
+            cfg.cache_size_hint = std::stoull(std::string{args.at(4)});
         }
-        if (argc >= 6)
+        if (args.size() >= 6)
         {
-            cfg.init_var_cap = static_cast<var_index>(std::stoull(argv[5]));
+            cfg.init_var_cap = static_cast<var_index>(std::stoull(std::string{args.at(5)}));
         }
 
         bdd_manager mgr{cfg};
@@ -122,11 +131,11 @@ int main(int argc, char** argv)
         auto const end = std::chrono::high_resolution_clock::now();
 
         std::chrono::duration<double> const elapsed = end - start;
-        std::cout << elapsed.count() << std::endl;
+        std::cout << elapsed.count() << "\n";
     }
     catch (std::exception const& e)
     {
-        std::cerr << "Error: " << e.what() << std::endl;
+        std::cerr << "Error: " << e.what() << "\n";
         return 1;
     }
 

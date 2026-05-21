@@ -31,7 +31,7 @@ class sharpsat final : public operation  // sharp satisfiability problem
   public:
     [[nodiscard]] auto kind() const noexcept -> op_kind override
     {
-        return op_kind::sharpsat;
+        return op_kind::SHARPSAT;
     }
 
     // for looking up a cached result using #SAT input

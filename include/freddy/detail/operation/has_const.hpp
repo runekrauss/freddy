@@ -30,7 +30,7 @@ class has_const final : public operation  // constant search
   public:
     [[nodiscard]] auto kind() const noexcept -> op_kind override
     {
-        return op_kind::has_const;
+        return op_kind::HAS_CONST;
     }
 
     // for looking up a cached result using constant search input

@@ -33,7 +33,7 @@ class mul final : public operation  // multiplication
 
     [[nodiscard]] auto kind() const noexcept -> op_kind override
     {
-        return op_kind::mul;
+        return op_kind::MUL;
     }
 
     // for looking up a cached result using factors

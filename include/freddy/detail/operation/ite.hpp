@@ -34,7 +34,7 @@ class ite final : public operation  // if-then-else
 
     [[nodiscard]] auto kind() const noexcept -> op_kind override
     {
-        return op_kind::ite;
+        return op_kind::ITE;
     }
 
     // for looking up a cached result using ITE input

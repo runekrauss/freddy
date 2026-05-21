@@ -33,7 +33,7 @@ class conj final : public operation  // conjunction
 
     [[nodiscard]] auto kind() const noexcept -> op_kind override
     {
-        return op_kind::conj;
+        return op_kind::CONJ;
     }
 
     // for looking up a cached result using conjuncts

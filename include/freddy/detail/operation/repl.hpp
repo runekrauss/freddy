@@ -33,7 +33,7 @@ class repl final : public operation  // 1-path replacement
 
     [[nodiscard]] auto kind() const noexcept -> op_kind override
     {
-        return op_kind::repl;
+        return op_kind::REPL;
     }
 
     // for looking up a cached result using replacement input

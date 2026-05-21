@@ -35,7 +35,7 @@ class compose final : public operation  // function substitution
 
     [[nodiscard]] auto kind() const noexcept -> op_kind override
     {
-        return op_kind::compose;
+        return op_kind::COMPOSE;
     }
 
     // for looking up a cached result using composition input

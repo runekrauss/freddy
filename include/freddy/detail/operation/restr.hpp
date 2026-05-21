@@ -35,7 +35,7 @@ class restr final : public operation  // variable substitution
 
     [[nodiscard]] auto kind() const noexcept -> op_kind override
     {
-        return op_kind::restr;
+        return op_kind::RESTR;
     }
 
     // for looking up a cached result using substitution input
