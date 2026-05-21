@@ -31,6 +31,11 @@ class conj final : public operation  // conjunction
 
     using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
+    [[nodiscard]] auto kind() const noexcept -> op_kind override
+    {
+        return op_kind::conj;
+    }
+
     // for looking up a cached result using conjuncts
     conj(edge_ptr const& f, edge_ptr const& g) :
             f{f < g ? f.get() : g.get()},  // exploit conjunction's commutativity to improve cache efficiency

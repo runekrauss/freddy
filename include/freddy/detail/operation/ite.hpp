@@ -32,6 +32,11 @@ class ite final : public operation  // if-then-else
 
     using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
+    [[nodiscard]] auto kind() const noexcept -> op_kind override
+    {
+        return op_kind::ite;
+    }
+
     // for looking up a cached result using ITE input
     ite(edge_ptr const& f, edge_ptr const& g, edge_ptr const& h) :
             f{f.get()},

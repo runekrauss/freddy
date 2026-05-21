@@ -33,6 +33,11 @@ class compose final : public operation  // function substitution
 
     using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
+    [[nodiscard]] auto kind() const noexcept -> op_kind override
+    {
+        return op_kind::compose;
+    }
+
     // for looking up a cached result using composition input
     compose(edge_ptr const& f, var_index const x, edge_ptr const& g) :
             f{f.get()},

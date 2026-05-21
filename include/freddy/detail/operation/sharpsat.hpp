@@ -29,6 +29,11 @@ template <hashable EWeight, hashable NValue>
 class sharpsat final : public operation  // sharp satisfiability problem
 {
   public:
+    [[nodiscard]] auto kind() const noexcept -> op_kind override
+    {
+        return op_kind::sharpsat;
+    }
+
     // for looking up a cached result using #SAT input
     explicit sharpsat(edge_ptr<EWeight, NValue> const& f) :
             f{f.get()}

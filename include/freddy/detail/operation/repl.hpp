@@ -31,6 +31,11 @@ class repl final : public operation  // 1-path replacement
 
     using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
+    [[nodiscard]] auto kind() const noexcept -> op_kind override
+    {
+        return op_kind::repl;
+    }
+
     // for looking up a cached result using replacement input
     repl(edge_ptr const& f, bool const a) :
             f{f.get()},

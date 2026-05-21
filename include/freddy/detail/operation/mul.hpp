@@ -31,6 +31,11 @@ class mul final : public operation  // multiplication
 
     using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
+    [[nodiscard]] auto kind() const noexcept -> op_kind override
+    {
+        return op_kind::mul;
+    }
+
     // for looking up a cached result using factors
     mul(edge_ptr const& f, edge_ptr const& g) :
             f{f < g ? f.get() : g.get()},  // exploit MUL's commutativity to improve cache efficiency

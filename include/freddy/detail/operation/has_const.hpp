@@ -28,6 +28,11 @@ template <hashable EWeight, hashable NValue>
 class has_const final : public operation  // constant search
 {
   public:
+    [[nodiscard]] auto kind() const noexcept -> op_kind override
+    {
+        return op_kind::has_const;
+    }
+
     // for looking up a cached result using constant search input
     has_const(edge_ptr<EWeight, NValue> const& f, NValue const& c) :
             f{f.get()},

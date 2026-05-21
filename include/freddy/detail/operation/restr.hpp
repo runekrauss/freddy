@@ -33,6 +33,11 @@ class restr final : public operation  // variable substitution
 
     using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
+    [[nodiscard]] auto kind() const noexcept -> op_kind override
+    {
+        return op_kind::restr;
+    }
+
     // for looking up a cached result using substitution input
     restr(edge_ptr const& f, var_index const x, bool const a) :
             f{f.get()},
