@@ -68,7 +68,7 @@ jobs:
         run: >
           cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_COMPILE_WARNING_AS_ERROR=ON
           -DCLANG_TIDY=ON -DCMAKE_CXX_CLANG_TIDY='-warnings-as-errors=*'
-          -DFREDDY_STATS=ON -DFREDDY_TEST=ON
+          -DFREDDY_STATS=ON -DFREDDY_TEST=ON -DFREDDY_COVERAGE=ON
 
       - name: Lint sources / Build binaries
         id: linter_build

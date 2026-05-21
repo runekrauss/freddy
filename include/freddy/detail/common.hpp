@@ -65,6 +65,16 @@ using pointee = std::pointer_traits<Ptr>::element_type;  // data type pointed to
 // Types
 // =====================================================================================================================
 
+inline auto mix_hash(std::size_t h) noexcept -> std::size_t
+{
+    h ^= h >> 30u;
+    h *= 0xbf58476d1ce4e5b9ULL;
+    h ^= h >> 27u;
+    h *= 0x94d049bb133111ebULL;
+    h ^= h >> 31u;
+    return h;
+}
+
 struct hash final
 {
     using is_transparent = void;  // enable heterogeneous lookup

@@ -7,6 +7,7 @@ Checks: |
   boost-*,
 
   bugprone-*,
+  -bugprone-chained-comparison,
   -bugprone-easily-swappable-parameters, # plus(edge_ptr, edge_ptr)
   -bugprone-exception-escape,            # due to the incorrect assumption about swap()
   -bugprone-tagged-union-member-count,   # because of false positives (node)
@@ -45,6 +46,7 @@ Checks: |
   -readability-uppercase-literal-suffix, # see -hicpp-uppercase-literal-suffix
 
   misc-*,
+  -misc-include-cleaner,
   -misc-no-recursion, # eval, ite
 HeaderFilterRegex: '.*'
 FormatStyle: file

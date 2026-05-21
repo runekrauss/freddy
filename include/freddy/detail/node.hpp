@@ -106,8 +106,8 @@ class node final
     auto operator()() const noexcept(std::is_nothrow_invocable_v<std::hash<NValue> const&, NValue const&>)
     {
         // x is not part of this function since several UTs are provided.
-        return is_const() ? std::hash<NValue>{}(outer)  // hash can force an overflow to increase entropy
-                          : std::hash<edge_ptr>{}(inner.hi) * P1 + std::hash<edge_ptr>{}(inner.lo) * P2;
+        return mix_hash(is_const() ? std::hash<NValue>{}(outer)  // hash can force an overflow to increase entropy
+                                   : std::hash<edge_ptr>{}(inner.hi) * P1 + std::hash<edge_ptr>{}(inner.lo) * P2);
     }
 
     friend auto operator==(node const& lhs, node const& rhs) noexcept(is_nothrow_comparable<NValue, NValue>)

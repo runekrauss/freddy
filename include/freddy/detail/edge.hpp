@@ -63,7 +63,7 @@ class edge final
 
     auto operator()() const noexcept(std::is_nothrow_invocable_v<std::hash<EWeight> const&, EWeight const&>)
     {  // considering large primes typically results in few hash ranges with an accumulation of similarities
-        return std::hash<EWeight>{}(w)*P1 + std::hash<node_ptr>{}(v)*P2;
+        return mix_hash(std::hash<EWeight>{}(w)*P1 + std::hash<node_ptr>{}(v)*P2);
     }
 
     friend auto operator==(edge const& lhs, edge const& rhs) noexcept(is_nothrow_comparable<EWeight, EWeight>)

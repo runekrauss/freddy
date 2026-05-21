@@ -31,6 +31,11 @@ class antiv final : public operation  // antivalence
 
     using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
+    [[nodiscard]] auto kind() const noexcept -> op_kind override
+    {
+        return op_kind::ANTIV;
+    }
+
     // for looking up a cached result using XOR input
     antiv(edge_ptr const& f, edge_ptr const& g) :
             f{f < g ? f.get() : g.get()},  // exploit XOR's commutativity to improve cache efficiency

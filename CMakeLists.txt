@@ -97,8 +97,11 @@ if(FREDDY_TEST)
     message(STATUS "Fetching/Preparing Catch2 - done")
   endif()
 
-  if(NOT MSVC)
-    set(CMAKE_CXX_FLAGS "-fprofile-arcs -ftest-coverage")
+  option(FREDDY_COVERAGE "Enable profiling and coverage" OFF)
+  if(FREDDY_COVERAGE)
+    if(NOT MSVC)
+      set(CMAKE_CXX_FLAGS "-fprofile-arcs -ftest-coverage")
+    endif()
   endif()
 
   include(CTest) # enable_testing()
@@ -106,6 +109,9 @@ if(FREDDY_TEST)
 
   file(GLOB FILENAMES test/**/*.cpp)
   foreach(FILE IN LISTS FILENAMES)
+    if(FILE MATCHES "n_queens_bench.cpp")
+      continue()
+    endif()
     get_filename_component(DIR_PATH "${FILE}" PATH)
     get_filename_component(DIR_NAME "${DIR_PATH}" NAME)
     get_filename_component(FILE_NAME "${FILE}" NAME_WE)
@@ -114,4 +120,8 @@ if(FREDDY_TEST)
     target_link_libraries(${TEST_NAME} PRIVATE Catch2::Catch2WithMain freddy)
     catch_discover_tests(${TEST_NAME}) # instead of add_test for a more detailed overview
   endforeach()
+
+  # Standalone N-Queens Benchmark
+  add_executable(bdd-n_queens_bench test/bdd/n_queens_bench.cpp)
+  target_link_libraries(bdd-n_queens_bench PRIVATE freddy)
 endif()

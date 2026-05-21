@@ -31,6 +31,11 @@ class plus final : public operation  // addition
 
     using edge_ptr = detail::edge_ptr<EWeight, NValue>;
 
+    [[nodiscard]] auto kind() const noexcept -> op_kind override
+    {
+        return op_kind::PLUS;
+    }
+
     // for looking up a cached result using summands
     plus(edge_ptr const& f, edge_ptr const& g) :
             f{f < g ? f.get() : g.get()},  // exploit ADD's commutativity to improve cache efficiency
