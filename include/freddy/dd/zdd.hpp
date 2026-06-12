@@ -4,19 +4,18 @@
 // Includes
 // *********************************************************************************************************************
 
-#include "freddy/config.hpp"                 // config
-#include "freddy/detail/manager.hpp"         // detail::manager
-#include "freddy/detail/operation/conj.hpp"  // detail::conj
-#include "freddy/expansion.hpp"              // expansion::S
+#include "freddy/config.hpp"                  // config
+#include "freddy/detail/manager.hpp"          // detail::manager
+#include "freddy/detail/operation/conj.hpp"   // detail::conj
+#include "freddy/detail/operation/plus.hpp"   // detail::plus
+#include "freddy/expansion.hpp"               // expansion::S
 
 #include <algorithm>    // std::ranges::transform
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <iostream>     // std::cout
-#include <map>          // std::map
 #include <string>       // std::string
 #include <string_view>  // std::string_view
-#include <tuple>        // std::tuple
 #include <utility>      // std::forward
 #include <vector>       // std::vector
 
@@ -203,7 +202,6 @@ class zdd_manager final : public detail::manager<bool, bool>
         };
     }
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
-
     static auto transform(std::vector<zdd> const& gs) -> std::vector<edge_ptr>
     {
         std::vector<edge_ptr> fs(gs.size());
@@ -241,52 +239,64 @@ class zdd_manager final : public detail::manager<bool, bool>
 
         auto const x = top_var(f, g);
 
-        op.set_result(
-            uedge(regw(), unode(x, conj(cof(f, x, true), cof(g, x, true)), conj(cof(f, x, false), cof(g, x, false)))));
+        auto const split = [this, x](edge_ptr const& e) -> std::pair<edge_ptr, edge_ptr> {
+            if (!e->is_const() && e->ch()->br().x == x)
+                return {denorm_high(e), denorm_low(e)};
+            return {e, e};
+        };
+
+        auto const [f_hi, f_lo] = split(f);
+        auto const [g_hi, g_lo] = split(g);
+
+        auto hi = conj(f_hi, g_hi);
+        auto lo = conj(f_lo, g_lo);
+        op.set_result(hi == lo ? hi : branch(x, std::move(hi), std::move(lo)));
         return cache(std::move(op))->get_result();
     }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
-        std::map<std::tuple<edge_ptr, edge_ptr, var_index>, edge_ptr> memo;
+        assert(f);
+        assert(g);
 
-        auto const split = [this](edge_ptr const& e, var_index lvl) -> std::pair<edge_ptr, edge_ptr> {
-            if (!e->is_const() && e->ch()->br().x == lvl)
-            {
+        if (f == constant(0))
+        {
+            return g;
+        }
+        if (g == constant(0))
+        {
+            return f;
+        }
+        if (f == constant(1) || g == constant(1))
+        {
+            return constant(1);
+        }
+        if (f == g)
+        {
+            return f;
+        }
+
+        detail::plus op{f, g};
+        if (auto const* const entry = cached(op))
+        {
+            return entry->get_result();
+        }
+
+        auto const x = top_var(f, g);
+
+        auto const split = [this, x](edge_ptr const& e) -> std::pair<edge_ptr, edge_ptr> {
+            if (!e->is_const() && e->ch()->br().x == x)
                 return {denorm_high(e), denorm_low(e)};
-            }
             return {e, e};
         };
 
-        auto const rec = [this, &memo, &split](auto&& self, edge_ptr const& ff, edge_ptr const& gg,
-                                               var_index const lvl) -> edge_ptr {
-            if (lvl >= static_cast<var_index>(var_count()))
-            {
-                return (ff == constant(0) && gg == constant(0)) ? constant(0) : constant(1);
-            }
+        auto const [f_hi, f_lo] = split(f);
+        auto const [g_hi, g_lo] = split(g);
 
-            auto const key = std::make_tuple(ff, gg, lvl);
-            if (auto const it = memo.find(key); it != memo.end())
-            {
-                return it->second;
-            }
-
-            auto const [f_hi, f_lo] = split(ff, lvl);
-            auto const [g_hi, g_lo] = split(gg, lvl);
-
-            auto hi = self(self, f_hi, g_hi, static_cast<var_index>(lvl + 1));
-            auto lo = self(self, f_lo, g_lo, static_cast<var_index>(lvl + 1));
-
-            // complement node: hi==0 by construction, branch would wrongly eliminate it
-            auto result = (hi == constant(0) && lo != constant(0))
-                              ? uedge(regw(), unode(lvl, std::move(hi), std::move(lo)))
-                              : branch(lvl, std::move(hi), std::move(lo));
-
-            memo.emplace(key, result);
-            return result;
-        };
-
-        return rec(rec, f, g, 0);
+        auto hi = disj(f_hi, g_hi);
+        auto lo = disj(f_lo, g_lo);
+        op.set_result(hi == lo ? hi : branch(x, std::move(hi), std::move(lo)));
+        return cache(std::move(op))->get_result();
     }
 
     auto complement(edge_ptr const& f) -> edge_ptr override
@@ -382,9 +392,9 @@ class zdd_manager final : public detail::manager<bool, bool>
     {
         return lo;
     }
-    [[nodiscard]] auto expanded(edge_ptr const& f, bool const, expansion) const -> edge_ptr override
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const -> edge_ptr override
     {
-        return f;
+        return a ? constant(0) : f;
     }
 };
 
