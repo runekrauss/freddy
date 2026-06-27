@@ -238,18 +238,8 @@ class zdd_manager final : public detail::manager<bool, bool>
         }
 
         auto const x = top_var(f, g);
-
-        auto const split = [this, x](edge_ptr const& e) -> std::pair<edge_ptr, edge_ptr> {
-            if (!e->is_const() && e->ch()->br().x == x)
-                return {denorm_high(e), denorm_low(e)};
-            return {e, e};
-        };
-
-        auto const [f_hi, f_lo] = split(f);
-        auto const [g_hi, g_lo] = split(g);
-
-        auto hi = conj(f_hi, g_hi);
-        auto lo = conj(f_lo, g_lo);
+        auto hi = conj(cof(f, x, true), cof(g, x, true));
+        auto lo = conj(cof(f, x, false), cof(g, x, false));
         op.set_result(hi == lo ? hi : branch(x, std::move(hi), std::move(lo)));
         return cache(std::move(op))->get_result();
     }
@@ -283,18 +273,8 @@ class zdd_manager final : public detail::manager<bool, bool>
         }
 
         auto const x = top_var(f, g);
-
-        auto const split = [this, x](edge_ptr const& e) -> std::pair<edge_ptr, edge_ptr> {
-            if (!e->is_const() && e->ch()->br().x == x)
-                return {denorm_high(e), denorm_low(e)};
-            return {e, e};
-        };
-
-        auto const [f_hi, f_lo] = split(f);
-        auto const [g_hi, g_lo] = split(g);
-
-        auto hi = disj(f_hi, g_hi);
-        auto lo = disj(f_lo, g_lo);
+        auto hi = disj(cof(f, x, true), cof(g, x, true));
+        auto lo = disj(cof(f, x, false), cof(g, x, false));
         op.set_result(hi == lo ? hi : branch(x, std::move(hi), std::move(lo)));
         return cache(std::move(op))->get_result();
     }
@@ -392,9 +372,11 @@ class zdd_manager final : public detail::manager<bool, bool>
     {
         return lo;
     }
-    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const -> edge_ptr override
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion const t) const -> edge_ptr override
     {
-        return a ? constant(0) : f;
+        if ((t == expansion::pD || t == expansion::nD) && a)
+            return constant(0);
+        return f;
     }
 };
 
