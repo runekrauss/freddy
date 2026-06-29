@@ -56,7 +56,7 @@ jobs:
       - name: Cache dependencies
         id: dep
         if: success() || steps.cache.outcome == 'success' # success() may be false due to previous steps
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: build/_deps
           key: deps-${{ matrix.compiler }}-${{ matrix.build_type }}-${{ env.REF }}-${{ hashFiles('CMakeLists.txt') }}
@@ -107,7 +107,7 @@ jobs:
           job-summary: 'Ccache Statistics'
 
       - name: Cache dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: build/_deps
           key: deps-${{ github.job }}-${{ env.REF }}-${{ hashFiles('CMakeLists.txt') }}
@@ -137,7 +137,7 @@ jobs:
           job-summary: 'Ccache Statistics'
 
       - name: Cache dependencies
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: build/_deps
           key: deps-${{ github.job }}-${{ env.REF }}-${{ hashFiles('CMakeLists.txt') }}
