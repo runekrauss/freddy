@@ -174,6 +174,20 @@ TEST_CASE("ZDD variable order is changeable", "[basic]")
     }
 }
 
+TEST_CASE("ZDD zero-suppression subsumes redundant cubes", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+    auto const x = mgr.var(), y = mgr.var(), z = mgr.var();
+
+    // x*y*z is subsumed by x*y: adding x*y*z to a cover that already contains x*y
+    // leaves the ZDD structurally unchanged — a property unique to zero-suppression
+    auto const f = x & y;
+    auto const g = f | (x & y & z);
+
+    CHECK(f == g);
+    CHECK(g.size() == f.size());
+}
+
 TEST_CASE("ZDD can be visualized", "[basic]")
 {
     zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 2}};
