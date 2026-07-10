@@ -5,8 +5,10 @@
 #include <catch2/catch_test_macros.hpp>  // TEST_CASE
 
 #include <freddy/config.hpp>  // config
+#include <freddy/dd/bdd.hpp>  // bdd_manager
 #include <freddy/dd/zdd.hpp>  // zdd_manager
 
+#include <cstdint>  // std::uint64_t
 #include <sstream>  // std::ostringstream
 #include <vector>   // std::vector
 
@@ -15,6 +17,29 @@
 // *********************************************************************************************************************
 
 using namespace freddy;
+
+// *********************************************************************************************************************
+// Helpers
+// *********************************************************************************************************************
+
+namespace
+{
+
+auto all_assignments(std::size_t n) -> std::vector<std::vector<bool>>
+{
+    std::vector<std::vector<bool>> result;
+    result.reserve(1uz << n);
+    for (std::uint64_t mask = 0; mask < (1ull << n); ++mask)
+    {
+        std::vector<bool> as(n);
+        for (std::size_t i = 0; i < n; ++i)
+            as[i] = ((mask >> i) & 1u) != 0;
+        result.push_back(std::move(as));
+    }
+    return result;
+}
+
+}  // namespace
 
 // *********************************************************************************************************************
 // Macros
@@ -186,6 +211,99 @@ TEST_CASE("ZDD zero-suppression subsumes redundant cubes", "[basic]")
 
     CHECK(f == g);
     CHECK(g.size() == f.size());
+}
+
+TEST_CASE("ZDD eval matches BDD eval", "[basic]")
+{
+    SECTION("Shannon (x0&x1)|(x2&x3)")
+    {
+        bdd_manager bmgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
+        auto const bx0 = bmgr.var(), bx1 = bmgr.var(), bx2 = bmgr.var(), bx3 = bmgr.var();
+        auto const f_bdd = (bx0 & bx1) | (bx2 & bx3);
+
+        zdd_manager zmgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
+        auto const x0 = zmgr.var(), x1 = zmgr.var(), x2 = zmgr.var(), x3 = zmgr.var();
+        auto const f_zdd = (x0 & x1) | (x2 & x3);
+
+        for (auto const& as : all_assignments(4))
+        {
+            CHECK(f_zdd.eval(as) == f_bdd.eval(as));
+        }
+    }
+
+    SECTION("Shannon (x0|x1)&(x0|x2)")
+    {
+        bdd_manager bmgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+        auto const bx0 = bmgr.var(), bx1 = bmgr.var(), bx2 = bmgr.var();
+        auto const f_bdd = (bx0 | bx1) & (bx0 | bx2);
+
+        zdd_manager zmgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+        auto const x0 = zmgr.var(), x1 = zmgr.var(), x2 = zmgr.var();
+        auto const f_zdd = (x0 | x1) & (x0 | x2);
+
+        for (auto const& as : all_assignments(3))
+        {
+            CHECK(f_zdd.eval(as) == f_bdd.eval(as));
+        }
+    }
+}
+
+TEST_CASE("ZDD eval satisfies positive and negative Davio expansion identities", "[basic]")
+{
+    zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 4}};
+    auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var(), x3 = mgr.var();
+    auto const f = (x0 & x1) | (x2 & x3);
+
+    auto const f_0 = f.restr(0, false);  // f|_{x0=0} = x2&x3
+    auto const f_1 = f.restr(0, true);   // f|_{x0=1} = x1|(x2&x3)
+
+    for (auto const& as : all_assignments(4))
+    {
+        bool const val   = f.eval(as);
+        bool const val_0 = f_0.eval(as);
+        bool const val_1 = f_1.eval(as);
+
+        // positive Davio: f = f_0 XOR (x0 AND (f_0 XOR f_1))
+        CHECK(val == (val_0 ^ (as[0] && (val_0 ^ val_1))));
+
+        // negative Davio: f = f_1 XOR (~x0 AND (f_0 XOR f_1))
+        CHECK(val == (val_1 ^ (!as[0] && (val_0 ^ val_1))));
+    }
+}
+
+TEST_CASE("ZDD De Morgan identities do not hold structurally", "[basic]")
+{
+    SECTION("~(x0|x1) == (~x0)&(~x1)")
+    {
+        zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+        auto const x0 = mgr.var("x0"), x1 = mgr.var("x1");
+        (void)mgr.var("x2");
+
+        auto const lhs = ~(x0 | x1);
+        auto const rhs = (~x0) & (~x1);
+
+        for (auto const& as : all_assignments(3))
+        {
+            CHECK(lhs.eval(as) == rhs.eval(as));
+        }
+    }
+
+    SECTION("~(f&g) == ~f|~g, f=x0&x1, g=x1&x2")
+    {
+        zdd_manager mgr{config{.utable_size_hint = 25, .cache_size_hint = 3'359, .init_var_cap = 3}};
+        auto const x0 = mgr.var(), x1 = mgr.var(), x2 = mgr.var();
+
+        auto const f = x0 & x1;
+        auto const g = x1 & x2;
+
+        auto const lhs = ~(f & g);
+        auto const rhs = (~f) | (~g);
+
+        for (auto const& as : all_assignments(3))
+        {
+            CHECK(lhs.eval(as) == rhs.eval(as));
+        }
+    }
 }
 
 TEST_CASE("ZDD can be visualized", "[basic]")
