@@ -240,7 +240,19 @@ class zdd_manager final : public detail::manager<bool, bool>
         auto const x = top_var(f, g);
         auto hi = conj(cof(f, x, true), cof(g, x, true));
         auto lo = conj(cof(f, x, false), cof(g, x, false));
-        op.set_result(hi == lo ? hi : branch(x, std::move(hi), std::move(lo)));
+        if (hi == lo)
+        {
+            op.set_result(hi);
+        }
+        else if (hi == constant(0))
+        {
+            // keep the node instead of zero-suppressing it, so complement()-built operands don't lose x
+            op.set_result(uedge(regw(), unode(x, std::move(hi), std::move(lo))));
+        }
+        else
+        {
+            op.set_result(branch(x, std::move(hi), std::move(lo)));
+        }
         return cache(std::move(op))->get_result();
     }
 
@@ -275,7 +287,19 @@ class zdd_manager final : public detail::manager<bool, bool>
         auto const x = top_var(f, g);
         auto hi = disj(cof(f, x, true), cof(g, x, true));
         auto lo = disj(cof(f, x, false), cof(g, x, false));
-        op.set_result(hi == lo ? hi : branch(x, std::move(hi), std::move(lo)));
+        if (hi == lo)
+        {
+            op.set_result(hi);
+        }
+        else if (hi == constant(0))
+        {
+            // keep the node instead of zero-suppressing it, so complement()-built operands don't lose x
+            op.set_result(uedge(regw(), unode(x, std::move(hi), std::move(lo))));
+        }
+        else
+        {
+            op.set_result(branch(x, std::move(hi), std::move(lo)));
+        }
         return cache(std::move(op))->get_result();
     }
 
