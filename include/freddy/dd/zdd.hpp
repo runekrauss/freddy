@@ -240,19 +240,7 @@ class zdd_manager final : public detail::manager<bool, bool>
         auto const x = top_var(f, g);
         auto hi = conj(cof(f, x, true), cof(g, x, true));
         auto lo = conj(cof(f, x, false), cof(g, x, false));
-        if (hi == lo)
-        {
-            op.set_result(hi);
-        }
-        else if (hi == constant(0))
-        {
-            // keep the node instead of zero-suppressing it, so complement()-built operands don't lose x
-            op.set_result(uedge(regw(), unode(x, std::move(hi), std::move(lo))));
-        }
-        else
-        {
-            op.set_result(branch(x, std::move(hi), std::move(lo)));
-        }
+        op.set_result(branch(x, std::move(hi), std::move(lo)));
         return cache(std::move(op))->get_result();
     }
 
@@ -287,19 +275,7 @@ class zdd_manager final : public detail::manager<bool, bool>
         auto const x = top_var(f, g);
         auto hi = disj(cof(f, x, true), cof(g, x, true));
         auto lo = disj(cof(f, x, false), cof(g, x, false));
-        if (hi == lo)
-        {
-            op.set_result(hi);
-        }
-        else if (hi == constant(0))
-        {
-            // keep the node instead of zero-suppressing it, so complement()-built operands don't lose x
-            op.set_result(uedge(regw(), unode(x, std::move(hi), std::move(lo))));
-        }
-        else
-        {
-            op.set_result(branch(x, std::move(hi), std::move(lo)));
-        }
+        op.set_result(branch(x, std::move(hi), std::move(lo)));
         return cache(std::move(op))->get_result();
     }
 
@@ -315,7 +291,7 @@ class zdd_manager final : public detail::manager<bool, bool>
         }
 
         auto const x = f->ch()->br().x;
-        return uedge(regw(), unode(x, complement(denorm_high(f)), complement(denorm_low(f))));
+        return uedge(regw(),unode(x,complement(f->ch()->br().hi),complement(f->ch()->br().lo)));
     }
 
     auto path_count(edge_ptr const& f) -> double
@@ -396,10 +372,12 @@ class zdd_manager final : public detail::manager<bool, bool>
     {
         return lo;
     }
-    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion const t) const -> edge_ptr override
+    [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const -> edge_ptr override
     {
-        if ((t == expansion::pD || t == expansion::nD) && a)
-            return constant(0);
+        if (f->is_const())
+        {
+            return a ? constant(0) : f;
+        }
         return f;
     }
 };
