@@ -14,6 +14,7 @@
 #include <array>        // std::array
 #include <cassert>      // assert
 #include <iostream>     // std::cout
+#include <numeric>      // std::iota
 #include <string>       // std::string
 #include <string_view>  // std::string_view
 #include <utility>      // std::forward
@@ -148,14 +149,28 @@ class zdd_manager final : public detail::manager<bool, bool>
             manager{tmls(), cfg}  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks)
     {}
 
-    auto var(std::string_view lbl = {})
+    auto var(var_index const x)
     {
-        return zdd{manager::var(expansion::S, lbl), this};
+        assert(x < var_count());
+        std::vector<var_index> order(var_count());
+        std::iota(order.begin(), order.end(), static_cast<var_index>(0));
+        std::ranges::sort(order, [this](var_index const a, var_index const b) { return !lvl_ge(a, b); });
+
+        auto e = constant(1);
+        for (auto lvl = order.size(); lvl-- > 0;)
+        {
+            auto const y = order[lvl];
+
+            e = (y == x) ? branch(y, std::move(e), constant(0))
+                         : branch(y, edge_ptr{e}, edge_ptr{e});
+        }
+        return zdd{e, this};
     }
 
-    auto var(var_index const x) noexcept
+    auto var(std::string_view lbl = {})
     {
-        return zdd{manager::var(x), this};
+        manager::var(expansion::S, lbl);
+        return var(static_cast<var_index>(var_count() - 1));
     }
 
     auto zero() noexcept
@@ -285,13 +300,18 @@ class zdd_manager final : public detail::manager<bool, bool>
         {
             return constant(1);
         }
+
         if (f == constant(1))
         {
             return constant(0);
         }
 
         auto const x = f->ch()->br().x;
-        return uedge(regw(),unode(x,complement(f->ch()->br().hi),complement(f->ch()->br().lo)));
+
+        auto hi = complement(f->ch()->br().hi);
+        auto lo = complement(f->ch()->br().lo);
+
+        return uedge(regw(), unode(x, std::move(hi), std::move(lo)));
     }
 
     auto path_count(edge_ptr const& f) -> double
@@ -374,11 +394,7 @@ class zdd_manager final : public detail::manager<bool, bool>
     }
     [[nodiscard]] auto expanded(edge_ptr const& f, bool const a, expansion) const -> edge_ptr override
     {
-        if (f->is_const())
-        {
-            return a ? constant(0) : f;
-        }
-        return f;
+        return a ? constant(0) : f;
     }
 };
 
