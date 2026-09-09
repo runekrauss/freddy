@@ -10,15 +10,15 @@
 #include "freddy/detail/operation/plus.hpp"   // detail::plus
 #include "freddy/expansion.hpp"               // expansion::S
 
-#include <algorithm>    // std::ranges::transform
-#include <array>        // std::array
-#include <cassert>      // assert
-#include <iostream>     // std::cout
-#include <numeric>      // std::iota
-#include <string>       // std::string
-#include <string_view>  // std::string_view
-#include <utility>      // std::forward
-#include <vector>       // std::vector
+#include <algorithm>      // std::ranges::transform
+#include <array>          // std::array
+#include <cassert>        // assert
+#include <iostream>       // std::cout
+#include <numeric>        // std::iota
+#include <string>         // std::string
+#include <string_view>    // std::string_view
+#include <utility>        // std::forward
+#include <vector>         // std::vector
 
 namespace freddy
 {
@@ -104,7 +104,7 @@ class zdd final
     [[nodiscard]] auto is_zero() const noexcept;
     [[nodiscard]] auto is_one() const noexcept;
 
-    [[nodiscard]] auto eval(std::vector<bool> const& as) const noexcept -> bool;
+    [[nodiscard]] auto eval(std::vector<bool> const&) const noexcept;
 
     [[nodiscard]] auto size() const;
     [[nodiscard]] auto depth() const;
@@ -149,28 +149,14 @@ class zdd_manager final : public detail::manager<bool, bool>
             manager{tmls(), cfg}  // NOLINT(clang-analyzer-cplusplus.NewDeleteLeaks)
     {}
 
-    auto var(var_index const x)
-    {
-        assert(x < var_count());
-        std::vector<var_index> order(var_count());
-        std::iota(order.begin(), order.end(), static_cast<var_index>(0));
-        std::ranges::sort(order, [this](var_index const a, var_index const b) { return !lvl_ge(a, b); });
-
-        auto e = constant(1);
-        for (auto lvl = order.size(); lvl-- > 0;)
-        {
-            auto const y = order[lvl];
-
-            e = (y == x) ? branch(y, std::move(e), constant(0))
-                         : branch(y, edge_ptr{e}, edge_ptr{e});
-        }
-        return zdd{e, this};
-    }
-
     auto var(std::string_view lbl = {})
     {
-        manager::var(expansion::S, lbl);
-        return var(static_cast<var_index>(var_count() - 1));
+        return zdd{manager::var(expansion::S, lbl), this};
+    }
+
+    auto var(var_index const x) noexcept
+    {
+        return zdd{manager::var(x), this};
     }
 
     auto zero() noexcept
@@ -208,14 +194,15 @@ class zdd_manager final : public detail::manager<bool, bool>
     // NOLINTBEGIN(clang-analyzer-cplusplus.NewDeleteLeaks)
     static auto tmls() -> std::array<edge_ptr, 2>
     {
-        node_ptr const leaf0{new detail::node<bool, bool>{false}};  // {} (empty family) -> 0
-        node_ptr const leaf1{new detail::node<bool, bool>{true}};   // {{}} (unit family) -> 1
+        node_ptr const leaf0{new node{false}};
+        node_ptr const leaf1{new node{true}};
 
         return {
-            edge_ptr{new detail::edge<bool, bool>{false, leaf0}},  // constant(0)
-            edge_ptr{new detail::edge<bool, bool>{false, leaf1}},  // constant(1)
+            edge_ptr{new edge{false, leaf0}},
+            edge_ptr{new edge{false, leaf1}}
         };
     }
+
     // NOLINTEND(clang-analyzer-cplusplus.NewDeleteLeaks)
     static auto transform(std::vector<zdd> const& gs) -> std::vector<edge_ptr>
     {
@@ -223,6 +210,7 @@ class zdd_manager final : public detail::manager<bool, bool>
         std::ranges::transform(gs, fs.begin(), [](auto const& g) { return g.f; });
         return fs;
     }
+
 
     auto conj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
@@ -232,14 +220,6 @@ class zdd_manager final : public detail::manager<bool, bool>
         if (f == constant(0) || g == constant(0))
         {
             return constant(0);
-        }
-        if (f == constant(1))
-        {
-            return g;
-        }
-        if (g == constant(1))
-        {
-            return f;
         }
         if (f == g)
         {
@@ -253,45 +233,29 @@ class zdd_manager final : public detail::manager<bool, bool>
         }
 
         auto const x = top_var(f, g);
-        auto hi = conj(cof(f, x, true), cof(g, x, true));
-        auto lo = conj(cof(f, x, false), cof(g, x, false));
-        op.set_result(branch(x, std::move(hi), std::move(lo)));
-        return cache(std::move(op))->get_result();
+        auto const ftop = f->ch()->br().x;
+        auto const gtop = g->ch()->br().x;
+
+        // if (P.top < Q.top) R <- P0 n Q;
+        if (ftop < gtop)
+            op.set_result(conj(cof(f,x,false),g));
+
+        // if (P.top > Q.top) R <- P n Q0;
+        if (ftop > gtop)
+            op.set_result(conj(f,cof(g,x,false)));;
+
+        // if (P.top = Q.top) R <- Getnode(P.top, P0 n Q0, P1 n Q1);
+        if (ftop == gtop)
+        {
+            auto hi = conj(cof(f, x, true), cof(g, x, true));
+            auto lo = conj(cof(f, x, false), cof(g, x, false));
+            op.set_result(branch(x, std::move(hi), std::move(lo)));
+        }
     }
 
     auto disj(edge_ptr const& f, edge_ptr const& g) -> edge_ptr override
     {
-        assert(f);
-        assert(g);
-
-        if (f == constant(0))
-        {
-            return g;
-        }
-        if (g == constant(0))
-        {
-            return f;
-        }
-        if (f == constant(1) || g == constant(1))
-        {
-            return constant(1);
-        }
-        if (f == g)
-        {
-            return f;
-        }
-
-        detail::plus op{f, g};
-        if (auto const* const entry = cached(op))
-        {
-            return entry->get_result();
-        }
-
-        auto const x = top_var(f, g);
-        auto hi = disj(cof(f, x, true), cof(g, x, true));
-        auto lo = disj(cof(f, x, false), cof(g, x, false));
-        op.set_result(branch(x, std::move(hi), std::move(lo)));
-        return cache(std::move(op))->get_result();
+        return complement(conj(complement(f), complement(g)));
     }
 
     auto complement(edge_ptr const& f) -> edge_ptr override
@@ -310,12 +274,13 @@ class zdd_manager final : public detail::manager<bool, bool>
 
         auto hi = complement(f->ch()->br().hi);
         auto lo = complement(f->ch()->br().lo);
-
-        return uedge(regw(), unode(x, std::move(hi), std::move(lo)));
+        return branch(x, std::move(hi), std::move(lo));
     }
 
-    auto path_count(edge_ptr const& f) -> double
+    auto path_count(edge_ptr const& f) const noexcept -> double
     {
+        assert(f);
+
         if (f == constant(0))
         {
             return 0.0;
@@ -436,20 +401,11 @@ inline auto zdd::is_one() const noexcept
     return *this == mgr->one();
 }
 
-inline auto zdd::eval(std::vector<bool> const& as) const noexcept -> bool
+inline auto zdd::eval(std::vector<bool> const& as) const noexcept
 {
     assert(mgr);
-    assert(as.size() == mgr->var_count());
 
-    auto cur = *this;
-
-    while (!cur.is_const())
-    {
-        auto const x = static_cast<std::size_t>(cur.var());
-        cur = as[x] ? cur.high() : cur.low();
-    }
-
-    return cur.is_one();
+    return mgr->eval(f, as);
 }
 
 inline auto zdd::size() const
